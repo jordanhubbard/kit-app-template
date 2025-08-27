@@ -220,13 +220,20 @@ class TemplateEngine:
         return template.render(**variables)
 
 
-class KitTemplateCLI:
-    """Command-line interface for the Kit template system."""
+class KatManagerCLI:
+    """Command-line interface for the Kat Manager system."""
     
     def __init__(self):
-        self.template_root = Path(__file__).parent / "templates"
+        # Support both standalone usage and venv-managed usage
+        kat_root = os.environ.get('KAT_MANAGER_ROOT_DIR')
+        if kat_root:
+            self.template_root = Path(kat_root) / "templates"
+            self.output_root = Path(os.environ.get('KAT_MANAGER_SOURCE_DIR', 'source'))
+        else:
+            self.template_root = Path(__file__).parent / "templates"
+            self.output_root = Path(__file__).parent / "source"
+        
         self.registry_path = self.template_root / "registry.yaml"
-        self.output_root = Path(__file__).parent / "source"
         
         if not self.registry_path.exists():
             # Fallback to JSON registry
@@ -234,7 +241,7 @@ class KitTemplateCLI:
     
     def run(self):
         """Main CLI entry point."""
-        parser = argparse.ArgumentParser(description="Kit Template Generator")
+        parser = argparse.ArgumentParser(description="Kat Manager - Omniverse Kit Application Template Generator")
         subparsers = parser.add_subparsers(dest='command', help='Available commands')
         
         # List command
@@ -354,6 +361,9 @@ class KitTemplateCLI:
         )
         template_output = output_path / category_dir / app_name
         
+        # Ensure the output directory exists
+        template_output.parent.mkdir(parents=True, exist_ok=True)
+        
         engine.render_template(template, variables, template_output)
     
     def cmd_validate(self, args):
@@ -472,5 +482,5 @@ class KitTemplateCLI:
 
 
 if __name__ == '__main__':
-    cli = KitTemplateCLI()
+    cli = KatManagerCLI()
     cli.run()
