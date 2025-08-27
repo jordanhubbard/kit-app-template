@@ -1,0 +1,384 @@
+# Modern Template Registry for Kit SDK
+# This file defines all available templates in a clean, data-driven format
+
+templates:
+  # =====================================
+  # APPLICATION TEMPLATES  
+  # =====================================
+  
+  kit_base_editor:
+    name: "Kit Base Editor"
+    description: "A foundation for a base editor application with viewport, property windows, and basic editing capabilities"
+    category: "app"
+    template_path: "apps/kit_base_editor"
+    variables:
+      - name: "application_name"
+        type: "string"
+        description: "Application identifier (namespace.name format, lowercase, alphanumeric)"
+        default: "my_company.my_editor"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "application_display_name" 
+        type: "string"
+        description: "Human-readable application name shown to users"
+        default: "My Editor"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Application version (semantic versioning recommended)"
+        default: "0.1.0"
+        required: true
+        pattern: "^\\d+\\.\\d+\\.\\d+$"
+    dependencies: []
+    post_process: []
+
+  usd_composer:
+    name: "USD Composer"
+    description: "Create applications based on USD Composer with advanced USD authoring capabilities"
+    category: "app"
+    template_path: "apps/usd_composer"
+    variables:
+      - name: "application_name"
+        type: "string"
+        description: "Application identifier (namespace.name format)"
+        default: "my_company.my_usd_composer"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "application_display_name"
+        type: "string" 
+        description: "Human-readable application name"
+        default: "My USD Composer"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Application version"
+        default: "0.1.0"
+        required: true
+    dependencies: ["usd_composer_setup_extension"]
+
+  usd_explorer:
+    name: "USD Explorer"
+    description: "Create applications based on USD Explorer for viewing and exploring USD content"
+    category: "app"
+    template_path: "apps/usd_explorer"  
+    variables:
+      - name: "application_name"
+        type: "string"
+        description: "Application identifier"
+        default: "my_company.my_usd_explorer"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "application_display_name"
+        type: "string"
+        description: "Human-readable application name"
+        default: "My USD Explorer"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Application version"
+        default: "0.1.0"
+        required: true
+    dependencies: ["usd_explorer_setup_extension"]
+
+  usd_viewer:
+    name: "USD Viewer"
+    description: "Create lightweight USD viewing applications"
+    category: "app"
+    template_path: "apps/usd_viewer"
+    variables:
+      - name: "application_name"
+        type: "string"
+        description: "Application identifier"
+        default: "my_company.my_usd_viewer"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "application_display_name"
+        type: "string"
+        description: "Human-readable application name"
+        default: "My USD Viewer"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Application version"
+        default: "0.1.0"
+        required: true
+    dependencies: ["usd_viewer_messaging_extension", "usd_viewer_setup_extension"]
+
+  kit_service:
+    name: "Kit Service"
+    description: "Create headless service applications with HTTP APIs"
+    category: "app" 
+    template_path: "apps/kit_service"
+    variables:
+      - name: "application_name"
+        type: "string"
+        description: "Application identifier"
+        default: "my_company.my_service"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "application_display_name"
+        type: "string"
+        description: "Human-readable application name"
+        default: "My Service"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Application version"
+        default: "0.1.0"
+        required: true
+    dependencies: ["kit_service_setup_extension"]
+
+  # =====================================
+  # STREAMING LAYER TEMPLATES
+  # =====================================
+
+  omni_default_streaming:
+    name: "Omniverse Kit App Streaming (Default)"
+    description: "Add default Omniverse streaming capabilities to applications"
+    category: "layer"
+    template_path: "apps/streaming_configs/default_stream"
+    variables:
+      - name: "version"
+        type: "string" 
+        description: "Streaming layer version"
+        default: "0.1.0"
+        required: true
+
+  nvcf_streaming:
+    name: "NVCF Streaming"
+    description: "NVIDIA Cloud Functions streaming configuration"
+    category: "layer"
+    template_path: "apps/streaming_configs/nvcf_stream"
+    variables:
+      - name: "version"
+        type: "string"
+        description: "NVCF streaming version"
+        default: "0.1.0"
+        required: true
+
+  gdn_streaming:
+    name: "GDN Streaming"
+    description: "GeForce NOW streaming configuration"
+    category: "layer"
+    template_path: "apps/streaming_configs/gdn_stream"
+    variables:
+      - name: "version"
+        type: "string"
+        description: "GDN streaming version" 
+        default: "0.1.0"
+        required: true
+
+  # =====================================
+  # EXTENSION TEMPLATES
+  # =====================================
+
+  basic_python_extension:
+    name: "Basic Python Extension"
+    description: "Create a simple Python extension with basic functionality"
+    category: "extension"
+    template_path: "extensions/basic_python"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Extension identifier (namespace.name format)"
+        default: "my_company.my_python_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My Python Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  python_ui_extension:
+    name: "Python UI Extension" 
+    description: "Create a Python extension with user interface components"
+    category: "extension"
+    template_path: "extensions/python_ui"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Extension identifier"
+        default: "my_company.my_python_ui_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My Python UI Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  basic_cpp_extension:
+    name: "Basic C++ Extension"
+    description: "Create a native C++ extension with optimal performance"
+    category: "extension"
+    template_path: "extensions/basic_cpp"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Extension identifier"
+        default: "my_company.my_cpp_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My C++ Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  python_binding_extension:
+    name: "C++ with Python Bindings Extension"
+    description: "Create a C++ extension with Python bindings using pybind11"
+    category: "extension"
+    template_path: "extensions/basic_python_binding"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Extension identifier"
+        default: "my_company.my_python_binding"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My Pybind11 Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  # =====================================
+  # SETUP EXTENSION TEMPLATES
+  # =====================================
+
+  kit_service_setup_extension:
+    name: "Service Setup Extension"
+    description: "Setup extension for Kit service applications"
+    category: "extension"
+    template_path: "extensions/service.setup"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Setup extension identifier"
+        default: "my_company.my_service_setup_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My Service Setup Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  usd_composer_setup_extension:
+    name: "USD Composer Setup Extension"
+    description: "Setup extension for USD Composer applications"
+    category: "extension"
+    template_path: "extensions/usd_composer.setup"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Setup extension identifier"
+        default: "my_company.my_usd_composer_setup_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My USD Composer Setup Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  usd_explorer_setup_extension:
+    name: "USD Explorer Setup Extension"
+    description: "Setup extension for USD Explorer applications"
+    category: "extension"
+    template_path: "extensions/usd_explorer.setup"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Setup extension identifier"
+        default: "my_company.my_usd_explorer_setup_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My USD Explorer Setup Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  usd_viewer_setup_extension:
+    name: "USD Viewer Setup Extension"
+    description: "Setup extension for USD Viewer applications"
+    category: "extension"
+    template_path: "extensions/usd_viewer.setup"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Setup extension identifier"
+        default: "my_company.my_usd_viewer_setup_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My USD Viewer Setup Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true
+
+  usd_viewer_messaging_extension:
+    name: "USD Viewer Messaging Extension"
+    description: "Messaging capabilities for USD Viewer applications"
+    category: "extension"
+    template_path: "extensions/usd_viewer.messaging"
+    variables:
+      - name: "extension_name"
+        type: "string"
+        description: "Messaging extension identifier"
+        default: "my_company.my_usd_viewer_messaging_extension"
+        required: true
+        pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+      - name: "extension_display_name"
+        type: "string"
+        description: "Human-readable extension name"
+        default: "My USD Viewer Messaging Extension"
+        required: true
+      - name: "version"
+        type: "string"
+        description: "Extension version"
+        default: "0.1.0"
+        required: true

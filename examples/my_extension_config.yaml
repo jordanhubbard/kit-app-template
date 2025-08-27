@@ -1,0 +1,4 @@
+# Example configuration for creating a Python extension
+extension_name: "acme.my_workflow_tools"
+extension_display_name: "Acme Workflow Tools"
+version: "1.2.3"

@@ -1,0 +1,28 @@
+{
+  "templates": [
+    {
+      "id": "kit_base_editor",
+      "variables": {
+        "application_name": "acme.content_browser",
+        "application_display_name": "Acme Content Browser",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "basic_python_extension", 
+      "variables": {
+        "extension_name": "acme.asset_validator",
+        "extension_display_name": "Acme Asset Validator",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "python_ui_extension",
+      "variables": {
+        "extension_name": "acme.material_library",
+        "extension_display_name": "Acme Material Library",
+        "version": "1.0.0"
+      }
+    }
+  ]
+}

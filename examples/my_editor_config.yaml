@@ -1,0 +1,4 @@
+# Example configuration for creating a custom editor application
+application_name: "acme.my_awesome_editor"
+application_display_name: "Acme Awesome Editor"
+version: "1.0.0"

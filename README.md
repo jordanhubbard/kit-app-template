@@ -1,301 +1,298 @@
-# Omniverse Kit App Template
+# Kit Template - Modern Template System for Omniverse Kit
 
-<p align="center">
-  <img src="readme-assets/kit_app_template_banner.png" width=100% />
-</p>
+A clean, data-driven template system for creating Omniverse Kit applications and extensions. This tool replaces complex interactive workflows with simple, declarative configuration that's perfect for automation, CI/CD, and AI-assisted development.
 
-## :memo: Feature Branch Information
-**This repository is based on a Feature Branch of the Omniverse Kit SDK.** Feature Branches are regularly updated and best suited for testing and prototyping.
-For stable, production-oriented development, please use the [Production Branch of the Kit SDK on NVIDIA GPU Cloud (NGC)](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/omniverse/collections/omniverse_enterprise_25h1).
+## Features
 
-[Omniverse Release Information](https://docs.omniverse.nvidia.com/dev-overview/latest/omniverse-releases.html#)
-
-
-## Overview
-
-Welcome to `kit-app-template`, a toolkit designed for developers interested in GPU-accelerated application development within the NVIDIA Omniverse ecosystem. This repository offers streamlined tools and templates to simplify creating high-performance, OpenUSD-based desktop or cloud streaming applications using the Omniverse Kit SDK.
-
-### About Omniverse Kit SDK
-
-The Omniverse Kit SDK enables developers to build immersive 3D applications. Key features include:
-- **Language Support:** Develop with either Python or C++, offering flexibility for various developer preferences.
-- **OpenUSD Foundation:** Utilize the robust Open Universal Scene Description (OpenUSD) for creating, manipulating, and rendering rich 3D content.
-- **GPU Acceleration:** Leverage GPU-accelerated capabilities for high-fidelity visualization and simulation.
-- **Extensibility:** Create specialized extensions that provide dynamic user interfaces, integrate with various systems, and offer direct control over OpenUSD data, making the Omniverse Kit SDK versatile for numerous applications.
-
-### Applications and Use Cases
-
-The `kit-app-template` repository enables developers to create cross-platform applications (Windows and Linux) optimized for desktop use and cloud streaming. Potential use cases include designing and simulating expansive virtual environments, producing high-quality synthetic data for AI training, and building advanced tools for technical analysis and insights. Whether you're crafting engaging virtual worlds, developing comprehensive analysis tools, or creating simulations, this repository, along with the Kit SDK, provides the foundational components required to begin development.
-
-### A Deeper Understanding
-
-The `kit-app-template` repository is designed to abstract complexity, jumpstarting your development with pre-configured templates, tools, and essential boilerplate. For those seeking a deeper understanding of the application and extension creation process, we have provided the following resources:
-
-#### Companion Tutorial
-
-**[Explore the Kit SDK Companion Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html)**: This tutorial offers detailed insights into the underlying structure and mechanisms, providing a thorough grasp of both the Kit SDK and the development process.
-
-### New Developers
-
-For a beginner-friendly introduction to application development using the Omniverse Kit SDK, see the NVIDIA DLI course:
-
-#### Beginner Tutorial
-
-**[Developing an Omniverse Kit-Based Application](https://learn.nvidia.com/courses/course-detail?course_id=course-v1:DLI+S-OV-11+V1)**: This course offers an accessible introduction to application development (account and login required).
-
-These resources empower developers at all experience levels to fully utilize the `kit-app-template` repository and the Omniverse Kit SDK.
-
-## Table of Contents
-- [Overview](#overview)
-- [Prerequisites and Environment Setup](#prerequisites-and-environment-setup)
-- [Repository Structure](#repository-structure)
-- [Quick Start](#quick-start)
-- [Templates](#templates)
-    - [Applications](#applications)
-    - [Extensions](#extensions)
-- [Tools](#tools)
-- [License](#license)
-- [Additional Resources](#additional-resources)
-- [Contributing](#contributing)
-
-## Prerequisites and Environment Setup
-
-Ensure your system is set up with the following to work with Omniverse Applications and Extensions:
-
-- **Operating System**: Windows 10/11 or Linux (Ubuntu 22.04 or newer)
-
-- **GPU**: NVIDIA RTX capable GPU (RTX 3070 or Better recommended)
-
-- **Driver**: Minimum and recommended - 537.58. Newer versions may work but are not equally validated.
-
-- **Internet Access**: Required for downloading the Omniverse Kit SDK, extensions, and tools.
-
-### Required Software Dependencies
-
-- [**Git**](https://git-scm.com/downloads): For version control and repository management
-
-- [**Git LFS**](https://git-lfs.com/): For managing large files within the repository
-
-- **(Windows - C++ Only) Microsoft Visual Studio (2019 or 2022)**: You can install the latest version from [Visual Studio Downloads](https://visualstudio.microsoft.com/downloads/). Ensure that the **Desktop development with C++** workload is selected.  [Additional information on Windows development configuration](readme-assets/additional-docs/windows_developer_configuration.md)
-
-- **(Windows - C++ Only) Windows SDK**: Install this alongside MSVC. You can find it as part of the Visual Studio Installer. [Additional information on Windows development configuration](readme-assets/additional-docs/windows_developer_configuration.md)
-
-- **(Linux) build-essentials**: A package that includes `make` and other essential tools for building applications.  For Ubuntu, install with `sudo apt-get install build-essential`
-
-### Recommended Software
-
-- [**(Linux) Docker**](https://docs.docker.com/engine/install/ubuntu/): For containerized development and deployment. **Ensure non-root users have Docker permissions.**
-
-- [**(Linux) NVIDIA Container Toolkit**](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html): For GPU-accelerated containerized development and deployment. **Installation and Configuring Docker steps are required.**
-
-- [**VSCode**](https://code.visualstudio.com/download) (or your preferred IDE): For code editing and development
-
-
-## Repository Structure
-
-| Directory Item   | Purpose                                                    |
-|------------------|------------------------------------------------------------|
-| .vscode          | VS Code configuration details and helper tasks             |
-| readme-assets/   | Images and additional repository documentation             |
-| templates/       | Template Applications and Extensions.                      |
-| tools/           | Tooling settings and repository specific (local) tools     |
-| .editorconfig    | [EditorConfig](https://editorconfig.org/) file.            |
-| .gitattributes   | Git configuration.                                         |
-| .gitignore       | Git configuration.                                         |
-| LICENSE          | License for the repo.                                      |
-| README.md        | Project information.                                       |
-| premake5.lua     | Build configuration - such as what apps to build.          |
-| repo.bat         | Windows repo tool entry point.                             |
-| repo.sh          | Linux repo tool entry point.                               |
-| repo.toml        | Top level configuration of repo tools.                     |
-| repo_tools.toml  | Setup of local, repository specific tools                  |
+- 🚀 **Non-interactive**: Perfect for automation and AI code generation
+- 📝 **Data-driven**: Templates defined in clean YAML format
+- 🔍 **Schema validation**: Catch configuration errors before generation
+- 🔧 **Multiple modes**: Interactive, batch, and programmatic usage
+- 📦 **Minimal dependencies**: Just 3 Python packages required
+- ✅ **Production ready**: Generates fully functional Kit applications
 
 ## Quick Start
 
-This section guides you through creating your first Kit SDK-based Application using the `kit-app-template` repository. For a more comprehensive explanation of functionality previewed here, reference the following [Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html) for an in-depth exploration.
-
-### 1. Clone the Repository
-
-Begin by cloning the `kit-app-template` to your local workspace:
-
-#### 1a. Clone
-
+### 1. Install Dependencies
 ```bash
-git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
+pip install -r requirements.txt
 ```
 
-#### 1b. Navigate to Cloned Directory
-
+### 2. List Available Templates
 ```bash
-cd kit-app-template
+./kit-template list
 ```
 
-### 2. Create and Configure New Application From Template
-
-Run the following command to initiate the configuration wizard:
-
-**Linux:**
+### 3. Generate Your First Application
 ```bash
-./repo.sh template new
+./kit-template generate kit_base_editor \
+  --var application_name=acme.my_editor \
+  --var application_display_name="My Editor" \
+  --var version=1.0.0
 ```
 
-**Windows:**
-```powershell
-.\repo.bat template new
-```
-
-> **NOTE:** If this is your first time running the `template new` tool, you'll be prompted to accept the Omniverse Licensing Terms.
-
-Follow the prompt instructions:
-- **? Select what you want to create with arrow keys ↑↓:** Application
-- **? Select desired template with arrow keys ↑↓:** Kit Base Editor
-- **? Enter name of application .kit file [name-spaced, lowercase, alphanumeric]:** [set application name]
-- **? Enter application_display_name:** [set application display name]
-- **? Enter version:** [set application version]
-
-  Application [application name] created successfully in [path to project]/source/apps/[application name]
-
-- **? Do you want to add application layers?** No
-
-#### Explanation of Example Selections
-
-• **`.kit` file name:** This file defines the application according to Kit SDK guidelines. The file name should be lowercase and alphanumeric to remain compatible with Kit’s conventions.
-
-• **display name:** This is the application name users will see. It can be any descriptive text.
-
-• **version:** The version number of the application. While you can use any format, semantic versioning (e.g., 0.1.0) is recommended for clarity and consistency.
-
-• **application layers:** These optional layers add functionality for features such as streaming to web browsers. For this quick-start, we skip adding layers, but choosing “yes” would let you enable and configure streaming capabilities.
-
-### 3. Build
-
-Build your new application with the following command:
-
-
-**Linux:**
-```bash
-./repo.sh build
-```
-**Windows:**
-```powershell
-.\repo.bat build
- ```
-
-A successful build will result in the following message:
-
-```text
-BUILD (RELEASE) SUCCEEDED (Took XX.XX seconds)
-```
-
- If you experience issues related to build, please see the [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md) section for additional information.
-
-
-### 4. Launch
-
-Initiate your newly created application using:
-
-**Linux:**
-```bash
-./repo.sh launch
-```
-**Windows:**
-```powershell
-.\repo.bat launch
-```
-
-**? Select with arrow keys which App would you like to launch:** [Select the created editor application]
-
-![Kit Base Editor Image](readme-assets/kit_base_editor.png)
-
-
-> **NOTE:** The initial startup may take 5 to 8 minutes as shaders compile for the first time. After initial shader compilation, startup time will reduce dramatically
-
-## Templates
-
-`kit-app-template` features an array of configurable templates for `Extensions` and `Applications`, catering to a range of desired development starting points from minimal to feature rich.
+## Available Templates
 
 ### Applications
-
-Begin constructing Omniverse Applications using these templates
-
-- **[Kit Service](./templates/apps/kit_service)**: The minimal definition of an Omniverse Kit SDK based service. This template is useful for creating headless services leveraging Omniverse Kit functionality.
-
-- **[Kit Base Editor](./templates/apps/kit_base_editor/)**: A minimal template application for loading, manipulating and rendering OpenUSD content from a graphical interface.
-
-- **[USD Composer](./templates/apps/usd_composer)**: A template application for authoring complex OpenUSD scenes, such as configurators.
-
-- **[USD Explorer](./templates/apps/usd_explorer)**: A template application for exploring and collaborating on large Open USD scenes.
-
-- **[USD Viewer](./templates/apps/usd_viewer)**: A viewport-only template application that can be easily streamed and interacted with remotely, well-suited for streaming content to web pages.
+- **`kit_base_editor`** - Foundation editor with viewport and property windows
+- **`usd_composer`** - Advanced USD authoring application  
+- **`usd_explorer`** - USD content viewing and exploration
+- **`usd_viewer`** - Lightweight USD viewer
+- **`kit_service`** - Headless service application with HTTP APIs
 
 ### Extensions
+- **`basic_python_extension`** - Simple Python extension
+- **`python_ui_extension`** - Python extension with UI components
+- **`basic_cpp_extension`** - Native C++ extension
+- **`python_binding_extension`** - C++ extension with Python bindings
 
-Enhance Omniverse capabilities with extension templates:
+### Streaming Layers  
+- **`omni_default_streaming`** - Default Omniverse streaming
+- **`nvcf_streaming`** - NVIDIA Cloud Functions streaming
+- **`gdn_streaming`** - GeForce NOW streaming
 
-- **[Basic Python](./templates/extensions/basic_python)**: The minimal definition of an Omniverse Python Extension.
+## Usage Examples
 
-- **[Python UI](./templates/extensions/python_ui)**: An extension that provides an easily extendable Python-based user interface.
+### Command Line Generation
+```bash
+# Generate an application
+./kit-template generate kit_base_editor \
+  --var application_name=acme.content_browser \
+  --var application_display_name="Acme Content Browser" \
+  --var version=2.1.0
 
-- **[Basic C++](./templates/extensions/basic_cpp)**: The minimal definition of an Omniverse C++ Extension.
+# Generate an extension
+./kit-template generate basic_python_extension \
+  --var extension_name=acme.workflow_tools \
+  --var extension_display_name="Acme Workflow Tools" \
+  --var version=1.5.0
 
-- **[Basic C++ w/ Python Bindings](./templates/extensions/basic_python_binding)**: The minimal definition of an Omniverse C++ Extension that also exposes a Python interface via Pybind11.
+# Custom output location
+./kit-template generate kit_base_editor -c config.yaml --output ./my_projects
+```
 
-   **Note for Windows C++ Developers** : This template requires `"platform:windows-x86_64".enabled` and `link_host_toolchain` within the `repo.toml` file be set to `true`. For additional C++ configuration information [see here](readme-assets/additional-docs/windows_developer_configuration.md).
+### Configuration File Usage
+Create `my_editor.yaml`:
+```yaml
+application_name: "acme.content_editor"
+application_display_name: "Acme Content Editor"
+version: "2.1.0"
+```
 
+Then generate:
+```bash
+./kit-template generate kit_base_editor -c my_editor.yaml
+```
 
-## Application Streaming
+### Interactive Mode
+```bash
+./kit-template generate kit_base_editor --interactive
+```
 
-The Omniverse Platform supports streaming Kit-based applications directly to a web browser. You can either manage your own deployment or use an NVIDIA-managed service:
+### Batch Configuration
+Create `batch_config.json`:
+```json
+{
+  "templates": [
+    {
+      "id": "kit_base_editor",
+      "variables": {
+        "application_name": "acme.editor",
+        "application_display_name": "Acme Editor",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "id": "basic_python_extension", 
+      "variables": {
+        "extension_name": "acme.tools",
+        "extension_display_name": "Acme Tools", 
+        "version": "1.0.0"
+      }
+    }
+  ]
+}
+```
 
-### Self-Managed
-- **Omniverse Kit App Streaming :** A reference implementation on GPU-enabled Kubernetes clusters for complete control over infrastructure and scalability.
+## Validation and Schema
 
-### NVIDIA-Managed
-- **NVIDIA Cloud Functions (NVCF):** Offloads hardware, streaming, and network complexities for secure, large scale deployments.
+### Show Template Schema
+```bash
+./kit-template schema kit_base_editor
+./kit-template schema basic_python_extension --json
+```
 
-- **Graphics Delivery Network (GDN):** Streams high-fidelity 3D content worldwide with just a shared URL.
+### Validate Configuration
+```bash  
+./kit-template validate kit_base_editor -c my_config.yaml
+```
 
-[Configuring and packaging streaming-ready Kit applications](readme-assets/additional-docs/kit_app_streaming_config.md)
+## Programmatic Usage
 
+Perfect for CI/CD and AI code generation:
 
-## Tools
+### Python API
+```python
+import subprocess
 
-The Kit SDK includes a suite of tools to aid in the development, testing, and deployment of your projects. For a more detailed overview of available tooling, see the [Kit SDK Tooling Guide](readme-assets/additional-docs/kit_app_template_tooling_guide.md).
+def generate_kit_app(name, display_name):
+    cmd = ["./kit-template", "generate", "kit_base_editor",
+           "--var", f"application_name={name}",
+           "--var", f"application_display_name={display_name}",
+           "--var", "version=1.0.0"]
+    return subprocess.run(cmd, capture_output=True, text=True)
 
-Here's a brief overview of some key tools:
+# Usage
+success, output, error = generate_kit_app(
+    "ai.generated.editor",
+    "AI Generated Editor"
+)
+```
 
-- **Help (`./repo.sh -h` or `.\repo.bat -h`):** Provides a list of available tools and their descriptions.
+### Shell Scripting
+```bash
+#!/bin/bash
 
-- **Template Creation (`./repo.sh template` or `.\repo.bat template`):** Assists in starting a new project by generating a scaffold from a template application or extension.
+templates=(
+    "kit_base_editor:acme.editor:Acme Editor"
+    "basic_python_extension:acme.tools:Acme Tools"
+)
 
-- **Build (`./repo.sh build` or `.\repo.bat build`):** Compiles your applications and extensions, preparing them for launch.
+for spec in "${templates[@]}"; do
+    IFS=':' read -r template name display <<< "$spec"
+    ./kit-template generate "$template" \
+        --var "application_name=$name" \
+        --var "extension_name=$name" \
+        --var "application_display_name=$display" \
+        --var "extension_display_name=$display" \
+        --var "version=1.0.0"
+done
+```
 
-- **Launch (`./repo.sh launch`or`.\repo.bat launch`):** Starts your compiled application or extension.
+## CI/CD Integration
 
-- **Testing (`./repo.sh test` or `.\repo.bat test`):** Facilitates the execution of test suites for your extensions, ensuring code quality and functionality.
+### GitHub Actions
+```yaml
+name: Generate Templates
+on: [push]
 
-- **Packaging (`./repo.sh package` or `.\repo.bat package`):** Aids in packaging your application for distribution, making it easier to share or deploy in cloud environments.
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+    - name: Generate application
+      run: |
+        ./kit-template generate kit_base_editor \
+          --var application_name=ci.test_app \
+          --var application_display_name="CI Test App" \
+          --var version=1.0.0
+```
 
-## Governing Terms
-The software and materials are governed by the [NVIDIA Software License Agreement](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-software-license-agreement/) and the [Product-Specific Terms for NVIDIA Omniverse](https://www.nvidia.com/en-us/agreements/enterprise-software/product-specific-terms-for-omniverse/).
+## Project Structure
 
-## Data Collection
-The Omniverse Kit SDK collects anonymous usage data to help improve software performance and aid in diagnostic purposes. Rest assured, no personal information such as user email, name or any other field is collected.
+```
+kit-app-template/
+├── kit-template              # Main CLI tool
+├── requirements.txt          # Python dependencies
+├── templates/
+│   ├── registry.yaml        # Template definitions
+│   ├── apps/                # Application templates
+│   ├── extensions/          # Extension templates
+│   └── ...
+├── examples/                # Sample configurations
+└── README.md
+```
 
-To learn more about what data is collected, how we use it and how you can change the data collection setting [see details page](readme-assets/additional-docs/data_collection_and_use.md).
+## Template Variables
 
+All templates support these common patterns:
 
-## Additional Resources
+### Application Templates
+- `application_name` - Namespace identifier (e.g., "acme.my_app")
+- `application_display_name` - Human-readable name
+- `version` - Semantic version (e.g., "1.0.0")
 
-- [Kit SDK Companion Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html)
+### Extension Templates  
+- `extension_name` - Namespace identifier (e.g., "acme.my_extension")
+- `extension_display_name` - Human-readable name
+- `version` - Semantic version
 
-- [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md)
+All variables are validated with schema checking and pattern matching.
 
-- [Developer Bundle Extensions](readme-assets/additional-docs/developer_bundle_extensions.md)
+## Building and Running Generated Applications
 
-- [Omniverse Kit SDK Manual](https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/index.html)
+After generating templates, you can build and run them using standard Kit workflows:
 
+### Build
+```bash
+# Navigate to generated application directory
+cd source/apps/your_app_name/
+
+# Build using Kit SDK tools
+# (Specific build commands depend on your Kit SDK setup)
+```
+
+### Development
+Generated applications include:
+- Complete `.kit` configuration files
+- Extension scaffolding with proper structure  
+- Example code and documentation
+- Test frameworks and examples
+
+## Getting Help
+
+```bash
+./kit-template --help                    # General help
+./kit-template generate --help           # Generate command help
+./kit-template list --help               # List command help
+./kit-template schema --help             # Schema command help
+```
+
+## Template Development
+
+### Adding Custom Templates
+
+1. Create template directory in `templates/apps/` or `templates/extensions/`
+2. Add template definition to `templates/registry.yaml`
+3. Use `{{ variable_name }}` for template substitution
+4. Test with validation tools
+
+**Example registry entry:**
+```yaml
+my_custom_app:
+  name: "My Custom Application"
+  description: "Description of the application template"
+  category: "app"
+  template_path: "apps/my_custom_app"
+  variables:
+    - name: "application_name"
+      type: "string"
+      description: "Application identifier"
+      required: true
+      pattern: "^[a-z0-9_]+\\.[a-z0-9_]+$"
+```
+
+### Variable Types
+- `string` - Text with optional pattern validation
+- `number` - Integer or float values
+- `boolean` - true/false values  
+- `choice` - Must be one of predefined options
 
 ## Contributing
 
-We provide this source code as-is and are currently not accepting outside contributions.
+1. Fork the repository
+2. Create templates following established patterns
+3. Add entries to `templates/registry.yaml`
+4. Test with validation tools
+5. Submit a pull request
+
+---
+
+**Need help?** Check the examples in the `examples/` directory or run `./kit-template --help` for detailed usage information.

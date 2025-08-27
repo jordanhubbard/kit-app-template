@@ -1,0 +1,476 @@
+#!/usr/bin/env python3
+"""
+Kit Template Generator - A modern, data-driven template system for Omniverse Kit applications.
+
+This tool replaces the interactive repo.sh template system with a clean, AI-friendly,
+and data-driven approach that separates template data from implementation logic.
+"""
+
+import argparse
+import json
+import os
+import shutil
+import sys
+import yaml
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Union
+from jinja2 import Environment, FileSystemLoader, Template
+import jsonschema
+
+
+@dataclass 
+class TemplateVariable:
+    """Represents a template variable with validation rules."""
+    name: str
+    type: str = "string"  # string, number, boolean, choice
+    description: str = ""
+    default: Optional[Union[str, int, bool]] = None
+    required: bool = True
+    choices: Optional[List[str]] = None
+    pattern: Optional[str] = None
+    
+
+@dataclass
+class TemplateDefinition:
+    """Represents a complete template definition."""
+    id: str
+    name: str 
+    description: str
+    category: str  # app, extension, layer
+    template_path: str
+    variables: List[TemplateVariable]
+    dependencies: List[str] = None
+    post_process: List[str] = None
+
+
+class TemplateRegistry:
+    """Manages loading and querying available templates."""
+    
+    def __init__(self, registry_path: Path):
+        self.registry_path = registry_path
+        self.templates: Dict[str, TemplateDefinition] = {}
+        self._load_registry()
+    
+    def _load_registry(self):
+        """Load template definitions from registry file."""
+        if not self.registry_path.exists():
+            raise FileNotFoundError(f"Template registry not found: {self.registry_path}")
+            
+        with open(self.registry_path, 'r') as f:
+            if self.registry_path.suffix == '.json':
+                registry_data = json.load(f)
+            else:
+                registry_data = yaml.safe_load(f)
+        
+        for template_id, template_data in registry_data.get('templates', {}).items():
+            variables = []
+            for var_data in template_data.get('variables', []):
+                variables.append(TemplateVariable(**var_data))
+            
+            template_def = TemplateDefinition(
+                id=template_id,
+                name=template_data['name'],
+                description=template_data['description'], 
+                category=template_data['category'],
+                template_path=template_data['template_path'],
+                variables=variables,
+                dependencies=template_data.get('dependencies', []),
+                post_process=template_data.get('post_process', [])
+            )
+            self.templates[template_id] = template_def
+    
+    def list_templates(self, category: Optional[str] = None) -> List[TemplateDefinition]:
+        """List available templates, optionally filtered by category."""
+        templates = list(self.templates.values())
+        if category:
+            templates = [t for t in templates if t.category == category]
+        return templates
+    
+    def get_template(self, template_id: str) -> Optional[TemplateDefinition]:
+        """Get a specific template by ID."""
+        return self.templates.get(template_id)
+
+
+class TemplateEngine:
+    """Core template processing engine."""
+    
+    def __init__(self, template_root: Path):
+        self.template_root = template_root
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(str(template_root)),
+            trim_blocks=True,
+            lstrip_blocks=True
+        )
+    
+    def validate_variables(self, template: TemplateDefinition, variables: Dict[str, Any]) -> List[str]:
+        """Validate provided variables against template requirements."""
+        errors = []
+        
+        for var in template.variables:
+            if var.required and var.name not in variables:
+                errors.append(f"Required variable '{var.name}' not provided")
+                continue
+                
+            if var.name in variables:
+                value = variables[var.name]
+                
+                # Type validation
+                if var.type == "number" and not isinstance(value, (int, float)):
+                    errors.append(f"Variable '{var.name}' must be a number")
+                elif var.type == "boolean" and not isinstance(value, bool):
+                    errors.append(f"Variable '{var.name}' must be a boolean")
+                elif var.type == "choice" and var.choices and value not in var.choices:
+                    errors.append(f"Variable '{var.name}' must be one of: {var.choices}")
+                
+                # Pattern validation for strings
+                if var.pattern and var.type == "string":
+                    import re
+                    if not re.match(var.pattern, str(value)):
+                        errors.append(f"Variable '{var.name}' does not match required pattern: {var.pattern}")
+        
+        return errors
+    
+    def render_template(self, template: TemplateDefinition, variables: Dict[str, Any], output_path: Path):
+        """Render a template with the provided variables to the output path."""
+        # Validate variables
+        errors = self.validate_variables(template, variables)
+        if errors:
+            raise ValueError("Template validation errors:\n" + "\n".join(errors))
+        
+        # Add default values for missing optional variables
+        final_variables = {}
+        for var in template.variables:
+            if var.name in variables:
+                final_variables[var.name] = variables[var.name]
+            elif var.default is not None:
+                final_variables[var.name] = var.default
+        
+        # Add computed variables
+        self._add_computed_variables(final_variables)
+        
+        template_path = self.template_root / template.template_path
+        
+        if not template_path.exists():
+            raise FileNotFoundError(f"Template path not found: {template_path}")
+        
+        # Process template directory
+        self._process_directory(template_path, output_path, final_variables)
+        
+        print(f"✅ Template '{template.name}' generated successfully at: {output_path}")
+    
+    def _add_computed_variables(self, variables: Dict[str, Any]):
+        """Add computed variables based on provided ones."""
+        # Add python_module_path if extension_name is provided
+        if 'extension_name' in variables:
+            variables['python_module_path'] = variables['extension_name'].replace('.', '/')
+        
+        # Add kebab_case versions
+        for key, value in list(variables.items()):
+            if isinstance(value, str) and '_' not in key:
+                variables[f"{key}_kebab"] = value.replace('.', '-').replace('_', '-').lower()
+    
+    def _process_directory(self, src_path: Path, dest_path: Path, variables: Dict[str, Any]):
+        """Recursively process a template directory."""
+        if not dest_path.exists():
+            dest_path.mkdir(parents=True, exist_ok=True)
+        
+        for item in src_path.iterdir():
+            # Process item name through template engine
+            item_name = self._render_string(item.name, variables)
+            dest_item = dest_path / item_name
+            
+            if item.is_dir():
+                self._process_directory(item, dest_item, variables)
+            else:
+                self._process_file(item, dest_item, variables)
+    
+    def _process_file(self, src_file: Path, dest_file: Path, variables: Dict[str, Any]):
+        """Process a single template file."""
+        # Ensure destination directory exists
+        dest_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Determine if file should be templated based on extension
+        template_extensions = {'.toml', '.json', '.py', '.cpp', '.h', '.hpp', '.md', '.txt', '.yaml', '.yml', '.kit'}
+        binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.bin', '.exe', '.so', '.dylib', '.dll'}
+        
+        if src_file.suffix in binary_extensions:
+            # Copy binary files as-is
+            shutil.copy2(src_file, dest_file)
+        elif src_file.suffix in template_extensions or src_file.name.startswith('.'):
+            # Process text files through template engine
+            try:
+                with open(src_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                rendered_content = self._render_string(content, variables)
+                
+                with open(dest_file, 'w', encoding='utf-8') as f:
+                    f.write(rendered_content)
+            except UnicodeDecodeError:
+                # Fallback to binary copy for files that aren't actually text
+                shutil.copy2(src_file, dest_file)
+        else:
+            # Copy other files as-is
+            shutil.copy2(src_file, dest_file)
+    
+    def _render_string(self, template_string: str, variables: Dict[str, Any]) -> str:
+        """Render a template string with variables."""
+        template = Template(template_string)
+        return template.render(**variables)
+
+
+class KitTemplateCLI:
+    """Command-line interface for the Kit template system."""
+    
+    def __init__(self):
+        self.template_root = Path(__file__).parent / "templates"
+        self.registry_path = self.template_root / "registry.yaml"
+        self.output_root = Path(__file__).parent / "source"
+        
+        if not self.registry_path.exists():
+            # Fallback to JSON registry
+            self.registry_path = self.template_root / "registry.json"
+    
+    def run(self):
+        """Main CLI entry point."""
+        parser = argparse.ArgumentParser(description="Kit Template Generator")
+        subparsers = parser.add_subparsers(dest='command', help='Available commands')
+        
+        # List command
+        list_parser = subparsers.add_parser('list', help='List available templates')
+        list_parser.add_argument('--category', choices=['app', 'extension', 'layer'], help='Filter by category')
+        list_parser.add_argument('--json', action='store_true', help='Output as JSON')
+        
+        # Generate command
+        gen_parser = subparsers.add_parser('generate', help='Generate from template')
+        gen_parser.add_argument('template_id', help='Template ID to generate from')
+        gen_parser.add_argument('--output', '-o', help='Output directory (default: ./source)')
+        gen_parser.add_argument('--var', action='append', help='Template variables (key=value)', dest='variables')
+        gen_parser.add_argument('--config', '-c', help='JSON/YAML file with template variables')
+        gen_parser.add_argument('--interactive', '-i', action='store_true', help='Interactive mode')
+        
+        # Validate command  
+        val_parser = subparsers.add_parser('validate', help='Validate template configuration')
+        val_parser.add_argument('template_id', help='Template ID to validate')
+        val_parser.add_argument('--config', '-c', help='JSON/YAML file with template variables')
+        
+        # Schema command
+        schema_parser = subparsers.add_parser('schema', help='Show template variable schema')
+        schema_parser.add_argument('template_id', help='Template ID to show schema for')
+        schema_parser.add_argument('--json', action='store_true', help='Output as JSON')
+        
+        args = parser.parse_args()
+        
+        if not args.command:
+            parser.print_help()
+            return
+        
+        try:
+            if args.command == 'list':
+                self.cmd_list(args)
+            elif args.command == 'generate':
+                self.cmd_generate(args)
+            elif args.command == 'validate':
+                self.cmd_validate(args)
+            elif args.command == 'schema':
+                self.cmd_schema(args)
+        except Exception as e:
+            print(f"❌ Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    
+    def cmd_list(self, args):
+        """List available templates."""
+        registry = TemplateRegistry(self.registry_path)
+        templates = registry.list_templates(args.category)
+        
+        if args.json:
+            template_list = []
+            for template in templates:
+                template_dict = asdict(template)
+                template_dict['variables'] = [asdict(v) for v in template.variables]
+                template_list.append(template_dict)
+            print(json.dumps(template_list, indent=2))
+        else:
+            print("Available Templates:")
+            print("==================")
+            for template in templates:
+                print(f"🎯 {template.id} ({template.category})")
+                print(f"   Name: {template.name}")
+                print(f"   Description: {template.description}")
+                if template.variables:
+                    required_vars = [v.name for v in template.variables if v.required]
+                    optional_vars = [v.name for v in template.variables if not v.required]
+                    if required_vars:
+                        print(f"   Required: {', '.join(required_vars)}")
+                    if optional_vars:
+                        print(f"   Optional: {', '.join(optional_vars)}")
+                print()
+    
+    def cmd_generate(self, args):
+        """Generate from template."""
+        registry = TemplateRegistry(self.registry_path)
+        template = registry.get_template(args.template_id)
+        
+        if not template:
+            raise ValueError(f"Template '{args.template_id}' not found")
+        
+        # Determine output path
+        output_path = Path(args.output) if args.output else self.output_root
+        
+        # Collect variables
+        variables = {}
+        
+        # From config file
+        if args.config:
+            config_path = Path(args.config)
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    if config_path.suffix == '.json':
+                        file_vars = json.load(f)
+                    else:
+                        file_vars = yaml.safe_load(f)
+                variables.update(file_vars)
+        
+        # From command line --var flags
+        if args.variables:
+            for var_pair in args.variables:
+                if '=' not in var_pair:
+                    raise ValueError(f"Invalid variable format: {var_pair}. Use key=value")
+                key, value = var_pair.split('=', 1)
+                variables[key] = value
+        
+        # Interactive mode
+        if args.interactive:
+            variables.update(self._interactive_collect_variables(template))
+        
+        # Generate template
+        engine = TemplateEngine(self.template_root)
+        
+        # Create specific output path for this template
+        category_dir = f"{template.category}s"
+        app_name = variables.get(
+            template.variables[0].name if template.variables else args.template_id
+        )
+        template_output = output_path / category_dir / app_name
+        
+        engine.render_template(template, variables, template_output)
+    
+    def cmd_validate(self, args):
+        """Validate template configuration."""
+        registry = TemplateRegistry(self.registry_path)
+        template = registry.get_template(args.template_id)
+        
+        if not template:
+            raise ValueError(f"Template '{args.template_id}' not found")
+        
+        variables = {}
+        if args.config:
+            config_path = Path(args.config)
+            with open(config_path, 'r') as f:
+                if config_path.suffix == '.json':
+                    variables = json.load(f)
+                else:
+                    variables = yaml.safe_load(f)
+        
+        engine = TemplateEngine(self.template_root)
+        errors = engine.validate_variables(template, variables)
+        
+        if errors:
+            print("❌ Validation errors:")
+            for error in errors:
+                print(f"   • {error}")
+            sys.exit(1)
+        else:
+            print("✅ Template configuration is valid")
+    
+    def cmd_schema(self, args):
+        """Show template variable schema."""
+        registry = TemplateRegistry(self.registry_path)
+        template = registry.get_template(args.template_id)
+        
+        if not template:
+            raise ValueError(f"Template '{args.template_id}' not found")
+        
+        if args.json:
+            schema = {
+                "template": template.id,
+                "name": template.name,
+                "description": template.description,
+                "variables": [asdict(v) for v in template.variables]
+            }
+            print(json.dumps(schema, indent=2))
+        else:
+            print(f"Template: {template.name}")
+            print(f"ID: {template.id}")
+            print(f"Description: {template.description}")
+            print("\nVariables:")
+            for var in template.variables:
+                required = "required" if var.required else "optional"
+                print(f"  • {var.name} ({var.type}, {required})")
+                if var.description:
+                    print(f"    {var.description}")
+                if var.default is not None:
+                    print(f"    Default: {var.default}")
+                if var.choices:
+                    print(f"    Choices: {', '.join(var.choices)}")
+                print()
+    
+    def _interactive_collect_variables(self, template: TemplateDefinition) -> Dict[str, Any]:
+        """Interactively collect template variables from user."""
+        variables = {}
+        
+        print(f"\n🎯 Configuring template: {template.name}")
+        print(f"📝 {template.description}\n")
+        
+        for var in template.variables:
+            while True:
+                prompt = f"{var.name}"
+                if var.description:
+                    prompt += f" ({var.description})"
+                if var.default is not None:
+                    prompt += f" [default: {var.default}]"
+                if var.choices:
+                    prompt += f" [choices: {', '.join(var.choices)}]"
+                prompt += ": "
+                
+                value = input(prompt).strip()
+                
+                if not value:
+                    if var.required and var.default is None:
+                        print(f"❌ {var.name} is required")
+                        continue
+                    elif var.default is not None:
+                        value = var.default
+                    else:
+                        continue
+                
+                # Type conversion
+                if var.type == "number":
+                    try:
+                        value = float(value) if '.' in value else int(value)
+                    except ValueError:
+                        print(f"❌ {var.name} must be a number")
+                        continue
+                elif var.type == "boolean":
+                    if value.lower() in ('true', 'yes', '1', 'y'):
+                        value = True
+                    elif value.lower() in ('false', 'no', '0', 'n'):
+                        value = False
+                    else:
+                        print(f"❌ {var.name} must be true/false")
+                        continue
+                elif var.type == "choice" and var.choices:
+                    if value not in var.choices:
+                        print(f"❌ {var.name} must be one of: {', '.join(var.choices)}")
+                        continue
+                
+                variables[var.name] = value
+                break
+        
+        return variables
+
+
+if __name__ == '__main__':
+    cli = KitTemplateCLI()
+    cli.run()
