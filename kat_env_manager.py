@@ -38,7 +38,6 @@ class KatEnvManager:
     def ensure_venv(self):
         """Create virtual environment if it doesn't exist."""
         if self.venv_dir.exists():
-            print(f"✅ Virtual environment exists: {self.venv_dir}")
             return True
         
         print(f"🔧 Creating virtual environment: {self.venv_dir}")
@@ -52,13 +51,26 @@ class KatEnvManager:
             print(f"❌ Failed to create virtual environment: {e}")
             return False
     
-    def install_dependencies(self):
+    def install_dependencies(self, force_reinstall=False):
         """Install pip dependencies in the virtual environment."""
         requirements_file = self.root_dir / "requirements.txt"
         
         if not requirements_file.exists():
             print(f"❌ Requirements file not found: {requirements_file}")
             return False
+        
+        # Check if dependencies are already installed (unless forcing reinstall)
+        if not force_reinstall:
+            try:
+                # Quick check - try importing the main dependencies
+                result = subprocess.run([
+                    str(self.python_exe), "-c", 
+                    "import jinja2, yaml, jsonschema; print('ok')"
+                ], capture_output=True, text=True)
+                if result.returncode == 0 and "ok" in result.stdout:
+                    return True  # Dependencies already installed, no output needed
+            except:
+                pass  # Fall through to installation
         
         print("📦 Installing dependencies...")
         try:
@@ -80,10 +92,13 @@ class KatEnvManager:
     
     def setup_environment(self):
         """Ensure virtual environment exists and dependencies are installed."""
+        venv_created = not self.venv_dir.exists()
+        
         if not self.ensure_venv():
             return False
         
-        if not self.install_dependencies():
+        # Only force reinstall if we just created the venv
+        if not self.install_dependencies(force_reinstall=venv_created):
             return False
         
         # Create source directory for generated templates
