@@ -7,6 +7,9 @@ set -e
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Fast path commands - these try system Python first before setting up venv
+FAST_PATH_COMMANDS="list schema"
+
 # Function definitions first
 show_help() {
     cat << EOF
@@ -38,6 +41,24 @@ For detailed help on template commands:
 EOF
 }
 
+# Try fast path for read-only commands
+try_fast_path() {
+    local cmd="$1"
+    shift
+    
+    # Check if this is a fast path command
+    if echo "$FAST_PATH_COMMANDS" | grep -q "\b$cmd\b"; then
+        # Try system Python first (capture output to avoid showing errors)
+        if python3 "$SCRIPT_DIR/kat-manager" "$cmd" "$@" 2>/dev/null; then
+            return 0
+        fi
+        # If fast path failed, fall back to full venv (will be tried by caller)
+        return 1
+    fi
+    # Not a fast path command
+    return 1
+}
+
 # Handle special commands
 case "$1" in
     clean)
@@ -47,6 +68,7 @@ case "$1" in
         ;;
     
     status)
+        # Status is always fast since it doesn't need dependencies
         python3 "$SCRIPT_DIR/kat_env_manager.py" status
         exit $?
         ;;
@@ -70,7 +92,12 @@ case "$1" in
         ;;
     
     *)
-        # All other commands go through the environment manager
+        # Try fast path first for eligible commands
+        if try_fast_path "$@"; then
+            exit 0
+        fi
+        
+        # Fall back to full venv setup for all commands (fast path failed or not applicable)
         python3 "$SCRIPT_DIR/kat_env_manager.py" run "$@"
         exit $?
         ;;

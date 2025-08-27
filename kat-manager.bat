@@ -8,6 +8,9 @@ REM Get the directory where this batch file is located
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
+REM Fast path commands - these try system Python first before setting up venv
+set "FAST_PATH_COMMANDS=list schema"
+
 REM Handle special commands
 if "%1"=="clean" (
     echo 🧹 Cleaning Kat Manager environment...
@@ -16,12 +19,8 @@ if "%1"=="clean" (
 )
 
 if "%1"=="status" (
+    REM Status is always fast since it doesn't need dependencies
     python "%SCRIPT_DIR%\kat_env_manager.py" status
-    exit /b %ERRORLEVEL%
-)
-
-if "%1"=="list" (
-    python "%SCRIPT_DIR%\kat_env_manager.py" list
     exit /b %ERRORLEVEL%
 )
 
@@ -48,9 +47,29 @@ if "%1"=="--help" goto :show_help
 if "%1"=="-h" goto :show_help
 if "%1"=="" goto :show_help
 
-REM All other commands go through the environment manager
+REM Try fast path first for eligible commands
+call :try_fast_path %*
+if !ERRORLEVEL!==0 exit /b 0
+
+REM Fall back to full venv setup for all commands (fast path failed or not applicable)
 python "%SCRIPT_DIR%\kat_env_manager.py" run %*
 exit /b %ERRORLEVEL%
+
+:try_fast_path
+REM Check if this is a fast path command and try system Python first
+set cmd=%1
+echo !FAST_PATH_COMMANDS! | findstr /b /w "!cmd!" >nul
+if !ERRORLEVEL!==0 (
+    REM Try system Python first (suppress errors)
+    python "%SCRIPT_DIR%\kat-manager" %* >nul 2>&1
+    if !ERRORLEVEL!==0 (
+        REM Success with system Python, run it again with output
+        python "%SCRIPT_DIR%\kat-manager" %*
+        exit /b 0
+    )
+)
+REM Fast path not applicable or failed
+exit /b 1
 
 :show_help
 echo Kat Manager - Modern Template System for Omniverse Kit
