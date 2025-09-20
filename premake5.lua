@@ -18,3 +18,4 @@ repo_build.prebuild_copy {
 
 define_app("test_company.my_test_app.kit")
 define_app("test.composer_app.kit")
+define_app("my_company.my_usd_composer.kit")

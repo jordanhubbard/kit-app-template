@@ -81,7 +81,7 @@ publish_pip_cache = false
 
 [repo_precache_exts]
 # Apps to run and precache
-apps = ["${root}/source/apps/test_company.my_test_app.kit", "${root}/source/apps/test.composer_app.kit"]
+apps = ["${root}/source/apps/my_company.my_usd_composer.kit"]
 
 registries = [
     { name = "kit/default", url = "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/${kit_version_major}/shared" },
