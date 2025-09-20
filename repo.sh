@@ -29,5 +29,62 @@ if [[ -f "${OMNI_REPO_ROOT}/repo-cache.json" ]]; then
     fi
 fi
 
-# Use "exec" to ensure that environment variables don't accidentally affect other processes.
-exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repoman.py" "$@"
+# Handle template new with template name argument
+if [ "$1" = "template" ] && [ "$2" = "new" ] && [ "$#" -ge 3 ] && [ "$3" != "--generate-playback" ]; then
+    TEMPLATE_NAME="$3"
+    shift 3  # Remove 'template', 'new', and template_name from args
+
+    # Extract additional arguments if provided
+    APP_NAME=""
+    DISPLAY_NAME=""
+    VERSION=""
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --name=*)
+                APP_NAME="${1#*=}"
+                ;;
+            --display-name=*)
+                DISPLAY_NAME="${1#*=}"
+                ;;
+            --version=*)
+                VERSION="${1#*=}"
+                ;;
+            --name)
+                shift
+                APP_NAME="$1"
+                ;;
+            --display-name)
+                shift
+                DISPLAY_NAME="$1"
+                ;;
+            --version)
+                shift
+                VERSION="$1"
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    # Generate playbook file using helper script
+    PLAYBACK_ARGS="$TEMPLATE_NAME"
+    [ -n "$APP_NAME" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $APP_NAME"
+    [ -n "$DISPLAY_NAME" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $DISPLAY_NAME"
+    [ -n "$VERSION" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $VERSION"
+
+    PLAYBACK_FILE=$("${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_helper.py" $PLAYBACK_ARGS)
+
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    # Run template replay with generated playback file
+    exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repoman.py" template replay "$PLAYBACK_FILE"
+else
+    # Use "exec" to ensure that environment variables don't accidentally affect other processes.
+    exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repoman.py" "$@"
+fi
