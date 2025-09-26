@@ -70,13 +70,25 @@ if [ "$1" = "template" ] && [ "$2" = "new" ] && [ "$#" -ge 3 ] && [ "$3" != "--g
         shift
     done
 
-    # Generate playbook file using helper script
-    PLAYBACK_ARGS="$TEMPLATE_NAME"
-    [ -n "$APP_NAME" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $APP_NAME"
-    [ -n "$DISPLAY_NAME" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $DISPLAY_NAME"
-    [ -n "$VERSION" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $VERSION"
+    # Generate playbook file using enhanced template engine
+    # Build args as an array to preserve spaces in arguments
+    ENGINE_ARGS=("$TEMPLATE_NAME")
+    [ -n "$APP_NAME" ] && ENGINE_ARGS+=("--name=$APP_NAME")
+    [ -n "$DISPLAY_NAME" ] && ENGINE_ARGS+=("--display-name=$DISPLAY_NAME")
+    [ -n "$VERSION" ] && ENGINE_ARGS+=("--version=$VERSION")
 
-    PLAYBACK_FILE=$("${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_helper.py" $PLAYBACK_ARGS)
+    # Try new engine first, fall back to helper if not available
+    if [ -f "${OMNI_REPO_ROOT}/tools/repoman/template_engine.py" ]; then
+        # Run the engine and capture only stdout, letting stderr go to console
+        PLAYBACK_FILE=$("${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_engine.py" "${ENGINE_ARGS[@]}")
+    else
+        # Fallback to old helper for backward compatibility
+        PLAYBACK_ARGS="$TEMPLATE_NAME"
+        [ -n "$APP_NAME" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $APP_NAME"
+        [ -n "$DISPLAY_NAME" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $DISPLAY_NAME"
+        [ -n "$VERSION" ] && PLAYBACK_ARGS="$PLAYBACK_ARGS $VERSION"
+        PLAYBACK_FILE=$("${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_helper.py" $PLAYBACK_ARGS)
+    fi
 
     if [ $? -ne 0 ]; then
         exit 1

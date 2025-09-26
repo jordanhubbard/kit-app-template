@@ -1,0 +1,44 @@
+# User Configuration Example for Kit App Template
+# Copy this file to one of these locations:
+#   ~/.omni/kit-app-template/user.toml
+#   ~/.config/omni/kit-app-template.toml
+#   ./user-config.toml (in repo root)
+#
+# This file will be automatically loaded and merged with template configurations
+
+[user]
+name = "John Developer"
+email = "john.developer@company.com"
+
+[company]
+name = "my_company"
+display_name = "My Company"
+domain = "mycompany.com"
+
+[project]
+# Default project settings
+author = "${user.name}"
+copyright = "Copyright (c) 2024 ${company.display_name}. All rights reserved."
+license = "Proprietary"
+
+[application]
+# Default naming patterns for applications
+name = "${company.name}.${project.name}"
+display_name = "${project.display_name}"
+
+[extension]
+# Default naming patterns for extensions
+name = "${company.name}.${project.name}"
+display_name = "${project.display_name}"
+
+[build]
+# Personal build preferences
+debug = true
+release = false
+verbose = true
+jobs = 4
+
+[paths]
+# Custom paths (optional)
+output_dir = "./generated"
+cache_dir = "~/.cache/omni/kit-app-template"

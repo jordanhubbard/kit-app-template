@@ -1,0 +1,32 @@
+# NVIDIA-specific configuration
+# Use this as a base for NVIDIA internal projects
+
+includes = ["base"]
+
+[company]
+name = "nvidia"
+display_name = "NVIDIA"
+domain = "nvidia.com"
+
+[project]
+copyright = "Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved."
+license = "LicenseRef-NvidiaProprietary"
+
+[application]
+name = "com.${company.name}.${project.name}"
+
+[extension]
+name = "com.${company.name}.${project.name}"
+
+[registry]
+# Extension registry settings for NVIDIA projects
+urls = [
+    "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/",
+    "https://dw290v42wisod.cloudfront.net/exts/kit/community"
+]
+
+[telemetry]
+# NVIDIA telemetry settings
+enabled = true
+anonymous = false
+endpoint = "https://telemetry.nvidia.com"

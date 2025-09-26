@@ -1,0 +1,36 @@
+# Base configuration for all templates
+# This file provides common defaults that can be inherited by other configurations
+
+[company]
+name = "my_company"
+display_name = "My Company"
+domain = "example.com"
+
+[project]
+version = "0.1.0"
+author = "Development Team"
+license = "Proprietary"
+
+[application]
+# Default application settings
+name = "${company.name}.${project.name}"
+display_name = "${project.display_name}"
+version = "${project.version}"
+
+[extension]
+# Default extension settings
+name = "${company.name}.${project.name}"
+display_name = "${project.display_name}"
+version = "${project.version}"
+
+[build]
+# Build configuration defaults
+debug = true
+release = true
+verbose = false
+
+[settings]
+# Application runtime settings
+enable_telemetry = true
+enable_crash_reporter = true
+eco_mode = true
