@@ -96,6 +96,37 @@ if [ "$1" = "template" ] && [ "$2" = "new" ] && [ "$#" -ge 3 ] && [ "$3" != "--g
 
     # Run template replay with generated playback file
     exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repoman.py" template replay "$PLAYBACK_FILE"
+elif [ "$1" = "test" ]; then
+    if [ "$2" = "templates" ]; then
+        # Run template system tests specifically
+        exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_validator.py" test-all
+    else
+        # Run all available tests
+        echo "Running Kit App Template Test Suite"
+        echo "===================================="
+        echo ""
+        echo "1. Running template system tests..."
+        "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_validator.py" test-all
+        TEST_RESULT=$?
+
+        echo ""
+        echo "2. Running template generation validation..."
+        if [ -x "${OMNI_REPO_ROOT}/test_generated_template.sh" ]; then
+            "${OMNI_REPO_ROOT}/test_generated_template.sh"
+        else
+            echo "Template generation test script not found or not executable"
+        fi
+
+        echo ""
+        echo "===================================="
+        if [ $TEST_RESULT -eq 0 ]; then
+            echo "✓ All tests passed!"
+            exit 0
+        else
+            echo "✗ Some tests failed"
+            exit 1
+        fi
+    fi
 else
     # Use "exec" to ensure that environment variables don't accidentally affect other processes.
     exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repoman.py" "$@"

@@ -221,7 +221,13 @@ After generating a template, build and run it:
 ### Running Tests
 
 ```bash
-# Test all templates
+# Run all project tests (recommended)
+./repo.sh test
+
+# Run only template system tests
+./repo.sh test templates
+
+# Test all templates directly
 python3 tools/repoman/template_validator.py test-all
 
 # Test specific template
