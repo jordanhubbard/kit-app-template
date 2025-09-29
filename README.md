@@ -268,20 +268,36 @@ Kit Playground is a **visual development environment** inspired by Swift Playgro
 
 ### Getting Started with Kit Playground
 
-#### Installation
+#### Prerequisites Check
 
-**Linux/macOS:**
+First, check if you have all required dependencies:
+
 ```bash
-cd kit_playground
-npm install
-npm start
+make deps
 ```
 
-**Windows:**
+If any dependencies are missing, install them automatically:
+
+```bash
+make install-deps
+```
+
+#### Installation
+
+**All Platforms:**
+```bash
+# Install Kit Playground (first time only)
+make playground-install
+
+# Launch Kit Playground
+make playground
+```
+
+**Alternative for Windows (without Make):**
 ```powershell
-cd kit_playground
-npm install
-npm start
+# If Make is not available, use the repo.bat wrapper:
+.\repo.bat playground-install
+.\repo.bat playground
 ```
 
 The application will launch as a native desktop app using Electron.
@@ -340,7 +356,7 @@ On first launch, Kit Playground will:
 
 1. **Launch Kit Playground**
    ```bash
-   npm start  # From kit_playground directory
+   make playground
    ```
 
 2. **Browse or Search Templates**

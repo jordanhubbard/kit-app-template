@@ -25,8 +25,61 @@ for /f "usebackq tokens=*" %%i in (`powershell -NoProfile -Command "$PM_PACKAGES
 
 :RepoCacheEnd
 
-:: Use the Python dispatcher for enhanced template functionality and fallback to repoman
+:: Check for special playground commands
+if "%1"=="playground" (
+    if "%2"=="install" goto PlaygroundInstall
+    if "%2"=="dev" goto PlaygroundDev
+    if "%2"=="build" goto PlaygroundBuild
+    if "%2"=="" goto PlaygroundRun
+)
+
+if "%1"=="playground-install" goto PlaygroundInstall
+if "%1"=="playground-dev" goto PlaygroundDev
+if "%1"=="playground-build" goto PlaygroundBuild
+
+:: Default: Use the Python dispatcher for enhanced template functionality and fallback to repoman
 call "%~dp0tools\packman\python.bat" "%~dp0tools\repoman\repo_dispatcher.py" %*
+if %errorlevel% neq 0 ( goto Error )
+goto Success
+
+:PlaygroundInstall
+echo Installing Kit Playground dependencies...
+where npm >nul 2>nul
+if %errorlevel% neq 0 (
+    echo ERROR: npm is not installed. Please install Node.js first.
+    echo.
+    echo Download from: https://nodejs.org/en/download/
+    echo Or use: winget install OpenJS.NodeJS
+    goto Error
+)
+cd /d "%~dp0kit_playground"
+call npm install
+if %errorlevel% neq 0 ( goto Error )
+echo Kit Playground is ready! Run 'repo.bat playground' to launch.
+goto Success
+
+:PlaygroundRun
+echo Launching Kit Playground...
+if not exist "%~dp0kit_playground\node_modules" (
+    echo Kit Playground dependencies not installed. Installing first...
+    goto PlaygroundInstall
+)
+cd /d "%~dp0kit_playground"
+call npm start
+if %errorlevel% neq 0 ( goto Error )
+goto Success
+
+:PlaygroundDev
+echo Starting Kit Playground in development mode...
+cd /d "%~dp0kit_playground"
+call npm run dev
+if %errorlevel% neq 0 ( goto Error )
+goto Success
+
+:PlaygroundBuild
+echo Building Kit Playground for production...
+cd /d "%~dp0kit_playground"
+call npm run build
 if %errorlevel% neq 0 ( goto Error )
 
 :Success

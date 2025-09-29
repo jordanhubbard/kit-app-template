@@ -29,5 +29,59 @@ if [[ -f "${OMNI_REPO_ROOT}/repo-cache.json" ]]; then
     fi
 fi
 
-# Use the Python dispatcher for enhanced template functionality and fallback to repoman
-exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repo_dispatcher.py" "$@"
+# Check for special playground commands
+case "$1" in
+    playground)
+        case "$2" in
+            install|"")
+                # Check for npm first
+                if ! command -v npm >/dev/null 2>&1; then
+                    echo "ERROR: npm is not installed. Please install Node.js first."
+                    echo ""
+                    echo "Run: make install-deps"
+                    echo "Or install manually from: https://nodejs.org/en/download/"
+                    exit 1
+                fi
+
+                if [ "$2" = "install" ]; then
+                    echo "Installing Kit Playground dependencies..."
+                    cd "${OMNI_REPO_ROOT}/kit_playground" && npm install
+                else
+                    # Check if dependencies are installed
+                    if [ ! -d "${OMNI_REPO_ROOT}/kit_playground/node_modules" ]; then
+                        echo "Kit Playground dependencies not installed. Installing first..."
+                        cd "${OMNI_REPO_ROOT}/kit_playground" && npm install
+                    fi
+                    echo "Launching Kit Playground..."
+                    cd "${OMNI_REPO_ROOT}/kit_playground" && npm start
+                fi
+                ;;
+            dev)
+                echo "Starting Kit Playground in development mode..."
+                cd "${OMNI_REPO_ROOT}/kit_playground" && npm run dev
+                ;;
+            build)
+                echo "Building Kit Playground for production..."
+                cd "${OMNI_REPO_ROOT}/kit_playground" && npm run build
+                ;;
+            *)
+                echo "Unknown playground command: $2"
+                echo "Available commands: install, dev, build"
+                exit 1
+                ;;
+        esac
+        ;;
+    playground-install)
+        exec "$0" playground install
+        ;;
+    playground-dev)
+        exec "$0" playground dev
+        ;;
+    playground-build)
+        exec "$0" playground build
+        ;;
+    *)
+        # Default: Use the Python dispatcher for enhanced template functionality and fallback to repoman
+        exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repo_dispatcher.py" "$@"
+        ;;
+esac
