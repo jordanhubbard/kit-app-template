@@ -104,12 +104,12 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 |------------------|------------------------------------------------------------|
 | .vscode          | VS Code configuration details and helper tasks             |
 | readme-assets/   | Images and additional repository documentation             |
-| templates/       | Enhanced template system with organized descriptors        |
+| templates/       | Enhanced data-driven template system with hierarchical organization |
 | ├─ applications/ | Standalone runnable application templates                   |
-| ├─ extensions/   | Reusable extension templates by language                    |
+| ├─ extensions/   | Reusable extension templates organized by language          |
 | ├─ microservices/| Headless API service templates                             |
 | ├─ components/   | Non-standalone building block templates                     |
-| └─ template_registry.toml | Template discovery and organization config        |
+| └─ template_registry.toml | Centralized template discovery, organization, and relationship config |
 | tools/           | Tooling settings and repository specific (local) tools     |
 | .editorconfig    | [EditorConfig](https://editorconfig.org/) file.            |
 | .gitattributes   | Git configuration.                                         |
@@ -267,53 +267,69 @@ cd ./my-standalone-project
 
 ## Enhanced Template System
 
-The Kit App Template features a comprehensive, data-driven template system with self-documentation, composition capabilities, and standalone project generation.
+The Kit App Template features a comprehensive, data-driven template system with self-documentation, composition capabilities, and standalone project generation. The system has been completely redesigned to support template inheritance, configuration validation, and automated documentation.
 
 ### Template Organization
 
-Templates are organized by type for better discoverability:
+Templates are organized by type in a hierarchical structure managed by the `templates/template_registry.toml` configuration:
 
 - **Applications** (`templates/applications/`) - Standalone runnable applications
 - **Extensions** (`templates/extensions/`) - Reusable extension components organized by language
 - **Microservices** (`templates/microservices/`) - Headless API services
 - **Components** (`templates/components/`) - Non-standalone building blocks
 
-Each template includes a comprehensive `template.toml` descriptor with metadata, documentation, variables, and dependencies.
+Each template includes a comprehensive `template.toml` descriptor with metadata, documentation, variables, dependencies, and inheritance relationships.
 
 ### Self-Documentation
 
-All templates are self-documenting and accessible via the command line:
+All templates are self-documenting with rich metadata and accessible via the command line:
 
 **View specific template documentation:**
 ```bash
 ./repo.sh template docs <template_name>
 ```
 
-**List all templates by type:**
+**List all templates:**
+```bash
+./repo.sh template list
+```
+
+**List templates by type:**
 ```bash
 ./repo.sh template list --type application
 ./repo.sh template list --type extension
 ./repo.sh template list --type microservice
+./repo.sh template list --type component
 ```
 
 **Example documentation output:**
 ```bash
-./repo.sh template docs kit_service
-# Kit Service
-# Type: Microservice
-# Category: Api
+./repo.sh template docs kit_base_editor
+# Kit Base Editor
+# Type: Application
+# Category: Editor
+# Version: 1.0.0
 #
 # ## Overview
-# Kit Service provides a headless service framework...
+# The Kit Base Editor provides a minimal starting point for developers...
+#
+# ## Use Cases
+# - High fidelity OpenUSD editing applications and tools
+# - Interactive 3D content manipulation
+#
+# ## Getting Started
+# 1. Run: ./repo.sh template new kit_base_editor --name my_company.my_app
 ```
 
 ### Template Composition
 
-Templates support inheritance and composition for code reuse:
+Templates support advanced inheritance and composition patterns managed by the template registry:
 
-- **Inheritance**: Templates can extend base templates using the `extends` field
-- **Dependencies**: Templates can require other templates as components
+- **Inheritance**: Templates can extend base templates using the `extends` field in their `template.toml`
+- **Dependencies**: Templates can require other templates as components via the registry's relationship system
 - **Composition**: Complex applications can be built from multiple template components
+- **Configuration Inheritance**: Variables and settings cascade through the template hierarchy
+- **Registry Management**: The `template_registry.toml` file defines template relationships, dependencies, and categories
 
 ### Standalone Projects
 
@@ -331,9 +347,9 @@ Standalone projects include:
 
 ## Templates
 
-`kit-app-template` features a comprehensive template system organized by type, with self-documentation, composition capabilities, and standalone project generation.
+`kit-app-template` features a comprehensive, data-driven template system with hierarchical organization, self-documentation, composition capabilities, and standalone project generation. The system supports template inheritance, configuration validation, and automated documentation generation.
 
-Use `./repo.sh template list` to see all available templates or `./repo.sh template docs <name>` for detailed information about any template.
+Use `./repo.sh template list` to see all available templates organized by type, or `./repo.sh template docs <name>` for detailed auto-generated documentation about any template.
 
 ### Applications
 
@@ -402,10 +418,12 @@ Here's a brief overview of some key tools:
 
 ### Template System
 
-- **Template Creation (`./repo.sh template new <name>`):** Generate new projects from templates with comprehensive configuration options.
-- **Template Documentation (`./repo.sh template docs <name>`):** View detailed documentation for any template including use cases, features, and examples.
-- **Template Listing (`./repo.sh template list [--type=TYPE]`):** List all available templates, optionally filtered by type (application, extension, microservice, component).
-- **Standalone Projects (`./repo.sh template new <name> --output-dir <path>`):** Create complete, self-contained projects in any directory.
+- **Template Creation (`./repo.sh template new <name>`):** Generate new projects from templates with data-driven configuration, inheritance support, and variable interpolation.
+- **Enhanced Template Arguments (`./repo.sh template new <name> --name <app_name> --display-name "Display Name"`):** Non-interactive template creation with command-line arguments for automation.
+- **Template Documentation (`./repo.sh template docs <name>`):** View comprehensive self-generated documentation including use cases, features, variables, and examples.
+- **Template Discovery (`./repo.sh template list [--type=TYPE]`):** List all available templates with hierarchical organization, optionally filtered by type (application, extension, microservice, component).
+- **Standalone Projects (`./repo.sh template new <name> --output-dir <path>`):** Create complete, self-contained projects with independent build tooling and git repository.
+- **Template Registry Management:** Centralized template organization via `template_registry.toml` with relationships, dependencies, and categories.
 
 ### Development Tools
 
@@ -413,7 +431,7 @@ Here's a brief overview of some key tools:
 
 - **Launch (`./repo.sh launch` or `.\repo.bat launch`):** Starts your compiled application or extension.
 
-- **Testing (`./repo.sh test` or `.\repo.bat test`):** Facilitates the execution of test suites for your extensions, ensuring code quality and functionality.
+- **Testing (`./repo.sh test` or `.\repo.bat test`):** Facilitates the execution of test suites for your extensions, ensuring code quality and functionality. Enhanced test framework support added.
 
 - **Packaging (`./repo.sh package` or `.\repo.bat package`):** Aids in packaging your application for distribution, making it easier to share or deploy in cloud environments.
 
