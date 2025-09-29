@@ -343,32 +343,51 @@ class TemplateEngine:
 
         Returns:
             Dictionary containing the template playbook configuration
+
+        Raises:
+            ValueError: If template is not found or configuration is invalid
+            RuntimeError: If generation fails
         """
 
-        # Handle output directory for standalone projects
-        if output_dir:
-            return self._generate_standalone_project(template_name, config_file, output_dir, **kwargs)
-        template_config = self.template_discovery.get_template(template_name)
-        if template_config is None:
-            available = list(self.template_discovery.discover_templates().keys())
-            raise ValueError(f"Unknown template '{template_name}'. Available: {available}")
+        try:
+            # Handle output directory for standalone projects
+            if output_dir:
+                return self._generate_standalone_project(template_name, config_file, output_dir, **kwargs)
 
-        # Template configuration loaded successfully
+            # Load template configuration
+            template_config = self.template_discovery.get_template(template_name)
+            if template_config is None:
+                available = list(self.template_discovery.discover_templates().keys())
+                available_str = ', '.join(sorted(available[:10]))  # Show first 10
+                if len(available) > 10:
+                    available_str += f", ... ({len(available) - 10} more)"
 
-        # Load and merge configurations
-        config = self._build_configuration(template_name, config_file, kwargs)
+                error_msg = f"Template '{template_name}' not found.\n"
+                error_msg += f"Available templates: {available_str}\n"
+                error_msg += "Use './repo.sh template list' to see all templates."
+                raise ValueError(error_msg)
 
-        # Resolve template dependencies and composition
-        resolved_config = self._resolve_template_composition(template_config, config)
+            # Template configuration loaded successfully
 
-        # Generate playback content
-        playback = self._generate_playback(template_name, template_config, resolved_config)
+            # Load and merge configurations
+            config = self._build_configuration(template_name, config_file, kwargs)
 
-        # Validate the generated configuration
-        if not self._validate_playback(playback):
-            raise ValueError("Generated playback configuration is invalid")
+            # Resolve template dependencies and composition
+            resolved_config = self._resolve_template_composition(template_config, config)
 
-        return playback
+            # Generate playback content
+            playback = self._generate_playback(template_name, template_config, resolved_config)
+
+            # Validate the generated configuration
+            if not self._validate_playback(playback):
+                raise ValueError("Generated playback configuration is invalid")
+
+            return playback
+
+        except ValueError:
+            raise  # Re-raise ValueError as-is
+        except Exception as e:
+            raise RuntimeError(f"Failed to generate template '{template_name}': {str(e)}")
 
     def _build_configuration(self, template_name: str, config_file: Optional[str], overrides: Dict) -> Dict[str, Any]:
         """Build the final configuration by merging all sources."""
@@ -645,6 +664,12 @@ class TemplateEngine:
 
         output_path = Path(output_dir).resolve()
 
+        # Validate output directory
+        if output_path.exists() and any(output_path.iterdir()):
+            response = input(f"Directory '{output_path}' is not empty. Continue? [y/N]: ")
+            if response.lower() != 'y':
+                raise ValueError("Aborted: output directory is not empty")
+
         # Create output directory if it doesn't exist
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -658,62 +683,157 @@ class TemplateEngine:
         template_type = metadata.get('type')
 
         if template_type not in ['application', 'microservice']:
-            raise ValueError(f"Template type '{template_type}' does not support standalone project generation")
+            error_msg = f"Template type '{template_type}' does not support standalone project generation.\n"
+            error_msg += "Only 'application' and 'microservice' templates can be generated as standalone projects."
+            raise ValueError(error_msg)
 
-        # Generate normal template configuration first
-        config = self._build_configuration(template_name, config_file, kwargs)
-        resolved_config = self._resolve_template_composition(template_config, config)
+        print(f"Generating standalone {template_type} project from template '{template_name}'...")
 
-        # Create project structure in output directory
-        self._create_project_structure(output_path, template_config, resolved_config)
+        try:
+            # Generate normal template configuration first
+            config = self._build_configuration(template_name, config_file, kwargs)
+            resolved_config = self._resolve_template_composition(template_config, config)
 
-        # Copy essential repository files to make it self-contained
-        self._copy_repository_essentials(output_path)
+            # Create project structure in output directory
+            print(f"Creating project structure in {output_path}...")
+            self._create_project_structure(output_path, template_config, resolved_config)
 
-        # Generate project-specific configuration
-        project_playbook = self._generate_project_playbook(template_name, template_config, resolved_config, output_path)
+            # Copy essential repository files to make it self-contained
+            print("Copying build system and tools...")
+            self._copy_repository_essentials(output_path)
 
-        return project_playbook
+            # Generate project-specific configuration
+            project_playbook = self._generate_project_playbook(template_name, template_config, resolved_config, output_path)
+
+            # Create a README for the standalone project
+            self._create_standalone_readme(output_path, template_name, template_config, resolved_config)
+
+            print(f"\n✓ Standalone project generated successfully in: {output_path}")
+            print(f"\nTo build your project:")
+            print(f"  cd {output_path}")
+            print(f"  ./repo.sh build    # On Linux")
+            print(f"  .\\repo.bat build   # On Windows")
+
+            return project_playbook
+
+        except Exception as e:
+            print(f"\n❌ Failed to generate standalone project: {e}", file=sys.stderr)
+            # Clean up on failure
+            if output_path.exists() and not any(output_path.iterdir()):
+                output_path.rmdir()
+            raise
 
     def _create_project_structure(self, output_path: Path, template_config: Dict[str, Any], config: Dict[str, Any]) -> None:
         """Create the basic project structure in the output directory."""
         # Create standard directories
-        (output_path / "source").mkdir(exist_ok=True)
-        (output_path / "source" / "apps").mkdir(exist_ok=True)
-        (output_path / "source" / "extensions").mkdir(exist_ok=True)
-        (output_path / "tools").mkdir(exist_ok=True)
-        (output_path / "templates").mkdir(exist_ok=True)
+        directories = [
+            "source",
+            "source/apps",
+            "source/extensions",
+            "tools",
+            "tools/packman",
+            "tools/repoman",
+            "templates",
+            "templates/config",
+            "_build",
+            "_compiler",
+            "_repo"
+        ]
 
-        # Copy template source files
+        for directory in directories:
+            (output_path / directory).mkdir(parents=True, exist_ok=True)
+
+        # Determine if this is an application or extension template
+        template_type = template_config.get('metadata', {}).get('type', 'extension')
+
+        # Copy template source files to appropriate location
         template_source_dir = template_config.get('template', {}).get('source_dir')
         if template_source_dir:
             src_path = self.repo_root / "templates" / template_source_dir
             if src_path.exists():
-                dest_path = output_path / "source" / "apps" / config.get('application', {}).get('name', 'my_app')
+                if template_type in ['application', 'microservice']:
+                    # For applications, copy to apps directory
+                    app_name = config.get('application', {}).get('name', 'my_app')
+                    dest_path = output_path / "source" / "apps" / app_name
+                else:
+                    # For extensions, copy to extensions directory
+                    ext_name = config.get('extension', {}).get('name', 'my_extension')
+                    dest_path = output_path / "source" / "extensions" / ext_name
+
                 shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+
+        # Copy template configuration files for reference
+        template_file = Path(template_config.get('_template_file', ''))
+        if template_file.exists():
+            dest_template_dir = output_path / "templates" / template_type
+            dest_template_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(template_file, dest_template_dir / "template.toml")
 
     def _copy_repository_essentials(self, output_path: Path) -> None:
         """Copy essential repository files for self-contained operation."""
 
-        # Files to copy from the main repository
-        essential_files = [
-            'repo.sh',
-            'repo.bat',
-            'repo.toml',
-            'premake5.lua'
-        ]
+        try:
+            # Files to copy from the main repository
+            essential_files = [
+                'repo.sh',
+                'repo.bat',
+                'repo.toml',
+                'premake5.lua',
+                'repo_tools.toml',
+                '.editorconfig',
+                'LICENSE'
+            ]
 
-        for file_name in essential_files:
-            src_file = self.repo_root / file_name
-            if src_file.exists():
-                dest_file = output_path / file_name
-                shutil.copy2(src_file, dest_file)
+            for file_name in essential_files:
+                src_file = self.repo_root / file_name
+                if src_file.exists():
+                    dest_file = output_path / file_name
+                    shutil.copy2(src_file, dest_file)
+                    # Make scripts executable on Unix-like systems
+                    if file_name.endswith('.sh'):
+                        os.chmod(dest_file, 0o755)
 
-        # Copy tools directory (essential parts)
-        tools_src = self.repo_root / "tools"
-        tools_dest = output_path / "tools"
-        if tools_src.exists():
-            shutil.copytree(tools_src, tools_dest, dirs_exist_ok=True)
+            # Copy essential tools directories
+            essential_tool_dirs = [
+                ('tools/packman', True),  # Required for build system
+                ('tools/repoman', True),  # Required for template system
+                ('tools/package.sh', False),  # Packaging script
+                ('tools/package.bat', False)  # Windows packaging script
+            ]
+
+            for tool_path, is_dir in essential_tool_dirs:
+                src_path = self.repo_root / tool_path
+                dest_path = output_path / tool_path
+
+                if src_path.exists():
+                    if is_dir:
+                        shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+                        # Make shell scripts executable
+                        for sh_file in dest_path.glob('**/*.sh'):
+                            os.chmod(sh_file, 0o755)
+                    else:
+                        dest_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src_path, dest_path)
+                        if tool_path.endswith('.sh'):
+                            os.chmod(dest_path, 0o755)
+
+            # Copy minimal template system files for the project to be self-contained
+            templates_src = self.repo_root / "templates"
+            templates_dest = output_path / "templates"
+
+            # Copy templates.toml if it exists (for legacy compatibility)
+            templates_toml = templates_src / "templates.toml"
+            if templates_toml.exists():
+                shutil.copy2(templates_toml, templates_dest / "templates.toml")
+
+            # Copy config directory
+            config_src = templates_src / "config"
+            config_dest = templates_dest / "config"
+            if config_src.exists():
+                shutil.copytree(config_src, config_dest, dirs_exist_ok=True)
+
+        except Exception as e:
+            print(f"Warning: Some files could not be copied: {e}", file=sys.stderr)
 
     def _generate_project_playbook(self, template_name: str, template_config: Dict[str, Any], config: Dict[str, Any], output_path: Path) -> Dict[str, Any]:
         """Generate playbook configuration for the standalone project."""
@@ -732,18 +852,139 @@ class TemplateEngine:
 
         return playbook
 
+    def _create_standalone_readme(self, output_path: Path, template_name: str, template_config: Dict[str, Any], config: Dict[str, Any]) -> None:
+        """Create a README file for the standalone project."""
+        metadata = template_config.get('metadata', {})
+        documentation = template_config.get('documentation', {})
+        template_type = metadata.get('type', 'application')
+
+        # Get project details
+        if template_type in ['application', 'microservice']:
+            name = config.get('application', {}).get('name', template_name)
+            display_name = config.get('application', {}).get('display_name', template_name)
+            version = config.get('application', {}).get('version', '0.1.0')
+        else:
+            name = config.get('extension', {}).get('name', template_name)
+            display_name = config.get('extension', {}).get('display_name', template_name)
+            version = config.get('extension', {}).get('version', '0.1.0')
+
+        readme_content = f"""# {display_name}
+
+## Overview
+
+This is a standalone {template_type} project generated from the '{template_name}' template.
+
+{documentation.get('overview', 'A Kit SDK-based project for the NVIDIA Omniverse platform.')}
+
+## Project Information
+
+- **Name**: {name}
+- **Version**: {version}
+- **Template**: {template_name}
+- **Type**: {template_type.title()}
+
+## Prerequisites
+
+- **Operating System**: Windows 10/11 or Linux (Ubuntu 22.04 or newer)
+- **GPU**: NVIDIA RTX capable GPU (RTX 3070 or better recommended)
+- **Driver**: Minimum 537.58
+- **Git**: For version control
+- **Git LFS**: For managing large files
+
+## Building the Project
+
+### Linux
+```bash
+./repo.sh build
+```
+
+### Windows
+```powershell
+.\\repo.bat build
+```
+
+## Running the Project
+
+### Linux
+```bash
+./repo.sh launch
+```
+
+### Windows
+```powershell
+.\\repo.bat launch
+```
+
+## Available Commands
+
+- `build` - Build the project
+- `launch` - Launch the application
+- `test` - Run tests
+- `package` - Package for distribution
+- `clean` - Clean build artifacts
+
+## Project Structure
+
+```
+.
+├── source/              # Source code
+│   ├── apps/           # Application definitions
+│   └── extensions/     # Extension modules
+├── tools/              # Build and development tools
+├── _build/             # Build output (generated)
+├── _compiler/          # Compiler artifacts (generated)
+└── _repo/              # Repository cache (generated)
+```
+
+## Development
+
+This project includes all necessary build tools and dependencies to work as a standalone repository. You can:
+
+1. Initialize a new git repository: `git init`
+2. Add your changes: `git add .`
+3. Commit: `git commit -m "Initial commit"`
+4. Push to your remote repository
+
+## Documentation
+
+For more information about the Omniverse Kit SDK and development practices, visit:
+- [Omniverse Kit SDK Manual](https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/index.html)
+- [Kit App Template Documentation](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html)
+
+## License
+
+This project is based on the NVIDIA Omniverse Kit SDK and is subject to the NVIDIA Software License Agreement and Product-Specific Terms for NVIDIA Omniverse.
+
+---
+
+Generated with the Kit App Template system
+"""
+
+        readme_path = output_path / "README.md"
+        with open(readme_path, 'w') as f:
+            f.write(readme_content)
+
     def save_playback_file(self, playback: Dict[str, Any]) -> str:
         """Save playback configuration to a temporary file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
-            if HAS_TOMLI_W:
-                tomli_w.dump(playback, f)
-            elif HAS_TOML:
-                toml.dump(playback, f)
-            else:
-                # Manual TOML writing
-                self._write_toml_manual(f, playback)
+        # Use text mode explicitly for cross-platform compatibility
+        fd, temp_path = tempfile.mkstemp(suffix='.toml', text=True)
+        try:
+            with os.fdopen(fd, 'w') as f:
+                if HAS_TOMLI_W:
+                    # tomli_w expects a binary file
+                    os.close(fd)
+                    with open(temp_path, 'wb') as bf:
+                        tomli_w.dump(playback, bf)
+                elif HAS_TOML:
+                    toml.dump(playback, f)
+                else:
+                    # Manual TOML writing
+                    self._write_toml_manual(f, playback)
+        except Exception as e:
+            os.close(fd)
+            raise e
 
-            return f.name
+        return temp_path
 
     def _write_toml_manual(self, file, data: Dict[str, Any], prefix: str = ""):
         """Manually write TOML format when library is not available."""
@@ -777,8 +1018,9 @@ def main():
         print("  --output-dir=<dir>    Output directory for standalone projects")
         sys.exit(1)
 
-    # Initialize engine
-    repo_root = os.path.join(os.path.dirname(os.path.normpath(__file__)), "../..")
+    # Initialize engine with OS-independent path handling
+    script_dir = Path(__file__).resolve().parent
+    repo_root = str(script_dir.parent.parent)
     engine = TemplateEngine(repo_root)
 
     command = sys.argv[1]
