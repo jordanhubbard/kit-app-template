@@ -50,6 +50,10 @@ These resources empower developers at all experience levels to fully utilize the
 - [Prerequisites and Environment Setup](#prerequisites-and-environment-setup)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
+- [Kit Playground - Visual Development Environment](#kit-playground---visual-development-environment)
+    - [Getting Started with Kit Playground](#getting-started-with-kit-playground)
+    - [Features](#kit-playground-features)
+    - [Workflow](#visual-development-workflow)
 - [Enhanced Template System](#enhanced-template-system)
     - [Template Organization](#template-organization)
     - [Self-Documentation](#self-documentation)
@@ -125,7 +129,17 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 
 ## Quick Start
 
-This section guides you through creating your first Kit SDK-based Application using the `kit-app-template` repository. For a more comprehensive explanation of functionality previewed here, reference the following [Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html) for an in-depth exploration.
+You can develop Kit applications using either the **Visual Kit Playground** (recommended for beginners) or the **Command Line Interface**. Choose the approach that best fits your workflow.
+
+### Option 1: Visual Development with Kit Playground (Recommended)
+
+Kit Playground provides a Swift Playgrounds-like visual environment where you can browse, edit, build, and run templates side-by-side without using the command line.
+
+**[Jump to Kit Playground Setup →](#kit-playground---visual-development-environment)**
+
+### Option 2: Command Line Development
+
+For developers who prefer traditional command-line workflows, follow the steps below. For a more comprehensive explanation of functionality, reference the [Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html).
 
 ### 1. Clone the Repository
 
@@ -243,6 +257,168 @@ Initiate your newly created application using:
 
 
 > **NOTE:** The initial startup may take 5 to 8 minutes as shaders compile for the first time. After initial shader compilation, startup time will reduce dramatically
+
+## Kit Playground - Visual Development Environment
+
+<p align="center">
+  <img src="readme-assets/kit_playground_preview.png" width=100% />
+</p>
+
+Kit Playground is a **visual development environment** inspired by Swift Playgrounds that allows you to develop Omniverse Kit applications without touching the command line. It features a side-by-side editor and live preview, visual template gallery, and one-click build and deployment.
+
+### Getting Started with Kit Playground
+
+#### Installation
+
+**Linux/macOS:**
+```bash
+cd kit_playground
+npm install
+npm start
+```
+
+**Windows:**
+```powershell
+cd kit_playground
+npm install
+npm start
+```
+
+The application will launch as a native desktop app using Electron.
+
+#### First Run Setup
+
+On first launch, Kit Playground will:
+1. Start the Python backend server automatically
+2. Index all available templates
+3. Open the visual template gallery
+
+### Kit Playground Features
+
+#### 🎨 Visual Template Gallery
+- **Browse** templates with thumbnail previews
+- **Search** by name, category, or tags
+- **Filter** by type (Application, Extension, Microservice)
+- **Preview** template capabilities and connectors
+- **One-click install** from the marketplace
+
+#### ✏️ Side-by-Side Development
+- **Split View**: Code editor on the left, live preview on the right
+- **Monaco Editor**: Full VS Code editing experience
+- **Syntax Highlighting**: Python, TypeScript, TOML support
+- **IntelliSense**: Auto-completion and suggestions
+- **Hot Reload**: Changes appear instantly in preview
+
+#### 📱 Device Preview Modes
+- Test on **Desktop** (1920×1080)
+- Preview on **Tablet** (768×1024)
+- Simulate **Phone** (375×812)
+- Scale to **4K/TV** (3840×2160)
+- **Zoom controls** from 25% to 200%
+
+#### 🔗 Visual Connection System
+- **Drag-and-drop** to connect templates
+- **Automatic validation** of connector compatibility
+- **Bi-directional** and **uni-directional** connections
+- **Data source resolution** with guided prompts
+- **Dependency visualization** graph
+
+#### 🚀 Integrated Build & Run
+- **One-click build** without leaving the playground
+- **Run/Stop** controls in the toolbar
+- **Console output** in bottom pane
+- **Error highlighting** in the editor
+- **Build status** indicators
+
+#### 📦 Deployment Options
+- **Export** as standalone project
+- **Deploy** to cloud services
+- **Package** for distribution
+- **Copy** templates for customization
+
+### Visual Development Workflow
+
+1. **Launch Kit Playground**
+   ```bash
+   npm start  # From kit_playground directory
+   ```
+
+2. **Browse or Search Templates**
+   - Click the gallery icon to browse visually
+   - Use the marketplace to discover community templates
+   - Search by functionality or use case
+
+3. **Select a Template**
+   - Click on any template to load it
+   - View its code in the left pane
+   - See connector specifications
+
+4. **Edit and Preview Side-by-Side**
+   - Code changes on the left
+   - Live preview updates on the right
+   - Test on different device sizes
+   - Use fullscreen for detailed preview
+
+5. **Connect Templates (Optional)**
+   - Switch to connection view
+   - Drag from output to input connectors
+   - Resolve any data requirements
+   - View the dependency graph
+
+6. **Build and Run**
+   - Click the build button (🔨)
+   - Click run to start (▶️)
+   - View console output below
+   - Stop when done (⏹️)
+
+7. **Deploy Your Application**
+   - Click deploy button (☁️)
+   - Choose standalone or cloud
+   - Follow the deployment wizard
+   - Get your packaged application
+
+### Example: Creating a USD Viewer
+
+1. **Open Kit Playground**
+2. **Search** for "USD Viewer" in the gallery
+3. **Click** to load the template
+4. **Customize** the code (optional):
+   ```python
+   # Modify viewer settings
+   viewport.set_camera_position(0, 0, 100)
+   viewport.set_lighting_mode("cinematic")
+   ```
+5. **Click Run** to see your viewer
+6. **Test** on different screen sizes
+7. **Deploy** as a standalone application
+
+### Kit Playground vs Command Line
+
+| Feature | Kit Playground | Command Line |
+|---------|---------------|--------------|
+| **Visual Template Gallery** | ✅ Yes | ❌ Text list |
+| **Side-by-Side Editing** | ✅ Yes | ❌ Separate windows |
+| **Live Preview** | ✅ Built-in | ⚠️ Manual setup |
+| **Device Testing** | ✅ One-click | ❌ Manual |
+| **Marketplace** | ✅ Integrated | ⚠️ Manual download |
+| **Deployment** | ✅ Wizard | ⚠️ Commands |
+| **Learning Curve** | ✅ Beginner-friendly | ⚠️ Intermediate |
+
+### Tips for Kit Playground
+
+- **Keyboard Shortcuts**:
+  - `Ctrl/Cmd + S`: Save project
+  - `Ctrl/Cmd + B`: Build
+  - `Ctrl/Cmd + R`: Run
+  - `Ctrl/Cmd + .`: Stop
+  - `F11`: Fullscreen preview
+
+- **Best Practices**:
+  - Start with a template close to your needs
+  - Use the console to debug issues
+  - Test on multiple device sizes
+  - Save projects regularly
+  - Use version control for team projects
 
 ## Creating Standalone Projects
 
