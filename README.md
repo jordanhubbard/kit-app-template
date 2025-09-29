@@ -50,9 +50,16 @@ These resources empower developers at all experience levels to fully utilize the
 - [Prerequisites and Environment Setup](#prerequisites-and-environment-setup)
 - [Repository Structure](#repository-structure)
 - [Quick Start](#quick-start)
+- [Enhanced Template System](#enhanced-template-system)
+    - [Template Organization](#template-organization)
+    - [Self-Documentation](#self-documentation)
+    - [Template Composition](#template-composition)
+    - [Standalone Projects](#standalone-projects)
 - [Templates](#templates)
     - [Applications](#applications)
     - [Extensions](#extensions)
+    - [Microservices](#microservices)
+    - [Components](#components)
 - [Tools](#tools)
 - [License](#license)
 - [Additional Resources](#additional-resources)
@@ -97,7 +104,12 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 |------------------|------------------------------------------------------------|
 | .vscode          | VS Code configuration details and helper tasks             |
 | readme-assets/   | Images and additional repository documentation             |
-| templates/       | Template Applications and Extensions.                      |
+| templates/       | Enhanced template system with organized descriptors        |
+| ├─ applications/ | Standalone runnable application templates                   |
+| ├─ extensions/   | Reusable extension templates by language                    |
+| ├─ microservices/| Headless API service templates                             |
+| ├─ components/   | Non-standalone building block templates                     |
+| └─ template_registry.toml | Template discovery and organization config        |
 | tools/           | Tooling settings and repository specific (local) tools     |
 | .editorconfig    | [EditorConfig](https://editorconfig.org/) file.            |
 | .gitattributes   | Git configuration.                                         |
@@ -130,18 +142,39 @@ git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
 cd kit-app-template
 ```
 
-### 2. Create and Configure New Application From Template
+### 2. Explore Available Templates
 
-Run the following command to initiate the configuration wizard:
+Before creating a new project, explore the available templates:
+
+**List all templates:**
+```bash
+./repo.sh template list
+```
+
+**List templates by type:**
+```bash
+./repo.sh template list --type application
+./repo.sh template list --type microservice
+```
+
+**View template documentation:**
+```bash
+./repo.sh template docs kit_base_editor
+./repo.sh template docs kit_service
+```
+
+### 3. Create and Configure New Application From Template
+
+Run the following command to create a new project:
 
 **Linux:**
 ```bash
-./repo.sh template new
+./repo.sh template new kit_base_editor --name my_company.my_editor --display-name "My Editor"
 ```
 
 **Windows:**
 ```powershell
-.\repo.bat template new
+.\repo.bat template new kit_base_editor --name my_company.my_editor --display-name "My Editor"
 ```
 
 > **NOTE:** If this is your first time running the `template new` tool, you'll be prompted to accept the Omniverse Licensing Terms.
@@ -167,7 +200,7 @@ Follow the prompt instructions:
 
 • **application layers:** These optional layers add functionality for features such as streaming to web browsers. For this quick-start, we skip adding layers, but choosing “yes” would let you enable and configure streaming capabilities.
 
-### 3. Build
+### 4. Build
 
 Build your new application with the following command:
 
@@ -190,7 +223,7 @@ BUILD (RELEASE) SUCCEEDED (Took XX.XX seconds)
  If you experience issues related to build, please see the [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md) section for additional information.
 
 
-### 4. Launch
+### 5. Launch
 
 Initiate your newly created application using:
 
@@ -210,37 +243,138 @@ Initiate your newly created application using:
 
 > **NOTE:** The initial startup may take 5 to 8 minutes as shaders compile for the first time. After initial shader compilation, startup time will reduce dramatically
 
+## Creating Standalone Projects
+
+For self-contained projects that don't require the main repository structure, use the `--output-dir` option:
+
+**Create a standalone project:**
+```bash
+./repo.sh template new kit_service --name my_company.my_api --display-name "My API Service" --output-dir ./my-standalone-project
+```
+
+This creates a complete, self-contained project with:
+- All necessary source code and configuration
+- Complete build tooling (`repo.sh`, `premake5.lua`, etc.)
+- Project-specific documentation
+- Independent git repository ready for deployment
+
+The generated project can be built and deployed independently:
+```bash
+cd ./my-standalone-project
+./repo.sh build
+./repo.sh launch
+```
+
+## Enhanced Template System
+
+The Kit App Template features a comprehensive, data-driven template system with self-documentation, composition capabilities, and standalone project generation.
+
+### Template Organization
+
+Templates are organized by type for better discoverability:
+
+- **Applications** (`templates/applications/`) - Standalone runnable applications
+- **Extensions** (`templates/extensions/`) - Reusable extension components organized by language
+- **Microservices** (`templates/microservices/`) - Headless API services
+- **Components** (`templates/components/`) - Non-standalone building blocks
+
+Each template includes a comprehensive `template.toml` descriptor with metadata, documentation, variables, and dependencies.
+
+### Self-Documentation
+
+All templates are self-documenting and accessible via the command line:
+
+**View specific template documentation:**
+```bash
+./repo.sh template docs <template_name>
+```
+
+**List all templates by type:**
+```bash
+./repo.sh template list --type application
+./repo.sh template list --type extension
+./repo.sh template list --type microservice
+```
+
+**Example documentation output:**
+```bash
+./repo.sh template docs kit_service
+# Kit Service
+# Type: Microservice
+# Category: Api
+#
+# ## Overview
+# Kit Service provides a headless service framework...
+```
+
+### Template Composition
+
+Templates support inheritance and composition for code reuse:
+
+- **Inheritance**: Templates can extend base templates using the `extends` field
+- **Dependencies**: Templates can require other templates as components
+- **Composition**: Complex applications can be built from multiple template components
+
+### Standalone Projects
+
+Generate complete, self-contained projects in any directory:
+
+```bash
+./repo.sh template new <template_name> --output-dir /path/to/project
+```
+
+Standalone projects include:
+- Complete source code and configuration
+- All necessary build tools and scripts
+- Self-contained `repo.sh` tooling
+- Project-specific documentation
+
 ## Templates
 
-`kit-app-template` features an array of configurable templates for `Extensions` and `Applications`, catering to a range of desired development starting points from minimal to feature rich.
+`kit-app-template` features a comprehensive template system organized by type, with self-documentation, composition capabilities, and standalone project generation.
+
+Use `./repo.sh template list` to see all available templates or `./repo.sh template docs <name>` for detailed information about any template.
 
 ### Applications
 
-Begin constructing Omniverse Applications using these templates
+Standalone runnable applications for various use cases:
 
-- **[Kit Service](./templates/apps/kit_service)**: The minimal definition of an Omniverse Kit SDK based service. This template is useful for creating headless services leveraging Omniverse Kit functionality.
-
-- **[Kit Base Editor](./templates/apps/kit_base_editor/)**: A minimal template application for loading, manipulating and rendering OpenUSD content from a graphical interface.
-
-- **[USD Composer](./templates/apps/usd_composer)**: A template application for authoring complex OpenUSD scenes, such as configurators.
-
-- **[USD Explorer](./templates/apps/usd_explorer)**: A template application for exploring and collaborating on large Open USD scenes.
-
-- **[USD Viewer](./templates/apps/usd_viewer)**: A viewport-only template application that can be easily streamed and interacted with remotely, well-suited for streaming content to web pages.
+- **Kit Base Editor** (`kit_base_editor`): Minimal template for loading, manipulating and rendering OpenUSD content from a graphical interface
+- **USD Composer** (`omni_usd_composer`): Template for authoring complex OpenUSD scenes, such as configurators
+- **USD Explorer** (`omni_usd_explorer`): Template for exploring and collaborating on large Open USD scenes
+- **USD Viewer** (`omni_usd_viewer`): Viewport-only template optimized for streaming and remote interaction
 
 ### Extensions
 
-Enhance Omniverse capabilities with extension templates:
+Reusable extension components organized by programming language:
 
-- **[Basic Python](./templates/extensions/basic_python)**: The minimal definition of an Omniverse Python Extension.
+**Python Extensions:**
+- **Basic Python** (`basic_python_extension`): Minimal definition of an Omniverse Python Extension
+- **Python UI** (`basic_python_ui_extension`): Extension with easily extendable Python-based user interface
 
-- **[Python UI](./templates/extensions/python_ui)**: An extension that provides an easily extendable Python-based user interface.
+**C++ Extensions:**
+- **Basic C++** (`basic_cpp_extension`): Minimal definition of an Omniverse C++ Extension
+- **C++ w/ Python Bindings** (`basic_python_binding`): C++ Extension with Python interface via Pybind11
 
-- **[Basic C++](./templates/extensions/basic_cpp)**: The minimal definition of an Omniverse C++ Extension.
+### Microservices
 
-- **[Basic C++ w/ Python Bindings](./templates/extensions/basic_python_binding)**: The minimal definition of an Omniverse C++ Extension that also exposes a Python interface via Pybind11.
+Headless API services for automation and cloud deployment:
 
-   **Note for Windows C++ Developers** : This template requires `"platform:windows-x86_64".enabled` and `link_host_toolchain` within the `repo.toml` file be set to `true`. For additional C++ configuration information [see here](readme-assets/additional-docs/windows_developer_configuration.md).
+- **Kit Service** (`kit_service`): Minimal definition of a headless Omniverse Kit SDK service with REST API endpoints
+
+### Components
+
+Non-standalone building blocks that enhance other templates:
+
+**Setup Extensions:**
+- Service setup extensions for configuring applications
+- Composer, Explorer, and Viewer setup components
+
+**Streaming Layers:**
+- Default streaming configuration for web-based access
+- NVCF and GDN streaming variants
+
+   **Note for Windows C++ Developers**: C++ templates require `"platform:windows-x86_64".enabled` and `link_host_toolchain` within the `repo.toml` file be set to `true`. For additional C++ configuration information [see here](readme-assets/additional-docs/windows_developer_configuration.md).
 
 
 ## Application Streaming
@@ -266,11 +400,18 @@ Here's a brief overview of some key tools:
 
 - **Help (`./repo.sh -h` or `.\repo.bat -h`):** Provides a list of available tools and their descriptions.
 
-- **Template Creation (`./repo.sh template` or `.\repo.bat template`):** Assists in starting a new project by generating a scaffold from a template application or extension.
+### Template System
+
+- **Template Creation (`./repo.sh template new <name>`):** Generate new projects from templates with comprehensive configuration options.
+- **Template Documentation (`./repo.sh template docs <name>`):** View detailed documentation for any template including use cases, features, and examples.
+- **Template Listing (`./repo.sh template list [--type=TYPE]`):** List all available templates, optionally filtered by type (application, extension, microservice, component).
+- **Standalone Projects (`./repo.sh template new <name> --output-dir <path>`):** Create complete, self-contained projects in any directory.
+
+### Development Tools
 
 - **Build (`./repo.sh build` or `.\repo.bat build`):** Compiles your applications and extensions, preparing them for launch.
 
-- **Launch (`./repo.sh launch`or`.\repo.bat launch`):** Starts your compiled application or extension.
+- **Launch (`./repo.sh launch` or `.\repo.bat launch`):** Starts your compiled application or extension.
 
 - **Testing (`./repo.sh test` or `.\repo.bat test`):** Facilitates the execution of test suites for your extensions, ensuring code quality and functionality.
 
