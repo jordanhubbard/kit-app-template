@@ -16,6 +16,4 @@ repo_build.prebuild_copy {
 
 -- Apps: for each app generate batch files and a project based on kit files (e.g. my_name.my_app.kit)
 
-define_app("test_company.my_test_app.kit")
-define_app("test.composer_app.kit")
-define_app("my_company.my_usd_composer.kit")
+-- Add your application .kit files here like: define_app("my_company.my_app.kit")

@@ -513,20 +513,40 @@ class TemplateEngine:
             # Add extension configurations for templates that have them
             if 'extensions' in template_config and template_config['extensions']:
                 ext_configs = {}
+                extensions = template_config['extensions']
 
-                for ext_key, ext_config in template_config['extensions'].items():
-                    ext_template = ext_config.get('template', ext_key)
-                    # Check if there's custom config for this extension
-                    ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
-                    custom_ext = config.get('extensions', {}).get(ext_config_key, {})
+                # Handle both legacy TOML format (list) and new format (dict)
+                if isinstance(extensions, list):
+                    # Legacy format: array of tables
+                    for ext_item in extensions:
+                        ext_template = ext_item.get('template')
+                        if ext_template:
+                            # Check if there's custom config for this extension
+                            ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
+                            custom_ext = config.get('extensions', {}).get(ext_config_key, {})
 
-                    # Generate extension configuration
-                    ext_suffix = ext_template.split('_')[-1]
-                    ext_configs[ext_template] = {
-                        "extension_name": custom_ext.get('name', f"{app_name}_{ext_suffix}"),
-                        "extension_display_name": custom_ext.get('display_name', f"{display_name} {ext_suffix.title()}"),
-                        "version": custom_ext.get('version', version)
-                    }
+                            # Generate extension configuration
+                            ext_suffix = ext_template.split('_')[-1]
+                            ext_configs[ext_template] = {
+                                "extension_name": custom_ext.get('name', f"{app_name}_{ext_suffix}"),
+                                "extension_display_name": custom_ext.get('display_name', f"{display_name} {ext_suffix.title()}"),
+                                "version": custom_ext.get('version', version)
+                            }
+                elif isinstance(extensions, dict):
+                    # New format: dictionary
+                    for ext_key, ext_config in extensions.items():
+                        ext_template = ext_config.get('template', ext_key)
+                        # Check if there's custom config for this extension
+                        ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
+                        custom_ext = config.get('extensions', {}).get(ext_config_key, {})
+
+                        # Generate extension configuration
+                        ext_suffix = ext_template.split('_')[-1]
+                        ext_configs[ext_template] = {
+                            "extension_name": custom_ext.get('name', f"{app_name}_{ext_suffix}"),
+                            "extension_display_name": custom_ext.get('display_name', f"{display_name} {ext_suffix.title()}"),
+                            "version": custom_ext.get('version', version)
+                        }
 
                 if ext_configs:
                     playback[template_name]["extensions"] = ext_configs
