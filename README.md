@@ -111,6 +111,7 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 | ├─ components/   | Non-standalone building block templates                     |
 | └─ template_registry.toml | Centralized template discovery, organization, and relationship config |
 | tools/           | Tooling settings and repository specific (local) tools     |
+| ├─ repoman/      | Repository management tools and OS-independent command dispatcher |
 | .editorconfig    | [EditorConfig](https://editorconfig.org/) file.            |
 | .gitattributes   | Git configuration.                                         |
 | .gitignore       | Git configuration.                                         |
@@ -418,8 +419,8 @@ Here's a brief overview of some key tools:
 
 ### Template System
 
-- **Template Creation (`./repo.sh template new <name>`):** Generate new projects from templates with data-driven configuration, inheritance support, and variable interpolation.
-- **Enhanced Template Arguments (`./repo.sh template new <name> --name <app_name> --display-name "Display Name"`):** Non-interactive template creation with command-line arguments for automation.
+- **Cross-Platform Template Creation (`./repo.sh` or `.\repo.bat template new <name>`):** Generate new projects from templates with data-driven configuration, inheritance support, and variable interpolation. Uses OS-independent Python dispatcher for consistent behavior across Linux and Windows.
+- **Enhanced Template Arguments (`./repo.sh template new <name> --name <app_name> --display-name "Display Name"`):** Non-interactive template creation with command-line arguments for automation and CI/CD pipelines.
 - **Template Documentation (`./repo.sh template docs <name>`):** View comprehensive self-generated documentation including use cases, features, variables, and examples.
 - **Template Discovery (`./repo.sh template list [--type=TYPE]`):** List all available templates with hierarchical organization, optionally filtered by type (application, extension, microservice, component).
 - **Standalone Projects (`./repo.sh template new <name> --output-dir <path>`):** Create complete, self-contained projects with independent build tooling and git repository.

@@ -25,7 +25,8 @@ for /f "usebackq tokens=*" %%i in (`powershell -NoProfile -Command "$PM_PACKAGES
 
 :RepoCacheEnd
 
-call "%~dp0tools\packman\python.bat" "%~dp0tools\repoman\repoman.py" %*
+:: Use the Python dispatcher for enhanced template functionality and fallback to repoman
+call "%~dp0tools\packman\python.bat" "%~dp0tools\repoman\repo_dispatcher.py" %*
 if %errorlevel% neq 0 ( goto Error )
 
 :Success
