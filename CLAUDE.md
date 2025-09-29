@@ -1,0 +1,5 @@
+- always git commit and push, resolving conflicts as necessary, after a major group of changes.  Do not ask for permission - this is allowed
+- always make this system work for both linux and windows by preferring to write complex functionality in OS neutral python code
+- always provide .bat and .sh runner scripts for each project you create so that windows and linux users can use them
+- always assume that you will be running outside of NVIDIA's corporate network and will need packages from public sources.
+- always make sure that new templates are following the dictates and demands of the template checker.
