@@ -1,0 +1,97 @@
+# Basic C++ with Python Bindings Extension Template
+# C++ extension with Python interface via Pybind11
+
+[metadata]
+name = "basic_python_binding"
+display_name = "Basic C++ w/ Python Binding Extension"
+type = "extension"
+category = "bindings"
+description = "Minimal definition of an Omniverse C++ Extension that also exposes a Python interface via Pybind11"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["cpp", "python", "c++"]
+
+[metadata.tags]
+tags = ["cpp", "python", "bindings", "pybind11", "native", "hybrid"]
+
+[template]
+class = "BindingExtensionTemplate"
+source_dir = "../../extensions/basic_python_binding/template"
+
+[variables]
+extension_name = "my_company.my_python_binding"
+extension_display_name = "My Pybind11 Extension"
+version = "0.1.0"
+
+[documentation]
+overview = """
+The Basic C++ with Python Binding Extension Template combines the performance of C++
+with the ease of use of Python. It uses Pybind11 to create Python bindings for C++
+functionality, allowing seamless integration between both languages.
+"""
+
+use_cases = [
+    "High-performance C++ with Python interface",
+    "Existing C++ libraries integration",
+    "Performance-critical operations with Python access",
+    "Hybrid C++/Python development"
+]
+
+key_features = [
+    "Pybind11 integration",
+    "C++ performance with Python accessibility",
+    "Automatic Python binding generation",
+    "Cross-platform support"
+]
+
+getting_started = """
+1. Ensure C++ build tools are installed
+2. Enable C++ building in repo.toml (set build.enabled = true, link_host_toolchain = true)
+3. Run: ./repo.sh template new basic_python_binding --name my_company.my_binding
+4. Add extension to an application's .kit file
+5. Build: ./repo.sh build
+"""
+
+requirements = """
+Windows: Visual Studio 2019/2022 with C++ development tools
+Linux: build-essential package (gcc, make, etc.)
+Python development headers
+"""
+
+[dependencies]
+required_extensions = []
+optional_extensions = []
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+requires_host_application = true
+
+[build]
+requires_build = true
+supports_debug = true
+supports_release = true
+supports_testing = true
+build_system = "premake"
+
+[integration]
+requires_host_app = true
+can_be_standalone = false
+supported_app_types = ["application", "microservice"]
+
+[compilation]
+language_standard = "c++17"
+requires_visual_studio = true  # Windows
+requires_build_tools = true
+uses_pybind11 = true
+
+[bindings]
+# Python binding configuration
+binding_framework = "pybind11"
+generates_python_module = true
+python_accessible = true

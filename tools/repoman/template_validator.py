@@ -31,9 +31,42 @@ class TemplateValidator:
         self.repo_root = Path(repo_root)
         self.validation_errors: List[str] = []
         self.validation_warnings: List[str] = []
+        # Import the discovery system for validation
+        sys.path.insert(0, str(self.repo_root / 'tools' / 'repoman'))
+        from template_engine import TemplateDiscovery
+        self.template_discovery = TemplateDiscovery(repo_root)
+
+    def validate_template_descriptor(self, template_config: Dict[str, Any], template_path: Path) -> bool:
+        """Validate a new-format template descriptor."""
+        self.validation_errors = []
+        self.validation_warnings = []
+
+        # Validate required sections
+        required_sections = ['metadata', 'template', 'variables', 'documentation']
+        for section in required_sections:
+            if section not in template_config:
+                self.validation_errors.append(f"Missing required section: {section}")
+
+        # Validate metadata section
+        if 'metadata' in template_config:
+            self._validate_metadata_section(template_config['metadata'])
+
+        # Validate template section
+        if 'template' in template_config:
+            self._validate_template_section(template_config['template'], template_path)
+
+        # Validate documentation section
+        if 'documentation' in template_config:
+            self._validate_documentation_section(template_config['documentation'])
+
+        # Validate variables section
+        if 'variables' in template_config:
+            self._validate_variables_section(template_config['variables'])
+
+        return len(self.validation_errors) == 0
 
     def validate_config(self, config: Dict[str, Any]) -> bool:
-        """Validate a template configuration dictionary."""
+        """Validate a legacy template configuration dictionary."""
         self.validation_errors = []
         self.validation_warnings = []
 
@@ -240,6 +273,89 @@ class TemplateValidator:
             self.validation_errors.append(f"Error validating source file: {e}")
             return False
 
+    def _validate_metadata_section(self, metadata: Dict[str, Any]) -> None:
+        """Validate the metadata section of a template descriptor."""
+        required_fields = ['name', 'display_name', 'type', 'description', 'version']
+        for field in required_fields:
+            if field not in metadata:
+                self.validation_errors.append(f"Missing required metadata field: {field}")
+
+        # Validate template type
+        if 'type' in metadata:
+            valid_types = ['application', 'extension', 'microservice', 'component']
+            if metadata['type'] not in valid_types:
+                self.validation_errors.append(f"Invalid template type: {metadata['type']}. Must be one of {valid_types}")
+
+        # Validate version format
+        if 'version' in metadata:
+            if not self._validate_semver(metadata['version']):
+                self.validation_errors.append(f"Invalid version format in metadata: {metadata['version']}")
+
+    def _validate_template_section(self, template: Dict[str, Any], template_path: Path) -> None:
+        """Validate the template section of a template descriptor."""
+        required_fields = ['class']
+        for field in required_fields:
+            if field not in template:
+                self.validation_errors.append(f"Missing required template field: {field}")
+
+        # Validate template class
+        if 'class' in template:
+            valid_classes = ['ApplicationTemplate', 'ExtensionTemplate', 'SetupExtensionTemplate', 'BindingExtensionTemplate', 'ApplicationLayerTemplate']
+            if template['class'] not in valid_classes:
+                self.validation_errors.append(f"Invalid template class: {template['class']}. Must be one of {valid_classes}")
+
+        # Validate inheritance
+        if 'extends' in template:
+            parent_template = self.template_discovery.get_template(template['extends'])
+            if not parent_template:
+                self.validation_errors.append(f"Parent template '{template['extends']}' not found")
+
+        # Validate source paths
+        if 'source_dir' in template:
+            source_path = template_path.parent.parent.parent / template['source_dir']
+            if not source_path.exists():
+                self.validation_warnings.append(f"Source directory not found: {source_path}")
+
+    def _validate_documentation_section(self, documentation: Dict[str, Any]) -> None:
+        """Validate the documentation section of a template descriptor."""
+        recommended_fields = ['overview', 'use_cases', 'key_features']
+        for field in recommended_fields:
+            if field not in documentation:
+                self.validation_warnings.append(f"Recommended documentation field missing: {field}")
+
+    def _validate_variables_section(self, variables: Dict[str, Any]) -> None:
+        """Validate the variables section of a template descriptor."""
+        # Check for common variable patterns
+        if 'version' in variables:
+            if not self._validate_semver(str(variables['version'])):
+                self.validation_warnings.append(f"Variable 'version' should use semver format: {variables['version']}")
+
+    def validate_all_templates(self) -> bool:
+        """Validate all template descriptors in the repository."""
+        all_valid = True
+        templates = self.template_discovery.discover_templates()
+
+        print(f"Validating {len(templates)} template descriptors...")
+
+        for template_name, template_config in templates.items():
+            print(f"\nValidating template: {template_name}")
+            template_path = Path(template_config.get('_template_file', ''))
+
+            if self.validate_template_descriptor(template_config, template_path):
+                print(f"  ✓ {template_name} is valid")
+            else:
+                print(f"  ❌ {template_name} has validation errors:")
+                for error in self.validation_errors:
+                    print(f"    - {error}")
+                all_valid = False
+
+            if self.validation_warnings:
+                print(f"  ⚠️  {template_name} has warnings:")
+                for warning in self.validation_warnings:
+                    print(f"    - {warning}")
+
+        return all_valid
+
 
 class TemplateTestSuite:
     """Comprehensive test suite for template system."""
@@ -431,7 +547,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Template Validation and Testing")
-    parser.add_argument('command', choices=['validate', 'test', 'test-all'],
+    parser.add_argument('command', choices=['validate', 'test', 'test-all', 'validate-all'],
                        help="Command to run")
     parser.add_argument('--template', help="Template name to validate/test")
     parser.add_argument('--config', help="Configuration file to validate")
@@ -481,6 +597,11 @@ def main():
     elif args.command == 'test-all':
         suite = TemplateTestSuite(repo_root)
         success = suite.run_all_tests()
+        sys.exit(0 if success else 1)
+
+    elif args.command == 'validate-all':
+        validator = TemplateValidator(repo_root)
+        success = validator.validate_all_templates()
         sys.exit(0 if success else 1)
 
 

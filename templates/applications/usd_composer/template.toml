@@ -1,0 +1,84 @@
+# USD Composer Application Template
+# Template application for authoring complex OpenUSD scenes
+
+[metadata]
+name = "omni_usd_composer"
+display_name = "USD Composer"
+type = "application"
+category = "authoring"
+description = "Template application for authoring complex OpenUSD scenes, such as configurators"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["composer", "authoring", "usd", "configurator", "advanced"]
+
+[template]
+class = "ApplicationTemplate"
+kit_file = "../../apps/usd_composer/omni.usd_composer.kit"
+source_dir = "../../apps/usd_composer"
+
+# This template requires setup extensions
+requires_extensions = [
+    {template = "omni_usd_composer_setup", type = "setup"}
+]
+
+[variables]
+application_name = "my_company.my_usd_composer"
+application_display_name = "My USD Composer"
+version = "0.1.0"
+
+[documentation]
+overview = """
+USD Composer provides advanced authoring capabilities for creating complex OpenUSD scenes.
+It includes tools for building configurators, complex scene authoring, and advanced USD workflows.
+"""
+
+use_cases = [
+    "Advanced USD scene authoring",
+    "Product configurators",
+    "Complex 3D content creation workflows",
+    "Multi-asset scene composition"
+]
+
+key_features = [
+    "Advanced USD authoring tools",
+    "Scene composition capabilities",
+    "Material and lighting workflows",
+    "Asset management integration"
+]
+
+getting_started = """
+1. Run: ./repo.sh template new omni_usd_composer --name my_company.my_composer
+2. Configure the setup extension when prompted
+3. Build: ./repo.sh build
+4. Launch: ./repo.sh launch
+"""
+
+[dependencies]
+required_extensions = []
+optional_extensions = ["omni.kit.material.library", "omni.kit.asset.browser"]
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+supports_streaming = true
+requires_display = true
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+
+[extensions]
+# Extensions that will be created along with this application
+[[extensions.setup]]
+template = "omni_usd_composer_setup"
+required = true
+description = "Setup extension for USD Composer functionality"

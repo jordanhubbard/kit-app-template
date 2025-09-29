@@ -1,0 +1,85 @@
+# Python UI Extension Template
+# Python extension with user interface capabilities
+
+[metadata]
+name = "basic_python_ui_extension"
+display_name = "Python UI Extension"
+type = "extension"
+category = "python"
+description = "Extension that provides an easily extendable Python-based user interface"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["python", "ui", "interface", "user-interface", "omni.ui"]
+
+[template]
+class = "ExtensionTemplate"
+source_dir = "../../extensions/python_ui/template"
+
+[variables]
+extension_name = "my_company.my_python_ui_extension"
+extension_display_name = "My Python UI Extension"
+version = "0.1.0"
+
+[documentation]
+overview = """
+The Python UI Extension Template provides a foundation for building Python-based
+extensions with user interface components. It demonstrates how to create UI elements
+using the Omniverse UI framework.
+"""
+
+use_cases = [
+    "Custom user interface panels",
+    "Interactive Python tools",
+    "UI-based extension functionality",
+    "User interaction and controls"
+]
+
+key_features = [
+    "Omni.ui integration examples",
+    "Best practices for Python UI development",
+    "Extensible UI framework usage",
+    "Event handling and user interaction"
+]
+
+getting_started = """
+1. Run: ./repo.sh template new basic_python_ui_extension --name my_company.my_ui_ext
+2. Add extension to an application's .kit file
+3. Build: ./repo.sh build
+4. Launch application and enable extension in Extension Manager
+"""
+
+[dependencies]
+required_extensions = ["omni.ui"]
+optional_extensions = ["omni.kit.window.extensions"]
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+requires_host_application = true
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+supports_testing = true
+
+[integration]
+requires_host_app = true
+can_be_standalone = false
+supported_app_types = ["application"]  # UI extensions need display
+requires_display = true
+
+[ui]
+# UI-specific configuration
+provides_ui = true
+ui_framework = "omni.ui"
+has_menu_items = true
+has_windows = true

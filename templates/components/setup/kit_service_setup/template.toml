@@ -1,0 +1,78 @@
+# Kit Service Setup Extension Template
+# Setup extension component for Kit Service applications
+
+[metadata]
+name = "kit_service_setup"
+display_name = "Service Setup"
+type = "component"
+category = "setup"
+description = "Setup extension for Kit Service applications, provides service endpoints and configuration"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["setup", "service", "component", "api", "endpoints"]
+
+[template]
+class = "SetupExtensionTemplate"
+source_dir = "../../extensions/service.setup/template"
+subtype = "setup"
+
+[variables]
+extension_name = "my_company.my_service_setup_extension"
+extension_display_name = "My Service Setup Extension"
+version = "0.1.0"
+
+[documentation]
+overview = """
+The Service Setup Extension provides the foundation for Kit Service applications.
+It creates the necessary API endpoints, service configuration, and runtime setup
+required for headless service operation.
+"""
+
+use_cases = [
+    "API endpoint configuration for services",
+    "Service initialization and setup",
+    "Headless application configuration",
+    "REST API framework setup"
+]
+
+key_features = [
+    "API endpoint creation",
+    "Service configuration management",
+    "Runtime initialization",
+    "Integration with service frameworks"
+]
+
+[dependencies]
+required_extensions = []
+optional_extensions = ["omni.services.core"]
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+requires_host_application = true
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+supports_testing = true
+
+[integration]
+requires_host_app = true
+can_be_standalone = false
+supported_app_types = ["microservice"]
+component_type = "setup"
+
+[service]
+# Service-specific setup configuration
+provides_endpoints = true
+configures_service = true
+handles_initialization = true

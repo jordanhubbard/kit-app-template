@@ -96,6 +96,55 @@ if [ "$1" = "template" ] && [ "$2" = "new" ] && [ "$#" -ge 3 ] && [ "$3" != "--g
 
     # Run template replay with generated playback file
     exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repoman.py" template replay "$PLAYBACK_FILE"
+elif [ "$1" = "template" ] && [ "$2" = "docs" ]; then
+    shift 2  # Remove 'template' and 'docs' from args
+
+    if [ "$#" -eq 0 ]; then
+        # Show all template documentation
+        exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_engine.py" docs --all
+    else
+        # Show specific template documentation
+        TEMPLATE_NAME="$1"
+        shift
+        exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_engine.py" docs "$TEMPLATE_NAME" "$@"
+    fi
+elif [ "$1" = "template" ] && [ "$2" = "list" ]; then
+    shift 2  # Remove 'template' and 'list' from args
+
+    # Parse additional arguments
+    TYPE_FILTER=""
+    CATEGORY_FILTER=""
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --type=*)
+                TYPE_FILTER="${1#*=}"
+                ;;
+            --type)
+                shift
+                TYPE_FILTER="$1"
+                ;;
+            --category=*)
+                CATEGORY_FILTER="${1#*=}"
+                ;;
+            --category)
+                shift
+                CATEGORY_FILTER="$1"
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    # Build args for template engine
+    ARGS=("list")
+    [ -n "$TYPE_FILTER" ] && ARGS+=("--type=$TYPE_FILTER")
+    [ -n "$CATEGORY_FILTER" ] && ARGS+=("--category=$CATEGORY_FILTER")
+
+    exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/template_engine.py" "${ARGS[@]}"
 elif [ "$1" = "test" ]; then
     if [ "$2" = "templates" ]; then
         # Run template system tests specifically

@@ -1,0 +1,97 @@
+# USD Viewer Application Template
+# Viewport-only template application optimized for streaming
+
+[metadata]
+name = "omni_usd_viewer"
+display_name = "USD Viewer"
+type = "application"
+category = "viewer"
+description = "Viewport-only template application that can be easily streamed and interacted with remotely, well-suited for streaming content to web pages"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["viewer", "streaming", "viewport", "web", "remote"]
+
+[template]
+class = "ApplicationTemplate"
+kit_file = "../../apps/usd_viewer/omni.usd_viewer.kit"
+source_dir = "../../apps/usd_viewer"
+
+requires_extensions = [
+    {template = "omni_usd_viewer_messaging", type = "extra"},
+    {template = "omni_usd_viewer_setup", type = "setup"}
+]
+
+[variables]
+application_name = "my_company.my_usd_viewer"
+application_display_name = "My USD Viewer"
+version = "0.1.0"
+
+[documentation]
+overview = """
+USD Viewer is a viewport-focused application designed for streaming USD content
+to remote clients, particularly web browsers. It provides essential viewing
+capabilities with minimal UI overhead, making it ideal for web-based 3D experiences.
+"""
+
+use_cases = [
+    "Web-based USD content viewing",
+    "Remote 3D content streaming",
+    "Embedded viewport applications",
+    "Minimal overhead 3D viewers"
+]
+
+key_features = [
+    "Viewport-only interface",
+    "Optimized for streaming",
+    "Web browser compatibility",
+    "Minimal resource usage",
+    "Remote interaction support"
+]
+
+getting_started = """
+1. Run: ./repo.sh template new omni_usd_viewer --name my_company.my_viewer
+2. Configure the setup and messaging extensions when prompted
+3. Build: ./repo.sh build
+4. Launch: ./repo.sh launch
+5. For streaming: ./repo.sh launch -- --no-window
+"""
+
+[dependencies]
+required_extensions = []
+optional_extensions = ["omni.kit.livestream.webrtc", "omni.kit.widget.viewport"]
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+supports_streaming = true
+requires_display = false  # Can run headless for streaming
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+
+[extensions]
+[[extensions.messaging]]
+template = "omni_usd_viewer_messaging"
+required = false
+description = "Messaging extension for viewer communication"
+
+[[extensions.setup]]
+template = "omni_usd_viewer_setup"
+required = true
+description = "Setup extension for USD Viewer functionality"
+
+[streaming]
+# Streaming-specific configuration
+supports_webrtc = true
+default_no_window = true
+web_client_compatible = true
