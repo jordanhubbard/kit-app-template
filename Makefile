@@ -61,11 +61,19 @@ all: check-deps
 	@echo "  make template-new       - Create new template (CLI)"
 	@echo "  make test              - Run test suite"
 	@echo ""
-	@echo "$(BLUE)Kit Playground:$(NC)"
+	@echo "$(BLUE)Kit Playground (Local):$(NC)"
 	@echo "  make playground-install - Install Kit Playground dependencies"
 	@echo "  make playground-dev     - Run Kit Playground in development mode"
 	@echo "  make playground-build   - Build Kit Playground for distribution"
 	@echo "  make playground-dist    - Create platform installers"
+	@echo ""
+	@echo "$(BLUE)Kit Playground (Docker - No Node.js required):$(NC)"
+	@echo "  make playground-docker-build     - Build in Docker container"
+	@echo "  make playground-docker-dist      - Create distribution in Docker"
+	@echo "  make playground-docker-dist-linux - Create Linux AppImage"
+	@echo "  make playground-docker-dist-all   - Build for all platforms"
+	@echo "  make playground-docker-shell     - Open shell in container"
+	@echo "  make playground-docker-clean     - Remove Docker image"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
 	@echo "  make deps              - Check all dependencies"
@@ -233,12 +241,12 @@ build: check-deps
 .PHONY: playground
 playground: playground-check
 	@echo "$(BLUE)Launching Kit Playground...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && npm start
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm start
 
 # Check if Kit Playground is installed
 .PHONY: playground-check
 playground-check:
-	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/node_modules/.package-lock.json" ]; then \
+	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/ui/node_modules/.package-lock.json" ]; then \
 		echo "$(YELLOW)Kit Playground dependencies not installed. Installing...$(NC)"; \
 		$(MAKE) playground-install; \
 	fi
@@ -247,7 +255,7 @@ playground-check:
 .PHONY: playground-install
 playground-install: check-deps
 	@echo "$(BLUE)Installing Kit Playground dependencies...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && npm install
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
 	@echo "$(GREEN)Kit Playground is ready!$(NC)"
 	@echo "Run 'make playground' to launch"
 
@@ -255,28 +263,97 @@ playground-install: check-deps
 .PHONY: playground-dev
 playground-dev: playground-check
 	@echo "$(BLUE)Starting Kit Playground in development mode...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && npm run dev
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dev
 
 # Build Kit Playground for production
 .PHONY: playground-build
 playground-build: playground-check
 	@echo "$(BLUE)Building Kit Playground for production...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && npm run build
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
 
 # Create platform-specific installers
 .PHONY: playground-dist
 playground-dist: playground-check
 	@echo "$(BLUE)Creating Kit Playground installers...$(NC)"
 ifeq ($(OS),linux)
-	@cd $(KIT_PLAYGROUND_DIR) && npm run dist -- --linux
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --linux
 endif
 ifeq ($(OS),macos)
-	@cd $(KIT_PLAYGROUND_DIR) && npm run dist -- --mac
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --mac
 endif
 ifeq ($(OS),windows)
-	@cd $(KIT_PLAYGROUND_DIR) && npm run dist -- --win
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --win
 endif
-	@echo "$(GREEN)Installer created in $(KIT_PLAYGROUND_DIR)/dist/$(NC)"
+	@echo "$(GREEN)Installer created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+
+# Docker-based playground targets (no host dependencies except make and docker)
+.PHONY: playground-docker-check
+playground-docker-check:
+	@which docker >/dev/null 2>&1 || { \
+		echo "$(RED)Docker is not installed or not in PATH$(NC)"; \
+		echo "Please install Docker: https://docs.docker.com/get-docker/"; \
+		exit 1; \
+	}
+	@echo "$(GREEN)✓ Docker is installed$(NC)"
+
+.PHONY: playground-docker-image
+playground-docker-image: playground-docker-check
+	@echo "$(BLUE)Building Kit Playground Docker image...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && docker build -t kit-playground:latest .
+	@echo "$(GREEN)Docker image built successfully!$(NC)"
+
+.PHONY: playground-docker-build
+playground-docker-build: playground-docker-image
+	@echo "$(BLUE)Building Kit Playground in Docker container...$(NC)"
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/build:/app/ui/build \
+		kit-playground:latest \
+		sh -c "cd ui && npm run build"
+	@echo "$(GREEN)Build complete! Output in $(KIT_PLAYGROUND_DIR)/ui/build/$(NC)"
+
+.PHONY: playground-docker-dist
+playground-docker-dist: playground-docker-image
+	@echo "$(BLUE)Creating Kit Playground distribution in Docker...$(NC)"
+	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
+		kit-playground:latest \
+		sh -c "cd ui && npm run dist"
+	@echo "$(GREEN)Distribution created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+
+.PHONY: playground-docker-dist-linux
+playground-docker-dist-linux: playground-docker-image
+	@echo "$(BLUE)Creating Linux distribution in Docker...$(NC)"
+	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
+		kit-playground:latest \
+		sh -c "cd ui && npm run dist -- --linux"
+	@echo "$(GREEN)Linux distribution created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+
+.PHONY: playground-docker-dist-all
+playground-docker-dist-all: playground-docker-image
+	@echo "$(BLUE)Creating distributions for all platforms in Docker...$(NC)"
+	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
+		kit-playground:latest \
+		sh -c "cd ui && npm run dist:all"
+	@echo "$(GREEN)All distributions created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+
+.PHONY: playground-docker-shell
+playground-docker-shell: playground-docker-image
+	@echo "$(BLUE)Starting interactive shell in Kit Playground container...$(NC)"
+	@docker run --rm -it \
+		-v $(KIT_PLAYGROUND_DIR):/app \
+		kit-playground:latest \
+		/bin/bash
+
+.PHONY: playground-docker-clean
+playground-docker-clean:
+	@echo "$(BLUE)Removing Kit Playground Docker image...$(NC)"
+	@docker rmi kit-playground:latest 2>/dev/null || true
+	@echo "$(GREEN)Docker image removed$(NC)"
 
 # Create new template (CLI)
 .PHONY: template-new
@@ -295,8 +372,8 @@ test: check-deps
 clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	@rm -rf $(BUILD_DIR)
-	@rm -rf $(KIT_PLAYGROUND_DIR)/build
-	@rm -rf $(KIT_PLAYGROUND_DIR)/dist
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(ROOT_DIR)/_compiler
 	@rm -rf $(ROOT_DIR)/_repo
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -305,10 +382,10 @@ clean:
 
 # Deep clean including dependencies
 .PHONY: clean-all
-clean-all: clean
+clean-all: clean playground-docker-clean
 	@echo "$(YELLOW)Removing all installed dependencies...$(NC)"
-	@rm -rf $(KIT_PLAYGROUND_DIR)/node_modules
-	@rm -f $(KIT_PLAYGROUND_DIR)/package-lock.json
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
+	@rm -f $(KIT_PLAYGROUND_DIR)/ui/package-lock.json
 	@echo "$(GREEN)Deep clean complete!$(NC)"
 
 # Platform-specific repo commands

@@ -2,7 +2,7 @@
   "name": "kit-playground",
   "version": "1.0.0",
   "description": "Visual Development Environment for NVIDIA Omniverse Kit SDK",
-  "main": "electron/main.js",
+  "main": "../electron/main.js",
   "scripts": {
     "start": "concurrently \"npm run start:react\" \"wait-on http://localhost:3000 && npm run start:electron\"",
     "start:react": "react-scripts start",
@@ -24,18 +24,18 @@
       "output": "dist"
     },
     "files": [
-      "electron/**/*",
+      "../electron/**/*",
       "build/**/*",
-      "backend/**/*",
+      "../backend/**/*",
       "node_modules/**/*"
     ],
     "extraResources": [
       {
-        "from": "../tools",
+        "from": "../../tools",
         "to": "tools"
       },
       {
-        "from": "../templates",
+        "from": "../../templates",
         "to": "templates"
       }
     ],
@@ -70,6 +70,7 @@
     "@typescript-eslint/eslint-plugin": "^5.59.0",
     "@typescript-eslint/parser": "^5.59.0",
     "concurrently": "^8.0.0",
+    "cross-env": "^7.0.3",
     "electron": "^27.0.0",
     "electron-builder": "^24.0.0",
     "eslint": "^8.38.0",
@@ -81,6 +82,7 @@
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@monaco-editor/react": "^4.6.0",
+    "monaco-editor": "^0.44.0",
     "@mui/icons-material": "^5.13.0",
     "@mui/material": "^5.13.0",
     "@reduxjs/toolkit": "^1.9.5",

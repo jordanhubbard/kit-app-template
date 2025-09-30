@@ -1,0 +1,9 @@
+{
+  "short_name": "Kit Playground",
+  "name": "NVIDIA Omniverse Kit Playground",
+  "description": "Visual Development Environment for NVIDIA Omniverse Kit SDK",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#1a1a1a"
+}

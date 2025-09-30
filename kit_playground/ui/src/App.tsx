@@ -98,7 +98,7 @@ function AppContent() {
       });
 
       return () => {
-        window.electronAPI.removeMenuListeners();
+        window.electronAPI?.removeMenuListeners();
       };
     }
   }, [dispatch]);

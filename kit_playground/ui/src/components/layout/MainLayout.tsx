@@ -217,8 +217,8 @@ const MainLayout: React.FC = () => {
       case 'connections':
         return (
           <ConnectionEditor
-            templates={currentProject?.templates || []}
-            connections={currentProject?.connections || []}
+            templates={(currentProject?.templates as any) || []}
+            connections={(currentProject?.connections as any) || []}
             onConnectionsChange={(connections) => {
               // Update connections in store
             }}
@@ -448,7 +448,7 @@ const MainLayout: React.FC = () => {
             onClick={() => setViewMode('gallery')}
             color={viewMode === 'gallery' ? 'primary' : 'default'}
           >
-            <ViewModule />
+            <SplitViewIcon />
           </IconButton>
         </Tooltip>
 
@@ -457,7 +457,7 @@ const MainLayout: React.FC = () => {
             onClick={() => setViewMode('browser')}
             color={viewMode === 'browser' ? 'primary' : 'default'}
           >
-            <CloudDownload />
+            <DeployIcon />
           </IconButton>
         </Tooltip>
 
