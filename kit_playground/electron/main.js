@@ -305,8 +305,18 @@ function createMenu() {
  * Start Python backend server
  */
 function startPythonBackend() {
-  const script = path.join(__dirname, '../backend/server.py');
-  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  const script = path.join(__dirname, '../backend/web_server.py');
+
+  // Cross-platform Python command detection
+  let pythonCmd;
+  if (process.platform === 'win32') {
+    // Windows: try py launcher first, then python
+    const { spawnSync } = require('child_process');
+    const pyTest = spawnSync('py', ['--version']);
+    pythonCmd = pyTest.error ? 'python' : 'py';
+  } else {
+    pythonCmd = 'python3';
+  }
 
   pythonProcess = spawn(pythonCmd, [script, '--port', API_PORT], {
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
@@ -378,6 +388,54 @@ ipcMain.handle('open-external', (event, url) => {
 
 ipcMain.handle('show-item-in-folder', (event, path) => {
   shell.showItemInFolder(path);
+});
+
+// Filesystem handlers
+const fs = require('fs').promises;
+const os = require('os');
+
+ipcMain.handle('fs-read-dir', async (event, dirPath) => {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    return entries.map(entry => ({
+      name: entry.name,
+      path: path.join(dirPath, entry.name),
+      isDirectory: entry.isDirectory(),
+    }));
+  } catch (error) {
+    throw new Error(`Failed to read directory: ${error.message}`);
+  }
+});
+
+ipcMain.handle('fs-create-dir', async (event, dirPath) => {
+  try {
+    await fs.mkdir(dirPath, { recursive: true });
+    return { success: true };
+  } catch (error) {
+    throw new Error(`Failed to create directory: ${error.message}`);
+  }
+});
+
+ipcMain.handle('fs-get-home', () => {
+  return os.homedir();
+});
+
+ipcMain.handle('fs-read-file', async (event, filePath) => {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return content;
+  } catch (error) {
+    throw new Error(`Failed to read file: ${error.message}`);
+  }
+});
+
+ipcMain.handle('fs-write-file', async (event, filePath, content) => {
+  try {
+    await fs.writeFile(filePath, content, 'utf-8');
+    return { success: true };
+  } catch (error) {
+    throw new Error(`Failed to write file: ${error.message}`);
+  }
 });
 
 // App lifecycle

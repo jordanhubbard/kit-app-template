@@ -12,7 +12,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
-    "dev:react": "BROWSER=none react-scripts start",
+    "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "wait-on http://localhost:3000 && nodemon --exec electron .",
     "dist": "npm run build && electron-builder --publish=never",
     "dist:all": "npm run build && electron-builder -mwl"

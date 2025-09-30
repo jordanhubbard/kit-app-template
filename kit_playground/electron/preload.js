@@ -54,7 +54,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Remove menu event listeners
   removeMenuListeners: () => {
     ipcRenderer.removeAllListeners();
-  }
+  },
+
+  // Filesystem operations
+  readDirectory: (path) => ipcRenderer.invoke('fs-read-dir', path),
+  createDirectory: (path) => ipcRenderer.invoke('fs-create-dir', path),
+  getHomePath: () => ipcRenderer.invoke('fs-get-home'),
+  readFile: (path) => ipcRenderer.invoke('fs-read-file', path),
+  writeFile: (path, content) => ipcRenderer.invoke('fs-write-file', path, content)
 });
 
 // Platform information

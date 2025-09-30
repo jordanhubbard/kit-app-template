@@ -25,8 +25,10 @@ import PreviewPane from '../preview/PreviewPane';
 import ConnectionEditor from '../connections/ConnectionEditor';
 import Console from '../console/Console';
 import StatusBar from './StatusBar';
+import FileExplorer from '../controls/FileExplorer';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { setActiveView, toggleSidebar } from '../../store/slices/uiSlice';
+import { setOutputPath } from '../../store/slices/projectSlice';
 import './MainLayout.css';
 
 type ViewMode = 'gallery' | 'browser' | 'editor' | 'connections' | 'split';
@@ -42,6 +44,7 @@ const MainLayout: React.FC = () => {
   const [editorContent, setEditorContent] = useState<string>('');
   const [consoleHeight, setConsoleHeight] = useState(200);
   const [leftPaneSize, setLeftPaneSize] = useState<string | number>('50%');
+  const [outputPath, setOutputPathLocal] = useState<string>('');
 
   const previewRef = useRef<any>(null);
 
@@ -362,30 +365,55 @@ const MainLayout: React.FC = () => {
                 </Tooltip>
               </Paper>
 
-              {/* Preview Area */}
-              <Box sx={{ flex: 1, position: 'relative', backgroundColor: '#000' }}>
-                {previewUrl ? (
-                  <PreviewPane
-                    ref={previewRef}
-                    url={previewUrl}
-                    templateId={selectedTemplate}
-                    onError={(error) => console.error('Preview error:', error)}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%',
-                      color: 'text.secondary'
+              {/* Preview Area and Controls */}
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                {/* Preview */}
+                <Box sx={{ flex: 1, position: 'relative', backgroundColor: '#000' }}>
+                  {previewUrl ? (
+                    <PreviewPane
+                      ref={previewRef}
+                      url={previewUrl}
+                      templateId={selectedTemplate}
+                      onError={(error) => console.error('Preview error:', error)}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                        color: 'text.secondary'
+                      }}
+                    >
+                      {selectedTemplate
+                        ? 'Click Run to preview this template'
+                        : 'Select a template to preview'}
+                    </Box>
+                  )}
+                </Box>
+
+                {/* File Explorer - Build Output Directory Selector */}
+                <Box
+                  sx={{
+                    height: 320,
+                    p: 2,
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    backgroundColor: '#1e1e1e',
+                    overflow: 'auto',
+                  }}
+                >
+                  <FileExplorer
+                    selectedPath={outputPath}
+                    onPathChange={(path) => {
+                      setOutputPathLocal(path);
+                      dispatch(setOutputPath(path));
                     }}
-                  >
-                    {selectedTemplate
-                      ? 'Click Run to preview this template'
-                      : 'Select a template to preview'}
-                  </Box>
-                )}
+                    title="Build Output Directory"
+                    showFiles={false}
+                  />
+                </Box>
               </Box>
             </Box>
           </SplitPane>

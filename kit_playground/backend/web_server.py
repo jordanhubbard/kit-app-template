@@ -1,0 +1,352 @@
+#!/usr/bin/env python3
+"""
+Kit Playground Web Server
+Flask-based REST API for template management, builds, and file operations
+"""
+
+import asyncio
+import json
+import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
+from flask_socketio import SocketIO, emit
+import threading
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from tools.repoman.template_engine import TemplateEngine
+from kit_playground.core.playground_app import PlaygroundApp
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class PlaygroundWebServer:
+    """Flask web server for Kit Playground."""
+
+    def __init__(self, playground_app: PlaygroundApp, config):
+        self.playground_app = playground_app
+        self.config = config
+        self.app = Flask(__name__)
+        CORS(self.app)  # Enable CORS for Electron renderer
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+
+        # Running processes
+        self.processes: Dict[str, subprocess.Popen] = {}
+
+        # Setup routes
+        self._setup_routes()
+        self._setup_websocket()
+
+    def _setup_routes(self):
+        """Setup Flask routes."""
+
+        @self.app.route('/api/health', methods=['GET'])
+        def health_check():
+            return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
+
+        # Template routes
+        @self.app.route('/api/templates', methods=['GET'])
+        def get_templates():
+            """Get all available templates."""
+            try:
+                templates = self.playground_app.get_all_templates()
+                return jsonify(templates)
+            except Exception as e:
+                logger.error(f"Failed to get templates: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/templates/<template_id>/code', methods=['GET'])
+        def get_template_code(template_id):
+            """Get template source code."""
+            try:
+                code = self.playground_app.get_template_code(template_id)
+                if code is None:
+                    return jsonify({'error': 'Template not found'}), 404
+                return jsonify({'code': code})
+            except Exception as e:
+                logger.error(f"Failed to get template code: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/templates/<template_id>/update', methods=['POST'])
+        def update_template_code(template_id):
+            """Update template code."""
+            try:
+                data = request.json
+                code = data.get('code', '')
+                success = self.playground_app.update_template_code(template_id, code)
+
+                if success:
+                    return jsonify({'success': True})
+                else:
+                    return jsonify({'error': 'Failed to update code'}), 500
+            except Exception as e:
+                logger.error(f"Failed to update template code: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/templates/<template_id>/build', methods=['POST'])
+        def build_template(template_id):
+            """Build a template."""
+            try:
+                # Emit build status
+                self.socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'build',
+                    'message': f'Building template: {template_id}'
+                })
+
+                # Run build in background thread
+                def run_build():
+                    asyncio.run(self._build_template_async(template_id))
+
+                thread = threading.Thread(target=run_build)
+                thread.start()
+
+                return jsonify({'success': True, 'status': 'building'})
+            except Exception as e:
+                logger.error(f"Failed to start build: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/templates/<template_id>/run', methods=['POST'])
+        def run_template(template_id):
+            """Run a template."""
+            try:
+                asyncio.run(self._run_template_async(template_id))
+                return jsonify({'success': True, 'previewUrl': f'http://localhost:8080/preview/{template_id}'})
+            except Exception as e:
+                logger.error(f"Failed to run template: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/templates/<template_id>/stop', methods=['POST'])
+        def stop_template(template_id):
+            """Stop a running template."""
+            try:
+                if template_id in self.processes:
+                    self.processes[template_id].terminate()
+                    del self.processes[template_id]
+                    self.socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Stopped template: {template_id}'
+                    })
+                return jsonify({'success': True})
+            except Exception as e:
+                logger.error(f"Failed to stop template: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/templates/<template_id>/deploy', methods=['POST'])
+        def deploy_template(template_id):
+            """Deploy a template as standalone project."""
+            try:
+                data = request.json
+                output_dir = data.get('outputPath')
+
+                if not output_dir:
+                    return jsonify({'error': 'outputPath required'}), 400
+
+                # Generate standalone project
+                playbook = self.playground_app.template_engine.generate_template(
+                    template_name=template_id,
+                    output_dir=output_dir
+                )
+
+                return jsonify({
+                    'success': True,
+                    'outputPath': output_dir,
+                    'playbook': playbook
+                })
+            except Exception as e:
+                logger.error(f"Failed to deploy template: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        # Project routes
+        @self.app.route('/api/projects', methods=['POST'])
+        def create_project():
+            """Create a new project."""
+            try:
+                data = request.json
+                name = data.get('name', 'Untitled Project')
+                output_path = data.get('outputPath', '')
+
+                project = asyncio.run(self.playground_app.new_project(name))
+
+                return jsonify({
+                    'success': True,
+                    'project': {
+                        'id': project.id,
+                        'name': project.name,
+                        'outputPath': output_path
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Failed to create project: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        # Filesystem routes
+        @self.app.route('/api/filesystem/list', methods=['GET'])
+        def list_directory():
+            """List directory contents."""
+            try:
+                path = request.args.get('path', str(Path.home()))
+                path_obj = Path(path)
+
+                if not path_obj.exists():
+                    return jsonify({'error': 'Path does not exist'}), 404
+
+                if not path_obj.is_dir():
+                    return jsonify({'error': 'Path is not a directory'}), 400
+
+                items = []
+                for item in path_obj.iterdir():
+                    try:
+                        items.append({
+                            'name': item.name,
+                            'path': str(item),
+                            'isDirectory': item.is_dir(),
+                            'size': item.stat().st_size if item.is_file() else 0,
+                            'modified': datetime.fromtimestamp(item.stat().st_mtime).isoformat()
+                        })
+                    except (OSError, PermissionError):
+                        continue  # Skip items we can't access
+
+                return jsonify(items)
+            except Exception as e:
+                logger.error(f"Failed to list directory: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/filesystem/mkdir', methods=['POST'])
+        def create_directory():
+            """Create a new directory."""
+            try:
+                data = request.json
+                path = data.get('path')
+
+                if not path:
+                    return jsonify({'error': 'path required'}), 400
+
+                Path(path).mkdir(parents=True, exist_ok=True)
+                return jsonify({'success': True})
+            except Exception as e:
+                logger.error(f"Failed to create directory: {e}")
+                return jsonify({'error': str(e)}), 500
+
+    def _setup_websocket(self):
+        """Setup WebSocket handlers for streaming logs."""
+
+        @self.socketio.on('connect')
+        def handle_connect():
+            logger.info('Client connected to WebSocket')
+            emit('connected', {'status': 'ok'})
+
+        @self.socketio.on('disconnect')
+        def handle_disconnect():
+            logger.info('Client disconnected from WebSocket')
+
+    async def _build_template_async(self, template_id: str):
+        """Build template asynchronously."""
+        try:
+            self.socketio.emit('log', {
+                'level': 'info',
+                'source': 'build',
+                'message': f'Starting build for {template_id}...'
+            })
+
+            # Use playground app to build
+            if not self.playground_app.current_project:
+                await self.playground_app.new_project(f'temp_{template_id}')
+                await self.playground_app.add_template_to_project(template_id)
+
+            success = await self.playground_app.build_project()
+
+            if success:
+                self.socketio.emit('log', {
+                    'level': 'success',
+                    'source': 'build',
+                    'message': f'Build completed successfully!'
+                })
+            else:
+                self.socketio.emit('log', {
+                    'level': 'error',
+                    'source': 'build',
+                    'message': f'Build failed!'
+                })
+
+        except Exception as e:
+            logger.error(f"Build error: {e}")
+            self.socketio.emit('log', {
+                'level': 'error',
+                'source': 'build',
+                'message': f'Build error: {str(e)}'
+            })
+
+    async def _run_template_async(self, template_id: str):
+        """Run template asynchronously."""
+        try:
+            self.socketio.emit('log', {
+                'level': 'info',
+                'source': 'runtime',
+                'message': f'Starting {template_id}...'
+            })
+
+            success = await self.playground_app.run_project()
+
+            if success:
+                self.socketio.emit('log', {
+                    'level': 'success',
+                    'source': 'runtime',
+                    'message': f'Template running!'
+                })
+        except Exception as e:
+            logger.error(f"Run error: {e}")
+            self.socketio.emit('log', {
+                'level': 'error',
+                'source': 'runtime',
+                'message': f'Run error: {str(e)}'
+            })
+
+    async def start(self, host: str = 'localhost', port: int = 8081):
+        """Start the web server."""
+        logger.info(f"Starting Kit Playground Web Server on {host}:{port}")
+        self.socketio.run(self.app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
+
+    async def stop(self):
+        """Stop the web server."""
+        # Cleanup running processes
+        for process in self.processes.values():
+            try:
+                process.terminate()
+            except:
+                pass
+        logger.info("Kit Playground Web Server stopped")
+
+
+if __name__ == '__main__':
+    # Standalone mode
+    import argparse
+    parser = argparse.ArgumentParser(description='Kit Playground Web Server')
+    parser.add_argument('--port', type=int, default=8081, help='Server port')
+    parser.add_argument('--host', default='localhost', help='Server host')
+    args = parser.parse_args()
+
+    # Create playground app
+    class Config:
+        def get(self, key, default=None):
+            return default
+
+    config = Config()
+    repo_root = Path(__file__).parent.parent.parent
+    template_engine = TemplateEngine(str(repo_root))
+
+    from kit_playground.core.playground_app import PlaygroundApp
+    app = PlaygroundApp(config)
+
+    # Create and start server
+    server = PlaygroundWebServer(app, config)
+    asyncio.run(server.start(args.host, args.port))
