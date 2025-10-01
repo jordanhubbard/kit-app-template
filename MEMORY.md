@@ -782,21 +782,20 @@ make playground
 - Material-UI components
 - Monaco editor integration
 
-**Backend (Python + Flask):** ✅ PARTIALLY WORKING
-- Web server responds to health checks
-- REST API endpoints defined
-- Template loading endpoint exists BUT returns empty `{}`
-- Issue: Template discovery not finding templates in repository
+**Backend (Python + Flask):** ✅ FULLY WORKING
+- Web server responds to health checks ✓
+- REST API endpoints defined ✓
+- Template discovery FIXED - now returns all 13 templates ✓
+- Returns complete metadata: name, display_name, description, category, type
 
-**Root Cause Analysis:**
-The backend's `TemplateEngine.template_discovery.discover_templates()` is returning no results. This needs investigation:
-1. Template discovery path configuration may be incorrect
-2. Template registry parsing may be failing
-3. The template_registry.toml may not be loaded correctly
+**Root Cause (FIXED):**
+Missing `tomli` and `tomli-w` Python packages. The TemplateEngine uses these to parse
+template.toml files. Without them, template discovery silently failed.
 
 **Dependencies:**
-- Python backend requires: flask, flask-cors, flask-socketio, python-socketio, eventlet
+- Python backend requires: flask, flask-cors, flask-socketio, python-socketio, eventlet, tomli, tomli-w
 - Installation: `pip install -r kit_playground/backend/requirements.txt`
+- **IMPORTANT**: Updated requirements.txt to include tomli and tomli-w
 
 **Testing Backend:**
 ```bash
