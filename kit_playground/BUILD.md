@@ -2,11 +2,25 @@
 
 ## Overview
 
-Kit Playground is an Electron application that builds **natively** on Linux (x86_64 and ARM64) and Windows. Docker is **NOT** required - all dependencies are installed via npm and pip. electron-builder automatically detects and builds for the host architecture.
+Kit Playground is an Electron application with two build modes:
+
+1. **Container builds (Recommended)**: Build in Docker container - no Node.js required on host
+2. **Native builds**: Build directly on host - requires Node.js/npm installation
+
+Both modes support Linux x86_64 and ARM64 (electron-builder auto-detects architecture).
 
 ## System Requirements
 
-### Linux (x86_64 or ARM64)
+### Container Builds (Recommended)
+**Host requirements:**
+- Docker
+- Python 3.8+
+- Git
+
+**No Node.js needed on host!** All Node.js dependencies are in the container.
+
+### Native Builds
+**Host requirements:**
 - Node.js 16+ and npm 7+
 - Python 3.8+
 - Git
@@ -14,7 +28,7 @@ Kit Playground is an Electron application that builds **natively** on Linux (x86
 - FUSE 2 (for running AppImage)
 - GTK dependencies: `libgtk-3-0` and `libnotify4`
 
-### Windows
+### Windows Native Builds
 - Node.js 16+ and npm 7+
 - Python 3.8+
 - Git
@@ -61,8 +75,28 @@ This will:
 
 ## Building Production Distributable
 
-### Build for Linux (x86_64 or ARM64)
+### Method 1: Container Build (Recommended - No Node.js on Host)
 
+**From repo root:**
+```bash
+# Build in container and launch
+make playground
+
+# Or just build without launching
+make playground-build
+```
+
+This creates: `kit_playground/ui/dist/Kit Playground-1.0.0.AppImage` (for your architecture)
+
+**Benefits:**
+- ✅ No Node.js installation needed on host
+- ✅ Consistent build environment
+- ✅ Works on both x86_64 and ARM64
+- ✅ Isolated dependencies
+
+### Method 2: Native Build (Requires Node.js)
+
+**Linux:**
 ```bash
 cd kit_playground
 
@@ -71,32 +105,24 @@ cd kit_playground
 
 # Option 2: Use Makefile (from repo root)
 cd ..
-make playground-build
+make playground-build-native
 
 # Option 3: Manual steps
-cd ui
+cd kit_playground/ui
 npm install --legacy-peer-deps
 npm run build
 npm run dist
 ```
 
-This creates: `ui/dist/Kit Playground-1.0.0.AppImage` (for your architecture)
-
-### Build for Windows
-
-```bash
+**Windows:**
+```cmd
 cd kit_playground
-
-# Use Windows build script
 build.bat
 ```
 
-This creates: `ui\dist\Kit Playground Setup 1.0.0.exe`
-
-**Important**:
-- Linux builds must be done on Linux (x86_64 or ARM64 auto-detected)
-- Windows builds must be done on Windows
-- Cross-platform builds (Linux→Windows or Windows→Linux) are **NOT** supported
+**Benefits:**
+- ✅ Faster builds (no Docker overhead)
+- ✅ Direct access to system resources
 
 ---
 
@@ -342,11 +368,20 @@ jobs:
 
 ## Summary
 
-**Does it need Docker?** ❌ No - native builds only
-**Supported platforms?** ✅ Linux (x86_64, ARM64), Windows (x86_64)
-**Cross-compilation?** ❌ No - build on target platform
-**How are dependencies installed?** Via `npm install` (public registry) and `pip install` (PyPI)
-**Build command?** `./build.sh` (Linux) or `build.bat` (Windows)
-**Output?** `ui/dist/Kit Playground-1.0.0.AppImage` (~350MB) or `.exe` (Windows)
+**Recommended: Container Builds**
+- **Requires on host:** Docker, Python, Git (NO Node.js needed!)
+- **Command:** `make playground` or `make playground-build`
+- **Works on:** Linux x86_64, Linux ARM64
+- **Output:** `ui/dist/Kit Playground-1.0.0.AppImage` (~350MB)
 
-The build process is **completely standalone** and does not require any NVIDIA-internal infrastructure or Docker containers!
+**Alternative: Native Builds**
+- **Requires on host:** Node.js, npm, Python, Git
+- **Command:** `./build.sh` (Linux) or `build.bat` (Windows)
+- **Works on:** Linux x86_64, Linux ARM64, Windows x86_64
+- **Output:** AppImage (Linux) or `.exe` (Windows)
+
+**Key Points:**
+- ✅ Container builds = no Node.js on host
+- ✅ Both modes support x86_64 and ARM64
+- ❌ No cross-platform builds (Linux→Windows)
+- ✅ All dependencies from public registries (npm, PyPI)

@@ -61,11 +61,13 @@ all: check-deps
 	@echo "  make template-new       - Create new template (CLI)"
 	@echo "  make test              - Run test suite"
 	@echo ""
-	@echo "$(BLUE)Kit Playground:$(NC)"
-	@echo "  make playground                    - Build and launch playground (Linux)"
-	@echo "  make playground-build              - Build distributable (Linux AppImage)"
-	@echo "  make playground-dev                - Run in development mode"
-	@echo "  make playground-clean              - Remove build artifacts"
+	@echo "$(BLUE)Kit Playground (Container-based):$(NC)"
+	@echo "  make playground                    - Build in container and launch"
+	@echo "  make playground-build              - Build distributable in container (no Node.js needed on host)"
+	@echo "  make playground-build-native       - Build natively (requires Node.js on host)"
+	@echo "  make playground-dev                - Run in development mode (requires Node.js on host)"
+	@echo "  make playground-shell              - Open shell in container for debugging"
+	@echo "  make playground-clean              - Remove build artifacts and Docker image"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
 	@echo "  make deps              - Check all dependencies"
@@ -107,11 +109,11 @@ check-deps deps:
 		echo "$(GREEN)✓ Python is installed$(NC) ($$PYTHON_VERSION)"; \
 	fi
 
-	@# Check Node.js
+	@# Check Node.js (optional - only needed for native builds or dev mode)
 	@if [ -z "$(HAS_NODE)" ]; then \
-		echo "$(RED)✗ Node.js is not installed$(NC)"; \
-		echo "  Run: make install-npm"; \
-		EXIT_CODE=1; \
+		echo "$(YELLOW)⚠ Node.js is not installed (optional - only needed for native builds/dev mode)$(NC)"; \
+		echo "  Container builds work without Node.js on host"; \
+		echo "  To install: make install-npm"; \
 	else \
 		NODE_VERSION=$$(node --version | cut -d'v' -f2); \
 		NODE_MAJOR=$$(echo $$NODE_VERSION | cut -d'.' -f1); \
@@ -123,14 +125,23 @@ check-deps deps:
 		fi; \
 	fi
 
-	@# Check npm
+	@# Check npm (optional - only needed for native builds or dev mode)
 	@if [ -z "$(HAS_NPM)" ]; then \
-		echo "$(RED)✗ npm is not installed$(NC)"; \
-		echo "  Run: make install-npm"; \
-		EXIT_CODE=1; \
+		echo "$(YELLOW)⚠ npm is not installed (optional - only needed for native builds/dev mode)$(NC)"; \
+		echo "  Container builds work without npm on host"; \
 	else \
 		NPM_VERSION=$$(npm --version); \
 		echo "$(GREEN)✓ npm is installed$(NC) (v$$NPM_VERSION)"; \
+	fi
+
+	@# Check Docker (required for container builds)
+	@if command -v docker >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ Docker is installed$(NC)"; \
+		docker --version; \
+	else \
+		echo "$(YELLOW)⚠ Docker is not installed$(NC)"; \
+		echo "  Required for: make playground (container builds)"; \
+		echo "  Install: https://docs.docker.com/get-docker/"; \
 	fi
 
 	@# Check for NVIDIA GPU (optional but recommended)
@@ -143,10 +154,11 @@ check-deps deps:
 
 	@echo ""
 	@if [ -n "$$EXIT_CODE" ]; then \
-		echo "$(RED)Some dependencies are missing. Run 'make install-deps' to install them.$(NC)"; \
+		echo "$(RED)Some required dependencies are missing. Run 'make install-deps' to install them.$(NC)"; \
 		exit 1; \
 	else \
-		echo "$(GREEN)All required dependencies are installed!$(NC)"; \
+		echo "$(GREEN)All core dependencies are available!$(NC)"; \
+		echo "$(BLUE)Note: Node.js and Docker are optional depending on your workflow$(NC)"; \
 	fi
 
 # Install all missing dependencies
@@ -229,34 +241,31 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Native Kit Playground builds (works on Linux x86_64 and ARM64)
-.PHONY: playground-deps-check
-playground-deps-check:
-	@echo "$(BLUE)Checking Kit Playground dependencies...$(NC)"
-	@if [ -z "$(HAS_NODE)" ]; then \
-		echo "$(RED)✗ Node.js is required$(NC)"; \
-		echo "  Run: make install-npm"; \
+# Container-based Kit Playground builds (no Node.js required on host)
+.PHONY: playground-docker-check
+playground-docker-check:
+	@which docker >/dev/null 2>&1 || { \
+		echo "$(RED)Docker is not installed or not in PATH$(NC)"; \
+		echo "Please install Docker: https://docs.docker.com/get-docker/"; \
 		exit 1; \
-	fi
-	@if [ -z "$(HAS_NPM)" ]; then \
-		echo "$(RED)✗ npm is required$(NC)"; \
-		echo "  Run: make install-npm"; \
-		exit 1; \
-	fi
-	@if [ -z "$(HAS_PYTHON)" ]; then \
-		echo "$(RED)✗ Python is required$(NC)"; \
-		echo "  Run: make install-python"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ All dependencies available$(NC)"
+	}
+	@echo "$(GREEN)✓ Docker is installed$(NC)"
 
-# Build distributable for Linux (auto-detects x86_64 or ARM64)
+.PHONY: playground-docker-image
+playground-docker-image: playground-docker-check
+	@echo "$(BLUE)Building Kit Playground Docker image for $(UNAME_M)...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && docker build -t kit-playground:latest .
+	@echo "$(GREEN)Docker image built successfully!$(NC)"
+
+# Build distributable in container (auto-detects x86_64 or ARM64)
 .PHONY: playground-build
-playground-build: playground-deps-check
-	@echo "$(BLUE)Building Kit Playground for Linux ($(UNAME_M))...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --linux
+playground-build: playground-docker-image
+	@echo "$(BLUE)Building Kit Playground for Linux ($(UNAME_M)) in container...$(NC)"
+	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
+		kit-playground:latest \
+		sh -c "cd ui && npm run dist"
 	@echo "$(GREEN)Build complete!$(NC)"
 	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
 
@@ -273,13 +282,42 @@ playground: playground-build
 		exit 1; \
 	fi
 
-# Development mode (hot reload)
+# Development mode (requires Node.js on host for hot reload)
 .PHONY: playground-dev
-playground-dev: playground-deps-check
+playground-dev:
 	@echo "$(BLUE)Starting Kit Playground in development mode...$(NC)"
+	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ Node.js and npm are required for development mode$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
+	fi
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
 	@cd $(KIT_PLAYGROUND_DIR) && pip3 install -r backend/requirements.txt
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dev
+
+# Native build (requires Node.js on host)
+.PHONY: playground-build-native
+playground-build-native:
+	@echo "$(BLUE)Building Kit Playground natively for Linux ($(UNAME_M))...$(NC)"
+	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ Node.js and npm are required for native builds$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
+	fi
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist
+	@echo "$(GREEN)Build complete!$(NC)"
+	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
+
+# Open shell in container for debugging
+.PHONY: playground-shell
+playground-shell: playground-docker-image
+	@echo "$(BLUE)Starting interactive shell in Kit Playground container...$(NC)"
+	@docker run --rm -it \
+		-v $(KIT_PLAYGROUND_DIR):/app \
+		kit-playground:latest \
+		/bin/bash
 
 # Clean build artifacts
 .PHONY: playground-clean
@@ -288,6 +326,7 @@ playground-clean:
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
+	@docker rmi kit-playground:latest 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete$(NC)"
 
 # Create new template (CLI)
