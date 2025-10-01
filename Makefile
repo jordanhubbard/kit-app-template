@@ -254,7 +254,7 @@ playground-docker-check:
 .PHONY: playground-docker-image
 playground-docker-image: playground-docker-check
 	@echo "$(BLUE)Building Kit Playground Docker image for $(UNAME_M)...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && docker build -t kit-playground:latest .
+	@docker build -f $(KIT_PLAYGROUND_DIR)/Dockerfile -t kit-playground:latest .
 	@echo "$(GREEN)Docker image built successfully!$(NC)"
 
 # Build distributable in container (auto-detects x86_64 or ARM64)
@@ -326,6 +326,8 @@ playground-clean:
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/electron
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/backend
 	@docker rmi kit-playground:latest 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete$(NC)"
 

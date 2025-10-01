@@ -8,12 +8,15 @@
     "start:react": "react-scripts start",
     "start:electron": "electron .",
     "build": "react-scripts build",
+    "prebuild:electron": "npm run copy-electron-files",
     "build:electron": "npm run build && electron-builder",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "wait-on http://localhost:3000 && nodemon --exec electron .",
+    "copy-electron-files": "mkdir -p electron backend && cp -r ../electron/* electron/ && cp -r ../backend/* backend/",
+    "predist": "npm run copy-electron-files",
     "dist": "npm run build && electron-builder --linux --publish=never",
     "build:native": "python3 ../cross_platform_builder.py"
   },
@@ -30,28 +33,14 @@
       "backend/**/*",
       "package.json"
     ],
-    "extraFiles": [
-      {
-        "from": "../electron",
-        "to": "electron",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../backend",
-        "to": "backend",
-        "filter": ["**/*"]
-      }
-    ],
     "extraResources": [
       {
         "from": "../../tools",
-        "to": "tools",
-        "filter": ["**/*"]
+        "to": "tools"
       },
       {
         "from": "../../templates",
-        "to": "templates",
-        "filter": ["**/*"]
+        "to": "templates"
       }
     ],
     "extraMetadata": {

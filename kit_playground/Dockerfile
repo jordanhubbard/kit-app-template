@@ -1,5 +1,6 @@
 # Kit Playground - Native Linux Build Container
 # Builds for the container's architecture (x86_64 or ARM64)
+# Build context should be the repository root: docker build -f kit_playground/Dockerfile .
 FROM node:18-bullseye
 
 # Install Python and build dependencies
@@ -22,16 +23,20 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy package files for caching
-COPY ui/package*.json ui/
+COPY kit_playground/ui/package*.json ui/
 
 # Install Node.js dependencies
 RUN cd ui && npm install --legacy-peer-deps
 
 # Copy application source
-COPY electron/ electron/
-COPY backend/ backend/
-COPY ui/ ui/
-COPY core/ core/
+COPY kit_playground/electron/ electron/
+COPY kit_playground/backend/ backend/
+COPY kit_playground/ui/ ui/
+COPY kit_playground/core/ core/
+
+# Copy tools and templates from repository root
+COPY tools/ tools/
+COPY templates/ templates/
 
 # Install Python dependencies
 RUN pip3 install -r backend/requirements.txt

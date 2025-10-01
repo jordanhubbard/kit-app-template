@@ -36,3 +36,10 @@ deps/**/user.toml
 
 # Streaming EventTrace
 *.etli
+
+# Kit Playground build artifacts
+kit_playground/ui/dist
+kit_playground/ui/build
+kit_playground/ui/node_modules
+kit_playground/ui/electron
+kit_playground/ui/backend

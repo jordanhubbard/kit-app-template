@@ -1,0 +1,80 @@
+# Docker ignore for Kit Playground build (context: repository root)
+
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Build outputs (we'll build in container)
+_build
+_compiler
+_repo
+kit_playground/ui/node_modules
+kit_playground/ui/build
+kit_playground/ui/dist
+kit_playground/ui/electron
+kit_playground/ui/backend
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (not needed for build)
+*.md
+!kit_playground/BUILD.md
+!kit_playground/README.md
+README
+CHANGELOG
+LICENSE
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__
+coverage
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Cache directories
+.cache
+cache
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Only include what's needed for Kit Playground build
+# The Dockerfile will explicitly COPY what it needs:
+# - kit_playground/ directory
+# - tools/ directory
+# - templates/ directory
