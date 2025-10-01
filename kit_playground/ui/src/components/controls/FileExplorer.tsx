@@ -3,7 +3,7 @@
  * Directory browser with path selector for choosing build output locations
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -25,7 +25,6 @@ import {
 } from '@mui/material';
 import {
   Folder as FolderIcon,
-  FolderOpen as FolderOpenIcon,
   InsertDriveFile as FileIcon,
   Home as HomeIcon,
   ArrowUpward as UpIcon,
@@ -62,35 +61,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
 
   // Load directory contents
-  useEffect(() => {
-    if (currentPath) {
-      loadDirectory(currentPath);
-    }
-  }, [currentPath]);
-
-  // Initialize with home directory
-  useEffect(() => {
-    if (!currentPath) {
-      loadHomeDirectory();
-    }
-  }, []);
-
-  const loadHomeDirectory = async () => {
-    try {
-      if (window.electronAPI) {
-        const homePath = await window.electronAPI.getHomePath();
-        setCurrentPath(homePath);
-      } else {
-        // Fallback for web mode
-        setCurrentPath('/home');
-      }
-    } catch (err) {
-      console.error('Failed to get home directory:', err);
-      setCurrentPath('/');
-    }
-  };
-
-  const loadDirectory = async (path: string) => {
+  const loadDirectory = useCallback(async (path: string) => {
     setLoading(true);
     setError(null);
 
@@ -126,6 +97,35 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       setItems([]);
     } finally {
       setLoading(false);
+    }
+  }, [showFiles]);
+
+  useEffect(() => {
+    if (currentPath) {
+      loadDirectory(currentPath);
+    }
+  }, [currentPath, loadDirectory]);
+
+  // Initialize with home directory - only runs once on mount
+  useEffect(() => {
+    if (!currentPath) {
+      loadHomeDirectory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadHomeDirectory = async () => {
+    try {
+      if (window.electronAPI) {
+        const homePath = await window.electronAPI.getHomePath();
+        setCurrentPath(homePath);
+      } else {
+        // Fallback for web mode
+        setCurrentPath('/home');
+      }
+    } catch (err) {
+      console.error('Failed to get home directory:', err);
+      setCurrentPath('/');
     }
   };
 

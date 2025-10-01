@@ -317,6 +317,28 @@ playground-build: playground-docker-image
 .PHONY: playground
 playground: playground-build
 	@echo "$(BLUE)Launching Kit Playground...$(NC)"
+	@# Check for X server / display
+	@if [ -z "$$DISPLAY" ]; then \
+		echo "$(RED)Error: No X server detected (DISPLAY not set)$(NC)"; \
+		echo ""; \
+		echo "Kit Playground requires a graphical environment to run."; \
+		echo ""; \
+		echo "$(YELLOW)Solutions:$(NC)"; \
+		echo "  1. If using SSH: Connect with X11 forwarding enabled"; \
+		echo "     ssh -X user@host"; \
+		echo ""; \
+		echo "  2. If on a headless system: Set up X11 forwarding or VNC"; \
+		echo "     - Install and configure x11vnc or TigerVNC"; \
+		echo "     - Connect via VNC client"; \
+		echo ""; \
+		echo "  3. If on local system: Start your desktop environment"; \
+		echo "     export DISPLAY=:0"; \
+		echo ""; \
+		echo "  4. Use X virtual framebuffer (headless testing):"; \
+		echo "     xvfb-run make playground"; \
+		echo ""; \
+		exit 1; \
+	fi
 	@APPIMAGE=$$(find $(KIT_PLAYGROUND_DIR)/ui/dist -name "*.AppImage" -type f | head -1); \
 	if [ -n "$$APPIMAGE" ]; then \
 		"$$APPIMAGE"; \

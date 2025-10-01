@@ -7,8 +7,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Chip,
-  IconButton,
   Tooltip,
   CircularProgress,
 } from '@mui/material';
@@ -20,7 +18,6 @@ import {
   Sync as SyncIcon,
   Cloud as CloudIcon,
   CloudDone as CloudDoneIcon,
-  BugReport as BugIcon,
   Speed as PerformanceIcon,
 } from '@mui/icons-material';
 import { useAppSelector } from '../../hooks/redux';
@@ -39,7 +36,7 @@ const StatusBar: React.FC<StatusBarProps> = ({ className }) => {
   const [buildStatus, setBuildStatus] = useState<'idle' | 'building' | 'success' | 'error'>('idle');
   const [errorCount, setErrorCount] = useState(0);
   const [warningCount, setWarningCount] = useState(0);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connected');
+  const [connectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connected');
 
   // Monitor system resources (mock for now, would connect to backend)
   useEffect(() => {

@@ -21,11 +21,9 @@ import {
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
-  Add as AddIcon,
   Link as LinkIcon,
   LinkOff as UnlinkIcon,
   AutoFixHigh as AutoConnectIcon,
-  Info as InfoIcon,
 } from '@mui/icons-material';
 
 interface Template {

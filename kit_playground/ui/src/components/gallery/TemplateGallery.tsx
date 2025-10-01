@@ -8,7 +8,6 @@ import {
   Box,
   Grid,
   Card,
-  CardMedia,
   CardContent,
   CardActions,
   Typography,

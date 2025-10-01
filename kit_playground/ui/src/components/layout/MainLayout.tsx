@@ -6,7 +6,6 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Box, IconButton, Tooltip, Tab, Tabs, Paper } from '@mui/material';
 import {
   ViewModule as SplitViewIcon,
-  Code as CodeIcon,
   PlayArrow as PlayIcon,
   Stop as StopIcon,
   Build as BuildIcon,
@@ -35,7 +34,7 @@ type ViewMode = 'gallery' | 'browser' | 'editor' | 'connections' | 'split';
 
 const MainLayout: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { activeView, sidebarVisible } = useAppSelector(state => state.ui);
+  const { activeView } = useAppSelector(state => state.ui);
   const { currentProject, isBuilding, isRunning } = useAppSelector(state => state.project);
 
   const [viewMode, setViewMode] = useState<ViewMode>('split');
@@ -48,15 +47,8 @@ const MainLayout: React.FC = () => {
 
   const previewRef = useRef<any>(null);
 
-  // Handle template selection from browser/gallery
-  const handleTemplateSelect = useCallback((templateId: string) => {
-    setSelectedTemplate(templateId);
-    // Load template code and preview
-    loadTemplate(templateId);
-  }, []);
-
   // Load template for editing and preview
-  const loadTemplate = async (templateId: string) => {
+  const loadTemplate = useCallback(async (templateId: string) => {
     try {
       // Fetch template code
       const response = await fetch(`/api/templates/${templateId}/code`);
@@ -70,19 +62,17 @@ const MainLayout: React.FC = () => {
     } catch (error) {
       console.error('Failed to load template:', error);
     }
-  };
-
-  // Handle code changes with debounced preview update
-  const handleCodeChange = useCallback((newCode: string) => {
-    setEditorContent(newCode);
-    // Trigger hot reload if enabled
-    if (currentProject?.hotReload) {
-      updatePreview(newCode);
-    }
   }, [currentProject]);
 
+  // Handle template selection from browser/gallery
+  const handleTemplateSelect = useCallback((templateId: string) => {
+    setSelectedTemplate(templateId);
+    // Load template code and preview
+    loadTemplate(templateId);
+  }, [loadTemplate]);
+
   // Update preview with new code
-  const updatePreview = async (code: string) => {
+  const updatePreview = useCallback(async (code: string) => {
     if (!selectedTemplate) return;
 
     try {
@@ -99,7 +89,16 @@ const MainLayout: React.FC = () => {
     } catch (error) {
       console.error('Failed to update preview:', error);
     }
-  };
+  }, [selectedTemplate]);
+
+  // Handle code changes with debounced preview update
+  const handleCodeChange = useCallback((newCode: string) => {
+    setEditorContent(newCode);
+    // Trigger hot reload if enabled
+    if (currentProject?.hotReload) {
+      updatePreview(newCode);
+    }
+  }, [currentProject, updatePreview]);
 
   // Build current project/template
   const handleBuild = async () => {

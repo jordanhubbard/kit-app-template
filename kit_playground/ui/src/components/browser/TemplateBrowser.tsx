@@ -34,21 +34,15 @@ import {
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  FilterList as FilterIcon,
   CloudDownload as DownloadIcon,
   Visibility as PreviewIcon,
-  ContentCopy as CopyIcon,
-  Edit as EditIcon,
   Star as StarIcon,
-  Code as CodeIcon,
-  PlayArrow as PlayIcon,
-  Info as InfoIcon,
   GitHub as GitHubIcon,
   TrendingUp as TrendingIcon,
   NewReleases as NewIcon,
   Favorite as FavoriteIcon,
 } from '@mui/icons-material';
-import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { useAppDispatch } from '../../hooks/redux';
 import { fetchMarketplaceTemplates, downloadTemplate } from '../../services/marketplace';
 import './TemplateBrowser.css';
 
@@ -94,7 +88,6 @@ const TemplateBrowser: React.FC<TemplateBrowserProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const [templates, setTemplates] = useState<MarketplaceTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
@@ -109,14 +102,11 @@ const TemplateBrowser: React.FC<TemplateBrowserProps> = ({
   }, []);
 
   const loadTemplates = async () => {
-    setLoading(true);
     try {
       const data = await fetchMarketplaceTemplates();
       setTemplates(data);
     } catch (error) {
       console.error('Failed to load templates:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

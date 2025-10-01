@@ -13,11 +13,9 @@ import {
   ZoomIn as ZoomInIcon,
   ZoomOut as ZoomOutIcon,
   FitScreen as FitScreenIcon,
-  DevicesOther as DeviceIcon,
   PhoneIphone as PhoneIcon,
   Tablet as TabletIcon,
   DesktopWindows as DesktopIcon,
-  Tv as TvIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
 
