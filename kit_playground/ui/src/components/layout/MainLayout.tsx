@@ -246,6 +246,7 @@ const MainLayout: React.FC = () => {
               borderRight: '5px solid transparent',
               cursor: 'col-resize'
             }}
+            {...({} as any)}
           >
             {/* Left Pane - Editor/Gallery */}
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
