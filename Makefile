@@ -74,6 +74,7 @@ all: check-deps
 	@echo "  make install-deps      - Install missing dependencies"
 	@echo "  make install-npm       - Install Node.js and npm"
 	@echo "  make install-python    - Install Python"
+	@echo "  make install-fuse      - Install FUSE (required for AppImage)"
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
 	@echo "  make clean             - Clean build artifacts"
@@ -144,6 +145,16 @@ check-deps deps:
 		echo "  Install: https://docs.docker.com/get-docker/"; \
 	fi
 
+	@# Check for FUSE (required for running AppImages)
+	@if ldconfig -p | grep -q libfuse.so.2; then \
+		echo "$(GREEN)✓ FUSE is installed$(NC) (required for AppImage)"; \
+	else \
+		echo "$(RED)✗ FUSE is not installed$(NC)"; \
+		echo "  Required for: Running AppImage executables"; \
+		echo "  Run: make install-fuse"; \
+		EXIT_CODE=1; \
+	fi
+
 	@# Check for NVIDIA GPU (optional but recommended)
 	@if command -v nvidia-smi >/dev/null 2>&1; then \
 		echo "$(GREEN)✓ NVIDIA GPU detected$(NC)"; \
@@ -170,6 +181,9 @@ install-deps:
 	fi
 	@if [ -z "$(HAS_NPM)" ] || [ -z "$(HAS_NODE)" ]; then \
 		$(MAKE) install-npm; \
+	fi
+	@if ! ldconfig -p | grep -q libfuse.so.2; then \
+		$(MAKE) install-fuse; \
 	fi
 	@echo "$(GREEN)Dependencies installation complete!$(NC)"
 
@@ -235,6 +249,32 @@ ifeq ($(OS),windows)
 endif
 	@echo "$(GREEN)Python installed successfully!$(NC)"
 
+# Install FUSE (required for AppImage)
+.PHONY: install-fuse
+install-fuse:
+	@echo "$(BLUE)Installing FUSE library...$(NC)"
+ifeq ($(OS),linux)
+	@sudo apt-get update && sudo apt-get install -y libfuse2 || \
+	 sudo yum install -y fuse-libs || \
+	 sudo dnf install -y fuse-libs || \
+	 sudo pacman -S --noconfirm fuse2
+	@echo "$(GREEN)FUSE installed successfully!$(NC)"
+	@echo "$(YELLOW)Note: You may need to add yourself to the 'fuse' group:$(NC)"
+	@echo "  sudo usermod -a -G fuse $$USER"
+	@echo "  Then log out and log back in for changes to take effect"
+endif
+ifeq ($(OS),macos)
+	@brew install --cask macfuse || { \
+		echo "$(RED)Failed to install macFUSE via Homebrew$(NC)"; \
+		echo "Please install manually from: https://osxfuse.github.io/"; \
+		exit 1; \
+	}
+	@echo "$(GREEN)macFUSE installed successfully!$(NC)"
+endif
+ifeq ($(OS),windows)
+	@echo "$(YELLOW)FUSE is not required on Windows$(NC)"
+endif
+
 # Build Kit applications
 .PHONY: build
 build: check-deps
@@ -266,6 +306,10 @@ playground-build: playground-docker-image
 		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
 		kit-playground:latest \
 		sh -c "cd ui && npm run dist"
+	@# Fix ownership of files created by Docker (they're owned by root)
+	@echo "$(BLUE)Fixing file permissions...$(NC)"
+	@sudo chown -R $(USER):$(USER) $(KIT_PLAYGROUND_DIR)/ui/dist 2>/dev/null || true
+	@chmod +x $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || true
 	@echo "$(GREEN)Build complete!$(NC)"
 	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
 
@@ -275,7 +319,6 @@ playground: playground-build
 	@echo "$(BLUE)Launching Kit Playground...$(NC)"
 	@APPIMAGE=$$(find $(KIT_PLAYGROUND_DIR)/ui/dist -name "*.AppImage" -type f | head -1); \
 	if [ -n "$$APPIMAGE" ]; then \
-		chmod +x "$$APPIMAGE"; \
 		"$$APPIMAGE"; \
 	else \
 		echo "$(RED)Error: AppImage not found in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"; \
