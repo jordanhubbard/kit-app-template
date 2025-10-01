@@ -62,9 +62,13 @@ all: check-deps
 	@echo "  make test              - Run test suite"
 	@echo ""
 	@echo "$(BLUE)Kit Playground (Docker-based):$(NC)"
-	@echo "  make playground         - Build and launch playground"
-	@echo "  make playground-shell   - Open shell in container for debugging"
-	@echo "  make playground-clean   - Remove Docker image and build artifacts"
+	@echo "  make playground                    - Build and launch playground (Linux)"
+	@echo "  make playground-build-windows      - Build for Windows using Docker"
+	@echo "  make playground-build-all          - Build for all platforms using Docker"
+	@echo "  make playground-build-native       - Build natively (current platform)"
+	@echo "  make playground-build-native-windows - Build for Windows natively"
+	@echo "  make playground-shell              - Open shell in container for debugging"
+	@echo "  make playground-clean              - Remove Docker image and build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
 	@echo "  make deps              - Check all dependencies"
@@ -263,6 +267,40 @@ playground: playground-docker-image
 		echo "$(RED)Error: AppImage not found in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"; \
 		exit 1; \
 	fi
+
+# Cross-platform build targets
+.PHONY: playground-build-windows
+playground-build-windows: playground-docker-image
+	@echo "$(BLUE)Building Kit Playground for Windows...$(NC)"
+	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
+		kit-playground:latest \
+		python3 cross_platform_builder.py --target windows
+	@echo "$(GREEN)Windows build complete!$(NC)"
+
+.PHONY: playground-build-all
+playground-build-all: playground-docker-image
+	@echo "$(BLUE)Building Kit Playground for all platforms...$(NC)"
+	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
+	@docker run --rm \
+		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
+		kit-playground:latest \
+		python3 cross_platform_builder.py --target all
+	@echo "$(GREEN)Multi-platform build complete!$(NC)"
+
+# Native cross-platform build (no Docker)
+.PHONY: playground-build-native
+playground-build-native: check-deps
+	@echo "$(BLUE)Building Kit Playground natively...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && python3 cross_platform_builder.py
+	@echo "$(GREEN)Native build complete!$(NC)"
+
+.PHONY: playground-build-native-windows
+playground-build-native-windows: check-deps
+	@echo "$(BLUE)Building Kit Playground for Windows natively...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && python3 cross_platform_builder.py --target windows
+	@echo "$(GREEN)Native Windows build complete!$(NC)"
 
 .PHONY: playground-shell
 playground-shell: playground-docker-image

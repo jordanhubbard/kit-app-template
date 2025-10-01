@@ -15,7 +15,14 @@
     "dev:react": "cross-env BROWSER=none react-scripts start",
     "dev:electron": "wait-on http://localhost:3000 && nodemon --exec electron .",
     "dist": "npm run build && electron-builder --publish=never",
-    "dist:all": "npm run build && electron-builder -mwl"
+    "dist:all": "npm run build && electron-builder -mwl",
+    "dist:windows": "npm run build && electron-builder --win --publish=never",
+    "dist:linux": "npm run build && electron-builder --linux --publish=never",
+    "dist:macos": "npm run build && electron-builder --mac --publish=never",
+    "build:cross-platform": "python3 ../cross_platform_builder.py",
+    "build:windows": "python3 ../cross_platform_builder.py --target windows",
+    "build:linux": "python3 ../cross_platform_builder.py --target linux",
+    "build:docker": "python3 ../cross_platform_builder.py --docker"
   },
   "build": {
     "appId": "com.nvidia.kit-playground",
