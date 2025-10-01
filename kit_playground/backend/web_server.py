@@ -311,12 +311,12 @@ class PlaygroundWebServer:
                 'message': f'Run error: {str(e)}'
             })
 
-    async def start(self, host: str = 'localhost', port: int = 8081):
+    def start(self, host: str = 'localhost', port: int = 8081):
         """Start the web server."""
         logger.info(f"Starting Kit Playground Web Server on {host}:{port}")
         self.socketio.run(self.app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
 
-    async def stop(self):
+    def stop(self):
         """Stop the web server."""
         # Cleanup running processes
         for process in self.processes.values():
@@ -347,6 +347,6 @@ if __name__ == '__main__':
     from kit_playground.core.playground_app import PlaygroundApp
     app = PlaygroundApp(config)
 
-    # Create and start server
+    # Create and start server (blocking call)
     server = PlaygroundWebServer(app, config)
-    asyncio.run(server.start(args.host, args.port))
+    server.start(args.host, args.port)
