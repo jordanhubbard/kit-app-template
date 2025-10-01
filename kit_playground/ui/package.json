@@ -21,23 +21,45 @@
     "appId": "com.nvidia.kit-playground",
     "productName": "Kit Playground",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "assets"
     },
     "files": [
-      "../electron/**/*",
       "build/**/*",
-      "../backend/**/*",
-      "node_modules/**/*"
+      "electron/**/*",
+      "backend/**/*",
+      "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "../electron",
+        "to": "electron",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      }
     ],
     "extraResources": [
       {
         "from": "../../tools",
-        "to": "tools"
+        "to": "tools",
+        "filter": ["**/*"]
       },
       {
         "from": "../../templates",
-        "to": "templates"
+        "to": "templates",
+        "filter": ["**/*"]
       }
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "backend/**/*"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
