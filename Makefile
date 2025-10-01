@@ -57,23 +57,14 @@ all: check-deps
 	@echo ""
 	@echo "$(BLUE)Core Commands:$(NC)"
 	@echo "  make build              - Build Kit applications"
-	@echo "  make playground         - Launch Kit Playground (visual IDE)"
+	@echo "  make playground         - Build and launch Kit Playground (Docker)"
 	@echo "  make template-new       - Create new template (CLI)"
 	@echo "  make test              - Run test suite"
 	@echo ""
-	@echo "$(BLUE)Kit Playground (Local):$(NC)"
-	@echo "  make playground-install - Install Kit Playground dependencies"
-	@echo "  make playground-dev     - Run Kit Playground in development mode"
-	@echo "  make playground-build   - Build Kit Playground for distribution"
-	@echo "  make playground-dist    - Create platform installers"
-	@echo ""
-	@echo "$(BLUE)Kit Playground (Docker - No Node.js required):$(NC)"
-	@echo "  make playground-docker-build     - Build in Docker container"
-	@echo "  make playground-docker-dist      - Create distribution in Docker"
-	@echo "  make playground-docker-dist-linux - Create Linux AppImage"
-	@echo "  make playground-docker-dist-all   - Build for all platforms"
-	@echo "  make playground-docker-shell     - Open shell in container"
-	@echo "  make playground-docker-clean     - Remove Docker image"
+	@echo "$(BLUE)Kit Playground (Docker-based):$(NC)"
+	@echo "  make playground         - Build and launch playground"
+	@echo "  make playground-shell   - Open shell in container for debugging"
+	@echo "  make playground-clean   - Remove Docker image and build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
 	@echo "  make deps              - Check all dependencies"
@@ -237,56 +228,7 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Launch Kit Playground
-.PHONY: playground
-playground: playground-check
-	@echo "$(BLUE)Launching Kit Playground...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm start
-
-# Check if Kit Playground is installed
-.PHONY: playground-check
-playground-check:
-	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/ui/node_modules/.package-lock.json" ]; then \
-		echo "$(YELLOW)Kit Playground dependencies not installed. Installing...$(NC)"; \
-		$(MAKE) playground-install; \
-	fi
-
-# Install Kit Playground dependencies
-.PHONY: playground-install
-playground-install: check-deps
-	@echo "$(BLUE)Installing Kit Playground dependencies...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
-	@echo "$(GREEN)Kit Playground is ready!$(NC)"
-	@echo "Run 'make playground' to launch"
-
-# Run Kit Playground in development mode
-.PHONY: playground-dev
-playground-dev: playground-check
-	@echo "$(BLUE)Starting Kit Playground in development mode...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dev
-
-# Build Kit Playground for production
-.PHONY: playground-build
-playground-build: playground-check
-	@echo "$(BLUE)Building Kit Playground for production...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
-
-# Create platform-specific installers
-.PHONY: playground-dist
-playground-dist: playground-check
-	@echo "$(BLUE)Creating Kit Playground installers...$(NC)"
-ifeq ($(OS),linux)
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --linux
-endif
-ifeq ($(OS),macos)
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --mac
-endif
-ifeq ($(OS),windows)
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --win
-endif
-	@echo "$(GREEN)Installer created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
-
-# Docker-based playground targets (no host dependencies except make and docker)
+# Docker-based Kit Playground (no Node.js required on host)
 .PHONY: playground-docker-check
 playground-docker-check:
 	@which docker >/dev/null 2>&1 || { \
@@ -302,58 +244,41 @@ playground-docker-image: playground-docker-check
 	@cd $(KIT_PLAYGROUND_DIR) && docker build -t kit-playground:latest .
 	@echo "$(GREEN)Docker image built successfully!$(NC)"
 
-.PHONY: playground-docker-build
-playground-docker-build: playground-docker-image
-	@echo "$(BLUE)Building Kit Playground in Docker container...$(NC)"
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/build:/app/ui/build \
-		kit-playground:latest \
-		sh -c "cd ui && npm run build"
-	@echo "$(GREEN)Build complete! Output in $(KIT_PLAYGROUND_DIR)/ui/build/$(NC)"
-
-.PHONY: playground-docker-dist
-playground-docker-dist: playground-docker-image
-	@echo "$(BLUE)Creating Kit Playground distribution in Docker...$(NC)"
-	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
-		kit-playground:latest \
-		sh -c "cd ui && npm run dist"
-	@echo "$(GREEN)Distribution created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
-
-.PHONY: playground-docker-dist-linux
-playground-docker-dist-linux: playground-docker-image
-	@echo "$(BLUE)Creating Linux distribution in Docker...$(NC)"
+# Main playground target: build and launch
+.PHONY: playground
+playground: playground-docker-image
+	@echo "$(BLUE)Building Kit Playground distribution in Docker...$(NC)"
 	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
 	@docker run --rm \
 		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
 		kit-playground:latest \
 		sh -c "cd ui && npm run dist -- --linux"
-	@echo "$(GREEN)Linux distribution created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+	@echo "$(GREEN)Build complete!$(NC)"
+	@echo "$(BLUE)Launching Kit Playground...$(NC)"
+	@APPIMAGE=$$(find $(KIT_PLAYGROUND_DIR)/ui/dist -name "*.AppImage" -type f | head -1); \
+	if [ -n "$$APPIMAGE" ]; then \
+		chmod +x "$$APPIMAGE"; \
+		"$$APPIMAGE"; \
+	else \
+		echo "$(RED)Error: AppImage not found in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"; \
+		exit 1; \
+	fi
 
-.PHONY: playground-docker-dist-all
-playground-docker-dist-all: playground-docker-image
-	@echo "$(BLUE)Creating distributions for all platforms in Docker...$(NC)"
-	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
-		kit-playground:latest \
-		sh -c "cd ui && npm run dist:all"
-	@echo "$(GREEN)All distributions created in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
-
-.PHONY: playground-docker-shell
-playground-docker-shell: playground-docker-image
+.PHONY: playground-shell
+playground-shell: playground-docker-image
 	@echo "$(BLUE)Starting interactive shell in Kit Playground container...$(NC)"
 	@docker run --rm -it \
 		-v $(KIT_PLAYGROUND_DIR):/app \
 		kit-playground:latest \
 		/bin/bash
 
-.PHONY: playground-docker-clean
-playground-docker-clean:
-	@echo "$(BLUE)Removing Kit Playground Docker image...$(NC)"
+.PHONY: playground-clean
+playground-clean:
+	@echo "$(BLUE)Cleaning Kit Playground artifacts...$(NC)"
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
 	@docker rmi kit-playground:latest 2>/dev/null || true
-	@echo "$(GREEN)Docker image removed$(NC)"
+	@echo "$(GREEN)Cleanup complete$(NC)"
 
 # Create new template (CLI)
 .PHONY: template-new
@@ -382,10 +307,7 @@ clean:
 
 # Deep clean including dependencies
 .PHONY: clean-all
-clean-all: clean playground-docker-clean
-	@echo "$(YELLOW)Removing all installed dependencies...$(NC)"
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
-	@rm -f $(KIT_PLAYGROUND_DIR)/ui/package-lock.json
+clean-all: clean playground-clean
 	@echo "$(GREEN)Deep clean complete!$(NC)"
 
 # Platform-specific repo commands
