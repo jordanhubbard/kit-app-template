@@ -291,33 +291,54 @@ playground-docker-check:
 	}
 	@echo "$(GREEN)✓ Docker is installed$(NC)"
 
-# Define AppImage output path (architecture-specific)
-APPIMAGE_NAME := Kit Playground-1.0.0-$(UNAME_M).AppImage
+# Define AppImage output path
+APPIMAGE_NAME := Kit Playground-1.0.0.AppImage
 APPIMAGE_PATH := $(KIT_PLAYGROUND_DIR)/ui/dist/$(APPIMAGE_NAME)
-
-# Source files that AppImage depends on
-PLAYGROUND_SOURCES := $(shell find $(KIT_PLAYGROUND_DIR)/ui/src -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' 2>/dev/null)
-PLAYGROUND_SOURCES += $(shell find $(KIT_PLAYGROUND_DIR)/electron -name '*.js' 2>/dev/null)
-PLAYGROUND_SOURCES += $(shell find $(KIT_PLAYGROUND_DIR)/backend -name '*.py' 2>/dev/null)
-PLAYGROUND_SOURCES += $(KIT_PLAYGROUND_DIR)/ui/package.json
-PLAYGROUND_SOURCES += $(KIT_PLAYGROUND_DIR)/backend/requirements.txt
-PLAYGROUND_SOURCES += $(KIT_PLAYGROUND_DIR)/Dockerfile
 
 # Docker image timestamp marker
 DOCKER_IMAGE_MARKER := $(KIT_PLAYGROUND_DIR)/.docker-image-built
+
+# Build marker to track if AppImage is up to date
+APPIMAGE_MARKER := $(KIT_PLAYGROUND_DIR)/.appimage-built
+
+# Key dependency files for Docker image
+DOCKER_DEPS := $(KIT_PLAYGROUND_DIR)/Dockerfile $(KIT_PLAYGROUND_DIR)/ui/package.json $(KIT_PLAYGROUND_DIR)/backend/requirements.txt
 
 # Check if Docker image needs rebuild
 .PHONY: playground-docker-image
 playground-docker-image: playground-docker-check $(DOCKER_IMAGE_MARKER)
 
-$(DOCKER_IMAGE_MARKER): $(KIT_PLAYGROUND_DIR)/Dockerfile $(KIT_PLAYGROUND_DIR)/ui/package.json $(KIT_PLAYGROUND_DIR)/backend/requirements.txt
+$(DOCKER_IMAGE_MARKER): $(DOCKER_DEPS)
 	@echo "$(BLUE)Building Kit Playground Docker image for $(UNAME_M)...$(NC)"
 	@docker build -f $(KIT_PLAYGROUND_DIR)/Dockerfile -t kit-playground:latest .
 	@touch $(DOCKER_IMAGE_MARKER)
 	@echo "$(GREEN)Docker image built successfully!$(NC)"
 
+# Check if sources are newer than AppImage
+.PHONY: check-appimage-freshness
+check-appimage-freshness:
+	@rm -f $(APPIMAGE_MARKER)
+	@if [ ! -f "$(APPIMAGE_PATH)" ]; then \
+		echo "rebuild_needed" > $(APPIMAGE_MARKER); \
+	else \
+		NEWEST_SOURCE=$$(find $(KIT_PLAYGROUND_DIR)/ui/src $(KIT_PLAYGROUND_DIR)/electron $(KIT_PLAYGROUND_DIR)/backend \
+			-type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" \) \
+			-newer "$(APPIMAGE_PATH)" 2>/dev/null | head -1); \
+		if [ -n "$$NEWEST_SOURCE" ]; then \
+			echo "rebuild_needed" > $(APPIMAGE_MARKER); \
+		else \
+			for DEP in $(DOCKER_DEPS); do \
+				if [ "$$DEP" -nt "$(APPIMAGE_PATH)" ]; then \
+					echo "rebuild_needed" > $(APPIMAGE_MARKER); \
+					break; \
+				fi; \
+			done; \
+		fi; \
+	fi
+
 # Build AppImage only if sources are newer
-$(APPIMAGE_PATH): $(PLAYGROUND_SOURCES) $(DOCKER_IMAGE_MARKER)
+.PHONY: playground-build-internal
+playground-build-internal: playground-docker-image
 	@echo "$(BLUE)Building Kit Playground for Linux ($(UNAME_M)) in container...$(NC)"
 	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
 	@docker run --rm \
@@ -328,13 +349,20 @@ $(APPIMAGE_PATH): $(PLAYGROUND_SOURCES) $(DOCKER_IMAGE_MARKER)
 	@echo "$(BLUE)Fixing file permissions...$(NC)"
 	@sudo chown -R $(USER):$(USER) $(KIT_PLAYGROUND_DIR)/ui/dist 2>/dev/null || true
 	@chmod +x $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || true
+	@rm -f $(APPIMAGE_MARKER)
 	@echo "$(GREEN)Build complete!$(NC)"
 	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
 
 # Build target - checks if rebuild is needed
 .PHONY: playground-build
-playground-build: $(APPIMAGE_PATH)
-	@if [ -f "$(APPIMAGE_PATH)" ]; then \
+playground-build: check-appimage-freshness
+	@if [ -f "$(APPIMAGE_MARKER)" ]; then \
+		echo "$(YELLOW)Sources have changed, rebuilding...$(NC)"; \
+		$(MAKE) playground-build-internal; \
+	elif [ ! -f "$(APPIMAGE_PATH)" ]; then \
+		echo "$(YELLOW)AppImage not found, building...$(NC)"; \
+		$(MAKE) playground-build-internal; \
+	else \
 		echo "$(GREEN)✓ AppImage is up to date: $(APPIMAGE_PATH)$(NC)"; \
 	fi
 
@@ -419,6 +447,7 @@ playground-clean:
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/electron
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/backend
 	@rm -f $(DOCKER_IMAGE_MARKER)
+	@rm -f $(APPIMAGE_MARKER)
 	@docker rmi kit-playground:latest 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete$(NC)"
 
