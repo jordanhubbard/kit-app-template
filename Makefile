@@ -291,15 +291,33 @@ playground-docker-check:
 	}
 	@echo "$(GREEN)✓ Docker is installed$(NC)"
 
+# Define AppImage output path (architecture-specific)
+APPIMAGE_NAME := Kit Playground-1.0.0-$(UNAME_M).AppImage
+APPIMAGE_PATH := $(KIT_PLAYGROUND_DIR)/ui/dist/$(APPIMAGE_NAME)
+
+# Source files that AppImage depends on
+PLAYGROUND_SOURCES := $(shell find $(KIT_PLAYGROUND_DIR)/ui/src -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' 2>/dev/null)
+PLAYGROUND_SOURCES += $(shell find $(KIT_PLAYGROUND_DIR)/electron -name '*.js' 2>/dev/null)
+PLAYGROUND_SOURCES += $(shell find $(KIT_PLAYGROUND_DIR)/backend -name '*.py' 2>/dev/null)
+PLAYGROUND_SOURCES += $(KIT_PLAYGROUND_DIR)/ui/package.json
+PLAYGROUND_SOURCES += $(KIT_PLAYGROUND_DIR)/backend/requirements.txt
+PLAYGROUND_SOURCES += $(KIT_PLAYGROUND_DIR)/Dockerfile
+
+# Docker image timestamp marker
+DOCKER_IMAGE_MARKER := $(KIT_PLAYGROUND_DIR)/.docker-image-built
+
+# Check if Docker image needs rebuild
 .PHONY: playground-docker-image
-playground-docker-image: playground-docker-check
+playground-docker-image: playground-docker-check $(DOCKER_IMAGE_MARKER)
+
+$(DOCKER_IMAGE_MARKER): $(KIT_PLAYGROUND_DIR)/Dockerfile $(KIT_PLAYGROUND_DIR)/ui/package.json $(KIT_PLAYGROUND_DIR)/backend/requirements.txt
 	@echo "$(BLUE)Building Kit Playground Docker image for $(UNAME_M)...$(NC)"
 	@docker build -f $(KIT_PLAYGROUND_DIR)/Dockerfile -t kit-playground:latest .
+	@touch $(DOCKER_IMAGE_MARKER)
 	@echo "$(GREEN)Docker image built successfully!$(NC)"
 
-# Build distributable in container (auto-detects x86_64 or ARM64)
-.PHONY: playground-build
-playground-build: playground-docker-image
+# Build AppImage only if sources are newer
+$(APPIMAGE_PATH): $(PLAYGROUND_SOURCES) $(DOCKER_IMAGE_MARKER)
 	@echo "$(BLUE)Building Kit Playground for Linux ($(UNAME_M)) in container...$(NC)"
 	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
 	@docker run --rm \
@@ -312,6 +330,13 @@ playground-build: playground-docker-image
 	@chmod +x $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || true
 	@echo "$(GREEN)Build complete!$(NC)"
 	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
+
+# Build target - checks if rebuild is needed
+.PHONY: playground-build
+playground-build: $(APPIMAGE_PATH)
+	@if [ -f "$(APPIMAGE_PATH)" ]; then \
+		echo "$(GREEN)✓ AppImage is up to date: $(APPIMAGE_PATH)$(NC)"; \
+	fi
 
 # Main playground target: build and launch
 .PHONY: playground
@@ -393,6 +418,7 @@ playground-clean:
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/electron
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/backend
+	@rm -f $(DOCKER_IMAGE_MARKER)
 	@docker rmi kit-playground:latest 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete$(NC)"
 
