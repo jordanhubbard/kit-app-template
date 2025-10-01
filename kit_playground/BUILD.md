@@ -2,19 +2,23 @@
 
 ## Overview
 
-Kit Playground is an Electron application that can be built natively on Linux, macOS, and Windows. It does **NOT** require Docker for building or running - all dependencies are installed via npm and pip.
+Kit Playground is an Electron application that builds **natively** on Linux (x86_64 and ARM64) and Windows. Docker is **NOT** required - all dependencies are installed via npm and pip. electron-builder automatically detects and builds for the host architecture.
 
 ## System Requirements
 
-### Linux (Current System: Ubuntu 22.04 x86_64)
+### Linux (x86_64 or ARM64)
 - Node.js 16+ and npm 7+
 - Python 3.8+
 - Git
 - Standard build tools: `build-essential` (for native npm modules)
-
-### Additional for Building AppImage
 - FUSE 2 (for running AppImage)
-- `libgtk-3-0` and `libnotify4` (GTK dependencies)
+- GTK dependencies: `libgtk-3-0` and `libnotify4`
+
+### Windows
+- Node.js 16+ and npm 7+
+- Python 3.8+
+- Git
+- Visual Studio Build Tools (for native npm modules)
 
 ---
 
@@ -57,53 +61,58 @@ This will:
 
 ## Building Production Distributable
 
-### Build for Current Platform (Linux AppImage)
+### Build for Linux (x86_64 or ARM64)
 
 ```bash
 cd kit_playground
 
-# First, install dependencies if not already done
-npm install
+# Option 1: Use build script
+./build.sh
 
-# Build the React app
+# Option 2: Use Makefile (from repo root)
+cd ..
+make playground-build
+
+# Option 3: Manual steps
+cd ui
+npm install --legacy-peer-deps
 npm run build
-
-# Build Electron distributable for Linux
 npm run dist
 ```
 
-This creates: `dist/Kit Playground-1.0.0.AppImage`
+This creates: `ui/dist/Kit Playground-1.0.0.AppImage` (for your architecture)
 
-### Build for All Platforms
+### Build for Windows
 
 ```bash
-npm run dist:all
+cd kit_playground
+
+# Use Windows build script
+build.bat
 ```
 
-This creates:
-- **Linux**: `dist/Kit Playground-1.0.0.AppImage`
-- **macOS**: `dist/Kit Playground-1.0.0.dmg` (requires macOS to sign)
-- **Windows**: `dist/Kit Playground Setup 1.0.0.exe` (requires Wine on Linux)
+This creates: `ui\dist\Kit Playground Setup 1.0.0.exe`
 
-**Note**: Cross-platform builds from Linux have limitations:
-- macOS builds cannot be signed without macOS
-- Windows builds work but may require Wine for best results
+**Important**:
+- Linux builds must be done on Linux (x86_64 or ARM64 auto-detected)
+- Windows builds must be done on Windows
+- Cross-platform builds (Linux→Windows or Windows→Linux) are **NOT** supported
 
 ---
 
 ## Build Output Structure
 
-After `npm run dist`, you'll find:
+After building, you'll find:
 
 ```
 kit_playground/
-├── build/              # Compiled React app (npm run build)
-│   └── index.html
-├── dist/               # Electron distributables (npm run dist)
-│   ├── Kit Playground-1.0.0.AppImage     # Linux
-│   ├── Kit Playground-1.0.0.dmg          # macOS (if built on macOS)
-│   └── Kit Playground Setup 1.0.0.exe    # Windows (if built on Windows)
-└── node_modules/       # Dependencies
+├── ui/
+│   ├── build/          # Compiled React app (npm run build)
+│   │   └── index.html
+│   ├── dist/           # Electron distributables (npm run dist)
+│   │   ├── Kit Playground-1.0.0.AppImage           # Linux (x86_64 or ARM64)
+│   │   └── Kit Playground Setup 1.0.0.exe          # Windows
+│   └── node_modules/   # Dependencies
 ```
 
 ---
@@ -153,61 +162,6 @@ When building with `electron-builder`, these are bundled into the app:
 
 ---
 
-## Docker Usage (Optional)
-
-The project does **NOT** require Docker for building, but you can use it if preferred:
-
-### Create Dockerfile for Building
-
-```dockerfile
-FROM node:18-bullseye
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip \
-    build-essential \
-    libgtk-3-0 libnotify4 libnss3 libxss1 \
-    fuse libfuse2 \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy package files
-COPY kit_playground/package*.json ./
-RUN npm install
-
-# Copy source
-COPY kit_playground/ ./
-COPY tools/ ../tools/
-COPY templates/ ../templates/
-
-# Install Python deps
-RUN pip3 install -r backend/requirements.txt
-
-# Build
-RUN npm run build
-RUN npm run dist
-
-CMD ["npm", "start"]
-```
-
-### Build in Docker
-
-```bash
-cd /home/jkh/Src/kit-app-template
-
-# Build Docker image
-docker build -f kit_playground/Dockerfile -t kit-playground-builder .
-
-# Extract AppImage
-docker run --rm -v $(pwd)/dist:/output kit-playground-builder \
-    cp /app/dist/*.AppImage /output/
-```
-
-**But this is NOT necessary** - native builds work fine!
-
----
-
 ## Testing the Build
 
 ### Test Development Build
@@ -219,16 +173,23 @@ npm start
 
 Should open the Electron app with all features working.
 
-### Test Production AppImage (Linux)
+### Test Production Build
 
+**Linux:**
 ```bash
-cd kit_playground/dist
+cd kit_playground/ui/dist
 
 # Make executable
 chmod +x "Kit Playground-1.0.0.AppImage"
 
 # Run
 ./"Kit Playground-1.0.0.AppImage"
+```
+
+**Windows:**
+```cmd
+cd kit_playground\ui\dist
+"Kit Playground Setup 1.0.0.exe"
 ```
 
 ---
@@ -272,29 +233,33 @@ In `package.json`, the `"build"` section configures:
 
 ---
 
-## Current System Compatibility
+## Platform Support
 
-### ✅ Your Linux Machine WILL Build Successfully
+### ✅ Supported Platforms
 
-- **OS**: Ubuntu 22.04.5 LTS ✅
-- **Arch**: x86_64 ✅
-- **Docker**: Installed (optional) ✅
-- **Node.js**: Required (install with `make install-deps`) ✅
-- **Python**: Already available ✅
+- **Linux x86_64**: Full support (Ubuntu 22.04+, other distros)
+- **Linux ARM64**: Full support (Raspberry Pi, AWS Graviton, etc.)
+- **Windows x86_64**: Full support (Windows 10+)
 
-### Build Commands That Will Work
+### Quick Build Commands
 
+**Linux:**
 ```bash
-# Install all deps
-make install-deps
+# From repo root
+make playground-build
 
-# Install Kit Playground deps
-cd kit_playground && npm install && pip install -r backend/requirements.txt
+# Or from kit_playground directory
+./build.sh
 
-# Build for Linux
-npm run dist
+# Output: ui/dist/Kit Playground-1.0.0.AppImage
+```
 
-# Output: dist/Kit Playground-1.0.0.AppImage
+**Windows:**
+```cmd
+# From kit_playground directory
+build.bat
+
+REM Output: ui\dist\Kit Playground Setup 1.0.0.exe
 ```
 
 ---
@@ -377,10 +342,11 @@ jobs:
 
 ## Summary
 
-**Does it need Docker?** ❌ No - builds natively
-**Will it build on your Linux machine?** ✅ Yes - Ubuntu 22.04 x86_64 fully supported
+**Does it need Docker?** ❌ No - native builds only
+**Supported platforms?** ✅ Linux (x86_64, ARM64), Windows (x86_64)
+**Cross-compilation?** ❌ No - build on target platform
 **How are dependencies installed?** Via `npm install` (public registry) and `pip install` (PyPI)
-**Build command?** `npm run dist` creates AppImage
-**Output?** `dist/Kit Playground-1.0.0.AppImage` (~350MB)
+**Build command?** `./build.sh` (Linux) or `build.bat` (Windows)
+**Output?** `ui/dist/Kit Playground-1.0.0.AppImage` (~350MB) or `.exe` (Windows)
 
 The build process is **completely standalone** and does not require any NVIDIA-internal infrastructure or Docker containers!

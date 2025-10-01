@@ -61,14 +61,11 @@ all: check-deps
 	@echo "  make template-new       - Create new template (CLI)"
 	@echo "  make test              - Run test suite"
 	@echo ""
-	@echo "$(BLUE)Kit Playground (Docker-based):$(NC)"
+	@echo "$(BLUE)Kit Playground:$(NC)"
 	@echo "  make playground                    - Build and launch playground (Linux)"
-	@echo "  make playground-build-windows      - Build for Windows using Docker"
-	@echo "  make playground-build-all          - Build for all platforms using Docker"
-	@echo "  make playground-build-native       - Build natively (current platform)"
-	@echo "  make playground-build-native-windows - Build for Windows natively"
-	@echo "  make playground-shell              - Open shell in container for debugging"
-	@echo "  make playground-clean              - Remove Docker image and build artifacts"
+	@echo "  make playground-build              - Build distributable (Linux AppImage)"
+	@echo "  make playground-dev                - Run in development mode"
+	@echo "  make playground-clean              - Remove build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
 	@echo "  make deps              - Check all dependencies"
@@ -232,32 +229,40 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Docker-based Kit Playground (no Node.js required on host)
-.PHONY: playground-docker-check
-playground-docker-check:
-	@which docker >/dev/null 2>&1 || { \
-		echo "$(RED)Docker is not installed or not in PATH$(NC)"; \
-		echo "Please install Docker: https://docs.docker.com/get-docker/"; \
+# Native Kit Playground builds (works on Linux x86_64 and ARM64)
+.PHONY: playground-deps-check
+playground-deps-check:
+	@echo "$(BLUE)Checking Kit Playground dependencies...$(NC)"
+	@if [ -z "$(HAS_NODE)" ]; then \
+		echo "$(RED)✗ Node.js is required$(NC)"; \
+		echo "  Run: make install-npm"; \
 		exit 1; \
-	}
-	@echo "$(GREEN)✓ Docker is installed$(NC)"
+	fi
+	@if [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ npm is required$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
+	fi
+	@if [ -z "$(HAS_PYTHON)" ]; then \
+		echo "$(RED)✗ Python is required$(NC)"; \
+		echo "  Run: make install-python"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ All dependencies available$(NC)"
 
-.PHONY: playground-docker-image
-playground-docker-image: playground-docker-check
-	@echo "$(BLUE)Building Kit Playground Docker image...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && docker build -t kit-playground:latest .
-	@echo "$(GREEN)Docker image built successfully!$(NC)"
+# Build distributable for Linux (auto-detects x86_64 or ARM64)
+.PHONY: playground-build
+playground-build: playground-deps-check
+	@echo "$(BLUE)Building Kit Playground for Linux ($(UNAME_M))...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist -- --linux
+	@echo "$(GREEN)Build complete!$(NC)"
+	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
 
 # Main playground target: build and launch
 .PHONY: playground
-playground: playground-docker-image
-	@echo "$(BLUE)Building Kit Playground distribution in Docker...$(NC)"
-	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
-		kit-playground:latest \
-		sh -c "cd ui && npm run dist -- --linux"
-	@echo "$(GREEN)Build complete!$(NC)"
+playground: playground-build
 	@echo "$(BLUE)Launching Kit Playground...$(NC)"
 	@APPIMAGE=$$(find $(KIT_PLAYGROUND_DIR)/ui/dist -name "*.AppImage" -type f | head -1); \
 	if [ -n "$$APPIMAGE" ]; then \
@@ -268,54 +273,21 @@ playground: playground-docker-image
 		exit 1; \
 	fi
 
-# Cross-platform build targets
-.PHONY: playground-build-windows
-playground-build-windows: playground-docker-image
-	@echo "$(BLUE)Building Kit Playground for Windows...$(NC)"
-	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
-		kit-playground:latest \
-		python3 cross_platform_builder.py --target windows
-	@echo "$(GREEN)Windows build complete!$(NC)"
+# Development mode (hot reload)
+.PHONY: playground-dev
+playground-dev: playground-deps-check
+	@echo "$(BLUE)Starting Kit Playground in development mode...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
+	@cd $(KIT_PLAYGROUND_DIR) && pip3 install -r backend/requirements.txt
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dev
 
-.PHONY: playground-build-all
-playground-build-all: playground-docker-image
-	@echo "$(BLUE)Building Kit Playground for all platforms...$(NC)"
-	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
-		kit-playground:latest \
-		python3 cross_platform_builder.py --target all
-	@echo "$(GREEN)Multi-platform build complete!$(NC)"
-
-# Native cross-platform build (no Docker)
-.PHONY: playground-build-native
-playground-build-native: check-deps
-	@echo "$(BLUE)Building Kit Playground natively...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && python3 cross_platform_builder.py
-	@echo "$(GREEN)Native build complete!$(NC)"
-
-.PHONY: playground-build-native-windows
-playground-build-native-windows: check-deps
-	@echo "$(BLUE)Building Kit Playground for Windows natively...$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR) && python3 cross_platform_builder.py --target windows
-	@echo "$(GREEN)Native Windows build complete!$(NC)"
-
-.PHONY: playground-shell
-playground-shell: playground-docker-image
-	@echo "$(BLUE)Starting interactive shell in Kit Playground container...$(NC)"
-	@docker run --rm -it \
-		-v $(KIT_PLAYGROUND_DIR):/app \
-		kit-playground:latest \
-		/bin/bash
-
+# Clean build artifacts
 .PHONY: playground-clean
 playground-clean:
 	@echo "$(BLUE)Cleaning Kit Playground artifacts...$(NC)"
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
-	@docker rmi kit-playground:latest 2>/dev/null || true
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
 	@echo "$(GREEN)Cleanup complete$(NC)"
 
 # Create new template (CLI)

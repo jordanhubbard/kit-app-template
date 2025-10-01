@@ -1,11 +1,12 @@
 #!/bin/bash
-# Build Kit Playground for Linux
+# Build Kit Playground natively for Linux (auto-detects architecture)
 
 set -e
 
 echo "======================================"
-echo "Kit Playground Build Script"
+echo "Kit Playground Native Build"
 echo "======================================"
+echo "Architecture: $(uname -m)"
 echo ""
 
 # Check Node.js
@@ -34,10 +35,13 @@ fi
 echo "✓ Python version: $(python3 --version)"
 echo ""
 
+# Change to ui directory
+cd ui
+
 # Install npm dependencies
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing npm dependencies..."
-    npm install
+    npm install --legacy-peer-deps
 else
     echo "✓ npm dependencies already installed"
 fi
@@ -45,7 +49,7 @@ fi
 # Install Python dependencies
 if ! python3 -c "import flask" 2>/dev/null; then
     echo "📦 Installing Python dependencies..."
-    pip install -r backend/requirements.txt
+    pip3 install -r ../backend/requirements.txt
 else
     echo "✓ Python dependencies already installed"
 fi
@@ -60,8 +64,8 @@ echo ""
 echo "🔨 Building React app..."
 npm run build
 
-# Build Electron app
-echo "🔨 Building Electron AppImage..."
+# Build Electron app for Linux
+echo "🔨 Building Electron AppImage for $(uname -m)..."
 npm run dist
 
 echo ""
@@ -70,13 +74,13 @@ echo "✅ Build Complete!"
 echo "======================================"
 echo ""
 
-if [ -f "dist/Kit Playground-1.0.0.AppImage" ]; then
+if [ -f "dist/"*.AppImage ]; then
     echo "📦 AppImage created:"
     ls -lh dist/*.AppImage
     echo ""
     echo "To run:"
-    echo "  chmod +x \"dist/Kit Playground-1.0.0.AppImage\""
-    echo "  ./\"dist/Kit Playground-1.0.0.AppImage\""
+    echo "  chmod +x dist/*.AppImage"
+    echo "  ./dist/*.AppImage"
 else
     echo "⚠️  AppImage not found in dist/"
     echo "Check for errors above."

@@ -1,8 +1,8 @@
 @echo off
-REM Build Kit Playground for Windows
+REM Build Kit Playground natively for Windows
 
 echo ======================================
-echo Kit Playground Build Script
+echo Kit Playground Native Build (Windows)
 echo ======================================
 echo.
 
@@ -39,10 +39,13 @@ echo Python version:
 python --version
 echo.
 
+REM Change to ui directory
+cd ui
+
 REM Install npm dependencies
 if not exist "node_modules" (
     echo Installing npm dependencies...
-    call npm install
+    call npm install --legacy-peer-deps
 ) else (
     echo npm dependencies already installed
 )
@@ -51,7 +54,7 @@ REM Install Python dependencies
 python -c "import flask" >nul 2>nul
 if %errorlevel% neq 0 (
     echo Installing Python dependencies...
-    pip install -r backend\requirements.txt
+    pip install -r ..\backend\requirements.txt
 ) else (
     echo Python dependencies already installed
 )
@@ -66,7 +69,7 @@ REM Build React app
 echo Building React app...
 call npm run build
 
-REM Build Electron app
+REM Build Electron app for Windows
 echo Building Electron installer...
 call npm run dist
 
