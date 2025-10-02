@@ -87,8 +87,8 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 
 - [**Git LFS**](https://git-lfs.com/): For managing large files within the repository
 
-- **Python 3.8+**: Required for the template system and build tools. Python packages will be installed automatically.
-  - **Required Python packages**: `toml` or `tomli` (for Python < 3.11) - automatically installed via `make install-deps` or `make install-python-deps`
+- **Python 3.8+**: Required for the template system and build tools.
+  - **Required Python packages**: `toml` or `tomli` (for Python < 3.11) - **automatically installed on first run** of `repo.sh` or `repo.bat`, or via `make install-python-deps`
 
 - **(Windows - C++ Only) Microsoft Visual Studio (2019 or 2022)**: You can install the latest version from [Visual Studio Downloads](https://visualstudio.microsoft.com/downloads/). Ensure that the **Desktop development with C++** workload is selected.  [Additional information on Windows development configuration](readme-assets/additional-docs/windows_developer_configuration.md)
 
@@ -160,11 +160,11 @@ git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
 cd kit-app-template
 ```
 
-### 2. Check and Install Dependencies
+### 2. Check and Install Dependencies (Optional)
 
-Before creating templates, ensure all required dependencies are installed:
+> **NOTE:** Python dependencies (`toml` package) are automatically installed when you first run `./repo.sh` or `.\repo.bat` commands. This step is optional but recommended to verify your setup.
 
-**Check dependencies:**
+**Check all dependencies:**
 ```bash
 make deps
 ```
@@ -174,12 +174,12 @@ make deps
 make install-deps
 ```
 
-This will automatically install:
+This will install:
 - Python packages (toml/tomli) required for the template system
 - Node.js and npm (if using Kit Playground)
 - FUSE library (for running AppImages on Linux)
 
-> **NOTE:** If you only need to install Python dependencies, you can run `make install-python-deps`
+> **TIP:** If you only need to install Python dependencies, run `make install-python-deps`
 
 ### 3. Explore Available Templates
 

@@ -81,6 +81,11 @@ case "$1" in
         exec "$0" playground build
         ;;
     *)
+        # Check and install required Python dependencies (first run only)
+        "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/check_dependencies.py" || {
+            echo "Failed to verify Python dependencies. Some commands may not work." >&2
+        }
+
         # Default: Use the Python dispatcher for enhanced template functionality and fallback to repoman
         exec "${OMNI_REPO_ROOT}/tools/packman/python.sh" "${OMNI_REPO_ROOT}/tools/repoman/repo_dispatcher.py" "$@"
         ;;

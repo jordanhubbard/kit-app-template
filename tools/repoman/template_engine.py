@@ -32,7 +32,15 @@ except ImportError:
         HAS_TOML = True
     except ImportError:
         HAS_TOML = False
-        print("Warning: toml library not available. Limited functionality.", file=sys.stderr)
+        print("Error: toml library not available.", file=sys.stderr)
+        print("The template system requires the Python 'toml' package.", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("This should have been installed automatically by repo.sh/repo.bat", file=sys.stderr)
+        print("If you're seeing this error, please run:", file=sys.stderr)
+        print("  make install-python-deps", file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Or install manually:", file=sys.stderr)
+        print("  python -m pip install toml", file=sys.stderr)
 
 class TemplateConfigManager:
     """Manages template configuration loading, merging, and validation."""

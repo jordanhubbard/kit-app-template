@@ -37,6 +37,12 @@ if "%1"=="playground-install" goto PlaygroundInstall
 if "%1"=="playground-dev" goto PlaygroundDev
 if "%1"=="playground-build" goto PlaygroundBuild
 
+:: Check and install required Python dependencies (first run only)
+call "%~dp0tools\packman\python.bat" "%~dp0tools\repoman\check_dependencies.py"
+if %errorlevel% neq 0 (
+    echo Warning: Failed to verify Python dependencies. Some commands may not work. 1>&2
+)
+
 :: Default: Use the Python dispatcher for enhanced template functionality and fallback to repoman
 call "%~dp0tools\packman\python.bat" "%~dp0tools\repoman\repo_dispatcher.py" %*
 if %errorlevel% neq 0 ( goto Error )
