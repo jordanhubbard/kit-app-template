@@ -542,13 +542,12 @@ class TemplateEngine:
                 ext_configs = {}
                 extensions = template_config['extensions']
 
-                # Handle both legacy TOML format (list) and new format (dict)
+                # Handle different TOML extension formats
                 if isinstance(extensions, list):
-                    # Legacy format: array of tables
+                    # Simple list format: [[extensions]]
                     for ext_item in extensions:
-                        ext_template = ext_item.get('template')
-                        if ext_template:
-                            # Check if there's custom config for this extension
+                        if isinstance(ext_item, dict) and 'template' in ext_item:
+                            ext_template = ext_item['template']
                             ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
                             custom_ext = config.get('extensions', {}).get(ext_config_key, {})
 
@@ -560,20 +559,36 @@ class TemplateEngine:
                                 "version": custom_ext.get('version', version)
                             }
                 elif isinstance(extensions, dict):
-                    # New format: dictionary
-                    for ext_key, ext_config in extensions.items():
-                        ext_template = ext_config.get('template', ext_key)
-                        # Check if there's custom config for this extension
-                        ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
-                        custom_ext = config.get('extensions', {}).get(ext_config_key, {})
+                    # Dictionary format: can have nested arrays like [[extensions.setup]]
+                    for ext_key, ext_value in extensions.items():
+                        if isinstance(ext_value, list):
+                            # Nested array: [[extensions.setup]]
+                            for ext_item in ext_value:
+                                if isinstance(ext_item, dict) and 'template' in ext_item:
+                                    ext_template = ext_item['template']
+                                    ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
+                                    custom_ext = config.get('extensions', {}).get(ext_config_key, {})
 
-                        # Generate extension configuration
-                        ext_suffix = ext_template.split('_')[-1]
-                        ext_configs[ext_template] = {
-                            "extension_name": custom_ext.get('name', f"{app_name}_{ext_suffix}"),
-                            "extension_display_name": custom_ext.get('display_name', f"{display_name} {ext_suffix.title()}"),
-                            "version": custom_ext.get('version', version)
-                        }
+                                    # Generate extension configuration
+                                    ext_suffix = ext_template.split('_')[-1]
+                                    ext_configs[ext_template] = {
+                                        "extension_name": custom_ext.get('name', f"{app_name}_{ext_suffix}"),
+                                        "extension_display_name": custom_ext.get('display_name', f"{display_name} {ext_suffix.title()}"),
+                                        "version": custom_ext.get('version', version)
+                                    }
+                        elif isinstance(ext_value, dict) and 'template' in ext_value:
+                            # Simple dict entry
+                            ext_template = ext_value['template']
+                            ext_config_key = ext_template.replace('omni_', '').replace('kit_', '')
+                            custom_ext = config.get('extensions', {}).get(ext_config_key, {})
+
+                            # Generate extension configuration
+                            ext_suffix = ext_template.split('_')[-1]
+                            ext_configs[ext_template] = {
+                                "extension_name": custom_ext.get('name', f"{app_name}_{ext_suffix}"),
+                                "extension_display_name": custom_ext.get('display_name', f"{display_name} {ext_suffix.title()}"),
+                                "version": custom_ext.get('version', version)
+                            }
 
                 if ext_configs:
                     playback[template_name]["extensions"] = ext_configs
@@ -1025,6 +1040,19 @@ def main():
         print("  --version=<version>   Version (semver format)")
         print("  --output-dir=<dir>    Output directory for standalone projects")
         sys.exit(1)
+
+    # Check license acceptance before proceeding with template generation
+    command = sys.argv[1]
+    if command not in ['docs', 'list', '--help', '-h']:
+        # This is a template generation command - check license
+        try:
+            from license_manager import check_and_prompt_license
+            if not check_and_prompt_license():
+                print("Error: License terms must be accepted to use templates.", file=sys.stderr)
+                sys.exit(1)
+        except Exception as e:
+            # If license check fails, warn but don't block (for backwards compatibility)
+            print(f"Warning: Could not verify license acceptance: {e}", file=sys.stderr)
 
     # Initialize engine with OS-independent path handling
     script_dir = Path(__file__).resolve().parent
