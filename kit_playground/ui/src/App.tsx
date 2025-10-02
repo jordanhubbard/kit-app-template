@@ -71,36 +71,19 @@ function AppContent() {
     // Initialize API connection
     const initAPI = async () => {
       try {
-        if (window.electronAPI) {
-          const config = await window.electronAPI.getAPIConfig();
-          await initializeAPI(config.url);
-        } else {
-          // Fallback for web-only mode
-          await initializeAPI('http://localhost:8081');
-        }
+        // Use relative API URL (works with Flask serving static files)
+        await initializeAPI('/api');
         setApiReady(true);
 
         // Load initial data
         dispatch(loadTemplates());
       } catch (error) {
         console.error('Failed to initialize API:', error);
-        setApiError('Failed to connect to backend server');
+        setApiError('Failed to connect to backend server. Is the server running?');
       }
     };
 
     initAPI();
-
-    // Set up menu event listeners if in Electron
-    if (window.electronAPI) {
-      window.electronAPI.onMenuAction((action: string) => {
-        // Dispatch menu actions to Redux store
-        window.dispatchEvent(new CustomEvent('menu-action', { detail: action }));
-      });
-
-      return () => {
-        window.electronAPI?.removeMenuListeners();
-      };
-    }
   }, [dispatch]);
 
   if (apiError) {

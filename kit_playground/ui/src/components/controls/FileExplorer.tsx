@@ -66,17 +66,10 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     setError(null);
 
     try {
-      let files: FileItem[];
-
-      if (window.electronAPI) {
-        // Use Electron API
-        files = await window.electronAPI.readDirectory(path);
-      } else {
-        // Fallback: use backend API
-        const response = await fetch(`/api/filesystem/list?path=${encodeURIComponent(path)}`);
-        if (!response.ok) throw new Error('Failed to load directory');
-        files = await response.json();
-      }
+      // Use backend API
+      const response = await fetch(`/api/filesystem/list?path=${encodeURIComponent(path)}`);
+      if (!response.ok) throw new Error('Failed to load directory');
+      let files: FileItem[] = await response.json();
 
       // Filter to show only directories unless showFiles is true
       if (!showFiles) {
@@ -116,13 +109,12 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
 
   const loadHomeDirectory = async () => {
     try {
-      if (window.electronAPI) {
-        const homePath = await window.electronAPI.getHomePath();
-        setCurrentPath(homePath);
-      } else {
-        // Fallback for web mode
-        setCurrentPath('/home');
-      }
+      // Get home directory from backend API (which knows the server's environment)
+      // For now, use a sensible default - could be enhanced to ask backend
+      const platform = navigator.platform.toLowerCase();
+      const isWindows = platform.includes('win');
+      const defaultHome = isWindows ? 'C:\\Users' : '/home';
+      setCurrentPath(defaultHome);
     } catch (err) {
       console.error('Failed to get home directory:', err);
       setCurrentPath('/');
@@ -156,17 +148,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     try {
       const newPath = `${currentPath}/${newFolderName}`;
 
-      if (window.electronAPI) {
-        await window.electronAPI.createDirectory(newPath);
-      } else {
-        const response = await fetch('/api/filesystem/mkdir', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: newPath }),
-        });
+      const response = await fetch('/api/filesystem/mkdir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: newPath }),
+      });
 
-        if (!response.ok) throw new Error('Failed to create directory');
-      }
+      if (!response.ok) throw new Error('Failed to create directory');
 
       setDialogOpen(false);
       setNewFolderName('');
@@ -174,21 +162,6 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     } catch (err) {
       console.error('Failed to create folder:', err);
       setError(err instanceof Error ? err.message : 'Failed to create folder');
-    }
-  };
-
-  const handleBrowseDialog = async () => {
-    if (window.electronAPI) {
-      const result = await window.electronAPI.openFileDialog({
-        properties: ['openDirectory', 'createDirectory'],
-        defaultPath: currentPath,
-      });
-
-      if (!result.canceled && result.filePaths.length > 0) {
-        const selected = result.filePaths[0];
-        setCurrentPath(selected);
-        onPathChange(selected);
-      }
     }
   };
 
@@ -225,11 +198,6 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
         <IconButton size="small" onClick={() => setDialogOpen(true)}>
           <NewFolderIcon />
         </IconButton>
-        {window.electronAPI && (
-          <Button size="small" variant="outlined" onClick={handleBrowseDialog}>
-            Browse...
-          </Button>
-        )}
       </Box>
 
       {/* Breadcrumbs */}

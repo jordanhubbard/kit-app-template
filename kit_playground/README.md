@@ -1,15 +1,15 @@
 # Kit Playground
 
-A cross-platform visual development environment for the NVIDIA Omniverse Kit SDK, inspired by Swift Playgrounds.
+A web-based visual development environment for the NVIDIA Omniverse Kit SDK, inspired by Swift Playgrounds.
 
 ## Overview
 
-Kit Playground provides an intuitive, visual interface for:
+Kit Playground provides an intuitive web interface for:
 - Browsing and selecting templates from a visual gallery
-- Customizing templates with an integrated code editor
-- Connecting templates via drag-and-drop visual programming
-- Building and running projects without leaving the playground
-- Managing data sources and dependencies automatically
+- Customizing templates with an integrated code editor (Monaco)
+- Building and running Kit projects directly from your browser
+- Managing templates and dependencies automatically
+- Quick prototyping and experimentation with Kit SDK
 
 ## Features
 
@@ -34,95 +34,122 @@ Kit Playground provides an intuitive, visual interface for:
 - IntelliSense/autocomplete support
 
 ### Cross-Platform Support
-- Native applications for Windows, Linux, and macOS
-- Consistent experience across platforms
-- Platform-specific optimizations
-- Cloud-ready deployment options
+- Browser-based UI works on any platform
+- Python backend inherits terminal environment for proper app launching
+- No platform-specific builds required
+- Lightweight and fast deployment
 
 ## Architecture
 
-Kit Playground is built as a modular application with:
+Kit Playground uses a simple web-based architecture:
 
-1. **Frontend (kit_playground/frontend/)**
-   - Cross-platform UI using Qt6 or Electron
-   - Visual template gallery
-   - Node-based connection editor
-   - Integrated code editor (Monaco/CodeMirror)
+1. **Frontend (kit_playground/ui/)**
+   - React-based web UI with TypeScript
+   - Material-UI components
+   - Monaco code editor
+   - Real-time updates via Socket.IO
 
 2. **Backend (kit_playground/backend/)**
-   - Template management API
+   - Flask REST API with Flask-SocketIO
+   - Template management and discovery
    - Build system integration
-   - Process management for running apps
-   - WebSocket server for live updates
+   - Process management for launching Kit apps
+   - Serves static React build files
 
 3. **Core (kit_playground/core/)**
+   - Template engine integration
    - Connector system implementation
-   - Template discovery and loading
-   - Dependency resolution
-   - Configuration management
+   - Project lifecycle management
 
 ## Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 16+ (for web-based frontend)
-- Git and Git LFS
-- NVIDIA RTX GPU (for full functionality)
+- Node.js 16+ (for building the UI)
+- Git
+- NVIDIA RTX GPU (recommended for Kit apps)
 
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
-cd kit-app-template/kit_playground
-
-# Install dependencies
-pip install -r requirements.txt
-npm install  # If using web frontend
-
-# Run the playground
-python playground.py
-```
-
-### Development Setup
+### Option 1: Using Make (Linux/macOS)
 
 ```bash
-# Set up development environment
-./setup.sh  # Linux/macOS
-.\setup.bat # Windows
-
-# Run in development mode
-python playground.py --dev
+# From the repository root
+make playground
 ```
+
+This will:
+1. Check dependencies
+2. Build the React UI
+3. Start the Flask server
+4. Open your browser to http://localhost:8081
+
+### Option 2: Using the Launcher Scripts
+
+**Linux/macOS:**
+```bash
+cd kit_playground
+./playground.sh
+```
+
+**Windows:**
+```batch
+cd kit_playground
+playground.bat
+```
+
+### Option 3: Manual Steps
+
+```bash
+# Build the UI
+cd kit_playground/ui
+npm install
+npm run build
+
+# Start the server
+cd ../backend
+python3 web_server.py --port 8081 --open-browser
+```
+
+### Development Mode (with hot reload)
+
+**Terminal 1 - Backend:**
+```bash
+cd kit_playground/backend
+python3 web_server.py --port 8081
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd kit_playground/ui
+npm start
+```
+
+Then open http://localhost:3000 for React hot reload
 
 ## Usage
 
-### Creating a New Project
+### Using Kit Playground
 
 1. **Launch Kit Playground**
    ```bash
-   python playground.py
+   make playground  # or ./playground.sh
    ```
+   Your browser will open to http://localhost:8081
 
 2. **Browse Templates**
-   - Scroll through the visual gallery
-   - Click on a template to see details
-   - View connector specifications
+   - View all available Kit templates in the gallery
+   - Filter by type (Application, Extension, Component, Microservice)
+   - See template descriptions and metadata
 
-3. **Customize Template**
-   - Click "Customize" to open the editor
-   - Modify template parameters
-   - Add custom code
+3. **Work with Templates**
+   - Select a template to view details
+   - Edit template code in the Monaco editor
+   - Build templates using the build button
+   - Run applications directly (they inherit your terminal environment)
 
-4. **Connect Templates**
-   - Drag from output connector to input connector
-   - System validates compatibility
-   - Resolve any missing data sources
-
-5. **Build and Run**
-   - Click "Build" to compile
-   - Click "Run" to launch
-   - View output in integrated console
+4. **View Output**
+   - See build logs in the integrated console
+   - Applications launch in separate windows
+   - Real-time updates via WebSocket connection
 
 ### Template Connection Example
 
@@ -152,78 +179,52 @@ playground.run_all()
 ```
 kit_playground/
 ├── README.md
-├── requirements.txt
-├── setup.py
-├── playground.py           # Main entry point
+├── playground.sh          # Linux/macOS launcher
+├── playground.bat         # Windows launcher
 │
-├── frontend/               # UI Layer
-│   ├── web/               # Web-based UI (Electron/Browser)
-│   │   ├── index.html
-│   │   ├── src/
-│   │   │   ├── App.tsx
-│   │   │   ├── components/
-│   │   │   │   ├── TemplateGallery.tsx
-│   │   │   │   ├── ConnectionEditor.tsx
-│   │   │   │   ├── CodeEditor.tsx
-│   │   │   │   └── Console.tsx
-│   │   │   └── services/
-│   │   └── package.json
-│   │
-│   └── native/            # Native UI (Qt/PyQt)
-│       ├── main_window.py
-│       ├── widgets/
-│       └── resources/
+├── ui/                    # React Frontend
+│   ├── public/
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── components/
+│   │   │   ├── gallery/TemplateGallery.tsx
+│   │   │   ├── editor/CodeEditor.tsx
+│   │   │   ├── console/Console.tsx
+│   │   │   ├── preview/PreviewPane.tsx
+│   │   │   ├── connections/ConnectionEditor.tsx
+│   │   │   ├── browser/TemplateBrowser.tsx
+│   │   │   └── layout/MainLayout.tsx
+│   │   ├── store/         # Redux store
+│   │   └── services/      # API client
+│   ├── package.json
+│   └── build/            # Production build (generated)
 │
-├── backend/               # Backend Services
-│   ├── api.py            # REST API
-│   ├── websocket.py      # WebSocket server
-│   ├── build_service.py  # Build system
-│   ├── process_manager.py # Process management
-│   └── storage.py        # Project persistence
+├── backend/              # Flask Backend
+│   └── web_server.py    # Main server with REST API
 │
-├── core/                  # Core Logic
-│   ├── template_loader.py
-│   ├── connector_engine.py
-│   ├── dependency_resolver.py
-│   ├── project_manager.py
-│   └── config.py
-│
-├── assets/               # Static Assets
-│   ├── icons/
-│   ├── themes/
-│   └── templates/
+├── core/                 # Core Logic
+│   └── playground_app.py # Application manager
 │
 └── tests/               # Test Suite
-    ├── test_connectors.py
-    ├── test_templates.py
-    └── test_integration.py
+    └── test_backend.sh
 ```
 
 ## Configuration
 
-Kit Playground can be configured via `playground.config.toml`:
+Kit Playground can be configured via command-line arguments:
 
-```toml
-[playground]
-theme = "dark"
-auto_save = true
-hot_reload = true
+```bash
+# Custom port
+python3 backend/web_server.py --port 8082
 
-[editor]
-font_size = 14
-tab_size = 4
-syntax_theme = "monokai"
+# Custom host
+python3 backend/web_server.py --host 0.0.0.0
 
-[build]
-parallel_builds = true
-cache_enabled = true
-output_directory = "_build"
-
-[server]
-port = 8080
-host = "localhost"
-enable_ssl = false
+# Auto-open browser
+python3 backend/web_server.py --open-browser
 ```
+
+The UI theme is dark by default (NVIDIA Green accent color).
 
 ## Contributing
 
@@ -233,28 +234,27 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for development guidelines.
 
 This project is part of the NVIDIA Omniverse Kit SDK and is subject to the NVIDIA Software License Agreement.
 
-## Roadmap
+## Current Status
 
-### Phase 1: Foundation (Current)
-- ✅ Template specification with connectors
-- ✅ Connector system implementation
-- 🔄 Basic UI framework
-- 🔄 Template gallery
+**Implemented:**
+- ✅ Template discovery and loading (13 templates)
+- ✅ REST API backend with Flask
+- ✅ React-based web UI
+- ✅ Monaco code editor integration
+- ✅ Template gallery with metadata
+- ✅ Build system integration
+- ✅ Process management for launching apps
+- ✅ WebSocket real-time updates
+- ✅ Cross-platform launcher scripts
 
-### Phase 2: Core Features
-- Template customization editor
-- Visual connection editor
-- Build system integration
-- Process management
+**In Progress:**
+- 🔄 Enhanced code editing features
+- 🔄 Visual connection editor
+- 🔄 Project persistence
+- 🔄 Template customization
 
-### Phase 3: Advanced Features
-- Cloud deployment
-- Collaboration features
-- AI-assisted development
-- Template marketplace
-
-### Phase 4: Ecosystem
-- Plugin system
-- Community templates
-- Enterprise features
-- Mobile companion app
+**Planned:**
+- 📋 AI-assisted template generation
+- 📋 Cloud deployment options
+- 📋 Template marketplace integration
+- 📋 Collaborative editing

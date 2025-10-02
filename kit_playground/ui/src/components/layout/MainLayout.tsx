@@ -150,10 +150,8 @@ const MainLayout: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        // Open deployment location
-        if (window.electronAPI) {
-          window.electronAPI.showItemInFolder(data.outputPath);
-        }
+        // Show success message with path
+        alert(`Template deployed successfully to:\n${data.outputPath}`);
       }
     } catch (error) {
       console.error('Deploy failed:', error);

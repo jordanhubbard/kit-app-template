@@ -10,6 +10,8 @@ import logging
 import os
 import subprocess
 import sys
+import webbrowser
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -237,6 +239,23 @@ class PlaygroundWebServer:
                 logger.error(f"Failed to create directory: {e}")
                 return jsonify({'error': str(e)}), 500
 
+        # Serve static React build files (catch-all, must be last)
+        @self.app.route('/', defaults={'path': ''})
+        @self.app.route('/<path:path>')
+        def serve_static(path):
+            """Serve static files from React build directory."""
+            static_dir = Path(__file__).parent.parent / 'ui' / 'build'
+
+            # API routes are handled above, so this won't interfere
+            if path.startswith('api/'):
+                return jsonify({'error': 'API endpoint not found'}), 404
+
+            if path and (static_dir / path).exists():
+                return send_from_directory(static_dir, path)
+            else:
+                # For React Router - serve index.html for all routes
+                return send_from_directory(static_dir, 'index.html')
+
     def _setup_websocket(self):
         """Setup WebSocket handlers for streaming logs."""
 
@@ -311,9 +330,20 @@ class PlaygroundWebServer:
                 'message': f'Run error: {str(e)}'
             })
 
-    def start(self, host: str = 'localhost', port: int = 8081):
+    def start(self, host: str = 'localhost', port: int = 8081, open_browser: bool = False):
         """Start the web server."""
         logger.info(f"Starting Kit Playground Web Server on {host}:{port}")
+
+        # Open browser after server starts
+        if open_browser:
+            def open_browser_delayed():
+                time.sleep(1.5)  # Wait for server to start
+                url = f"http://{host}:{port}"
+                logger.info(f"Opening browser at {url}")
+                webbrowser.open(url)
+
+            threading.Thread(target=open_browser_delayed, daemon=True).start()
+
         self.socketio.run(self.app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
 
     def stop(self):
@@ -333,7 +363,23 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Kit Playground Web Server')
     parser.add_argument('--port', type=int, default=8081, help='Server port')
     parser.add_argument('--host', default='localhost', help='Server host')
+    parser.add_argument('--open-browser', action='store_true', help='Automatically open browser')
     args = parser.parse_args()
+
+    # Check for X server on Linux
+    if sys.platform.startswith('linux'):
+        if not os.environ.get('DISPLAY'):
+            logger.warning("DISPLAY environment variable not set!")
+            logger.warning("Kit applications may not be able to display windows.")
+            logger.warning("If using SSH, connect with: ssh -X user@host")
+
+    # Check if React build exists
+    build_dir = Path(__file__).parent.parent / 'ui' / 'build'
+    if not build_dir.exists():
+        logger.error("React build not found!")
+        logger.error(f"Expected build directory: {build_dir}")
+        logger.error("Please run: cd kit_playground/ui && npm install && npm run build")
+        sys.exit(1)
 
     # Create playground app
     class Config:
@@ -349,4 +395,5 @@ if __name__ == '__main__':
 
     # Create and start server (blocking call)
     server = PlaygroundWebServer(app, config)
-    server.start(args.host, args.port)
+    logger.info(f"Kit Playground UI available at: http://{args.host}:{args.port}")
+    server.start(args.host, args.port, open_browser=args.open_browser)
