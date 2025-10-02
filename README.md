@@ -87,6 +87,9 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 
 - [**Git LFS**](https://git-lfs.com/): For managing large files within the repository
 
+- **Python 3.8+**: Required for the template system and build tools. Python packages will be installed automatically.
+  - **Required Python packages**: `toml` or `tomli` (for Python < 3.11) - automatically installed via `make install-deps` or `make install-python-deps`
+
 - **(Windows - C++ Only) Microsoft Visual Studio (2019 or 2022)**: You can install the latest version from [Visual Studio Downloads](https://visualstudio.microsoft.com/downloads/). Ensure that the **Desktop development with C++** workload is selected.  [Additional information on Windows development configuration](readme-assets/additional-docs/windows_developer_configuration.md)
 
 - **(Windows - C++ Only) Windows SDK**: Install this alongside MSVC. You can find it as part of the Visual Studio Installer. [Additional information on Windows development configuration](readme-assets/additional-docs/windows_developer_configuration.md)
@@ -157,7 +160,28 @@ git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
 cd kit-app-template
 ```
 
-### 2. Explore Available Templates
+### 2. Check and Install Dependencies
+
+Before creating templates, ensure all required dependencies are installed:
+
+**Check dependencies:**
+```bash
+make deps
+```
+
+**Install any missing dependencies:**
+```bash
+make install-deps
+```
+
+This will automatically install:
+- Python packages (toml/tomli) required for the template system
+- Node.js and npm (if using Kit Playground)
+- FUSE library (for running AppImages on Linux)
+
+> **NOTE:** If you only need to install Python dependencies, you can run `make install-python-deps`
+
+### 3. Explore Available Templates
 
 Before creating a new project, explore the available templates:
 
@@ -178,7 +202,7 @@ Before creating a new project, explore the available templates:
 ./repo.sh template docs kit_service
 ```
 
-### 3. Create and Configure New Application From Template
+### 4. Create and Configure New Application From Template
 
 Run the following command to create a new project:
 
@@ -213,9 +237,9 @@ Follow the prompt instructions:
 
 • **version:** The version number of the application. While you can use any format, semantic versioning (e.g., 0.1.0) is recommended for clarity and consistency.
 
-• **application layers:** These optional layers add functionality for features such as streaming to web browsers. For this quick-start, we skip adding layers, but choosing “yes” would let you enable and configure streaming capabilities.
+• **application layers:** These optional layers add functionality for features such as streaming to web browsers. For this quick-start, we skip adding layers, but choosing "yes" would let you enable and configure streaming capabilities.
 
-### 4. Build
+### 5. Build
 
 Build your new application with the following command:
 
@@ -238,7 +262,7 @@ BUILD (RELEASE) SUCCEEDED (Took XX.XX seconds)
  If you experience issues related to build, please see the [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md) section for additional information.
 
 
-### 5. Launch
+### 6. Launch
 
 Initiate your newly created application using:
 
@@ -281,6 +305,11 @@ If any dependencies are missing, install them automatically:
 ```bash
 make install-deps
 ```
+
+This will install:
+- Python packages (toml/tomli) required for the template system
+- Node.js and npm (required for Kit Playground UI)
+- FUSE library (for running AppImages on Linux)
 
 #### Installation
 

@@ -61,20 +61,19 @@ all: check-deps
 	@echo "  make template-new       - Create new template (CLI)"
 	@echo "  make test              - Run test suite"
 	@echo ""
-	@echo "$(BLUE)Kit Playground (Container-based):$(NC)"
-	@echo "  make playground                    - Build in container and launch"
-	@echo "  make playground-build              - Build distributable in container (no Node.js needed on host)"
-	@echo "  make playground-build-native       - Build natively (requires Node.js on host)"
-	@echo "  make playground-dev                - Run in development mode (requires Node.js on host)"
-	@echo "  make playground-shell              - Open shell in container for debugging"
-	@echo "  make playground-clean              - Remove build artifacts and Docker image"
+	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
+	@echo "  make playground                    - Build UI and launch web server"
+	@echo "  make playground-build              - Build UI only (requires Node.js)"
+	@echo "  make playground-dev                - Run in development mode (hot reload)"
+	@echo "  make playground-clean              - Remove build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
-	@echo "  make deps              - Check all dependencies"
-	@echo "  make install-deps      - Install missing dependencies"
-	@echo "  make install-npm       - Install Node.js and npm"
-	@echo "  make install-python    - Install Python"
-	@echo "  make install-fuse      - Install FUSE (required for AppImage)"
+	@echo "  make deps                  - Check all dependencies"
+	@echo "  make install-deps          - Install missing dependencies"
+	@echo "  make install-python-deps   - Install required Python packages (toml, etc)"
+	@echo "  make install-npm           - Install Node.js and npm"
+	@echo "  make install-python        - Install Python"
+	@echo "  make install-fuse          - Install FUSE (required for AppImage)"
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
 	@echo "  make clean             - Clean build artifacts"
@@ -108,6 +107,14 @@ check-deps deps:
 	else \
 		PYTHON_VERSION=$$($(PYTHON) --version 2>&1 | cut -d' ' -f2); \
 		echo "$(GREEN)✓ Python is installed$(NC) ($$PYTHON_VERSION)"; \
+		if ./tools/packman/python.sh -c "import toml" 2>/dev/null || ./tools/packman/python.sh -c "import tomllib" 2>/dev/null; then \
+			echo "$(GREEN)✓ Python toml library is available$(NC)"; \
+		else \
+			echo "$(RED)✗ Python toml library is not installed$(NC)"; \
+			echo "  Required for: Template system and configuration files"; \
+			echo "  Run: make install-python-deps"; \
+			EXIT_CODE=1; \
+		fi; \
 	fi
 
 	@# Check Node.js (optional - only needed for native builds or dev mode)
@@ -135,15 +142,6 @@ check-deps deps:
 		echo "$(GREEN)✓ npm is installed$(NC) (v$$NPM_VERSION)"; \
 	fi
 
-	@# Check Docker (required for container builds)
-	@if command -v docker >/dev/null 2>&1; then \
-		echo "$(GREEN)✓ Docker is installed$(NC)"; \
-		docker --version; \
-	else \
-		echo "$(YELLOW)⚠ Docker is not installed$(NC)"; \
-		echo "  Required for: make playground (container builds)"; \
-		echo "  Install: https://docs.docker.com/get-docker/"; \
-	fi
 
 	@# Check for FUSE (required for running AppImages)
 	@if ldconfig -p | grep -q libfuse.so.2; then \
@@ -169,7 +167,7 @@ check-deps deps:
 		exit 1; \
 	else \
 		echo "$(GREEN)All core dependencies are available!$(NC)"; \
-		echo "$(BLUE)Note: Node.js and Docker are optional depending on your workflow$(NC)"; \
+		echo "$(BLUE)Note: Node.js is optional - only needed for Kit Playground$(NC)"; \
 	fi
 
 # Install all missing dependencies
@@ -185,6 +183,7 @@ install-deps:
 	@if ! ldconfig -p | grep -q libfuse.so.2; then \
 		$(MAKE) install-fuse; \
 	fi
+	@$(MAKE) install-python-deps
 	@echo "$(GREEN)Dependencies installation complete!$(NC)"
 
 # Install Node.js and npm
@@ -249,6 +248,25 @@ ifeq ($(OS),windows)
 endif
 	@echo "$(GREEN)Python installed successfully!$(NC)"
 
+# Install Python dependencies
+.PHONY: install-python-deps
+install-python-deps:
+	@echo "$(BLUE)Installing Python dependencies...$(NC)"
+	@if [ -f requirements.txt ]; then \
+		echo "Installing core dependencies from requirements.txt..."; \
+		./tools/packman/python.sh -m pip install -q -r requirements.txt || { \
+			echo "$(YELLOW)Warning: Failed to install with packman Python, trying system Python...$(NC)"; \
+			$(PYTHON) -m pip install --user -q -r requirements.txt || { \
+				echo "$(RED)Failed to install Python dependencies$(NC)"; \
+				echo "Please install manually: pip install -r requirements.txt"; \
+				exit 1; \
+			}; \
+		}; \
+		echo "$(GREEN)✓ Python dependencies installed$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: requirements.txt not found$(NC)"; \
+	fi
+
 # Install FUSE (required for AppImage)
 .PHONY: install-fuse
 install-fuse:
@@ -281,124 +299,24 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Container-based Kit Playground builds (no Node.js required on host)
-.PHONY: playground-docker-check
-playground-docker-check:
-	@which docker >/dev/null 2>&1 || { \
-		echo "$(RED)Docker is not installed or not in PATH$(NC)"; \
-		echo "Please install Docker: https://docs.docker.com/get-docker/"; \
-		exit 1; \
-	}
-	@echo "$(GREEN)✓ Docker is installed$(NC)"
-
-# Define AppImage output path
-APPIMAGE_NAME := Kit Playground-1.0.0.AppImage
-APPIMAGE_PATH := $(KIT_PLAYGROUND_DIR)/ui/dist/$(APPIMAGE_NAME)
-
-# Docker image timestamp marker
-DOCKER_IMAGE_MARKER := $(KIT_PLAYGROUND_DIR)/.docker-image-built
-
-# Build marker to track if AppImage is up to date
-APPIMAGE_MARKER := $(KIT_PLAYGROUND_DIR)/.appimage-built
-
-# Key dependency files for Docker image
-DOCKER_DEPS := $(KIT_PLAYGROUND_DIR)/Dockerfile $(KIT_PLAYGROUND_DIR)/ui/package.json $(KIT_PLAYGROUND_DIR)/backend/requirements.txt
-
-# Check if Docker image needs rebuild
-.PHONY: playground-docker-image
-playground-docker-image: playground-docker-check $(DOCKER_IMAGE_MARKER)
-
-$(DOCKER_IMAGE_MARKER): $(DOCKER_DEPS)
-	@echo "$(BLUE)Building Kit Playground Docker image for $(UNAME_M)...$(NC)"
-	@docker build -f $(KIT_PLAYGROUND_DIR)/Dockerfile -t kit-playground:latest .
-	@touch $(DOCKER_IMAGE_MARKER)
-	@echo "$(GREEN)Docker image built successfully!$(NC)"
-
-# Check if sources are newer than AppImage
-.PHONY: check-appimage-freshness
-check-appimage-freshness:
-	@rm -f $(APPIMAGE_MARKER)
-	@if [ ! -f "$(APPIMAGE_PATH)" ]; then \
-		echo "rebuild_needed" > $(APPIMAGE_MARKER); \
-	else \
-		NEWEST_SOURCE=$$(find $(KIT_PLAYGROUND_DIR)/ui/src $(KIT_PLAYGROUND_DIR)/electron $(KIT_PLAYGROUND_DIR)/backend \
-			-type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" \) \
-			-newer "$(APPIMAGE_PATH)" 2>/dev/null | head -1); \
-		if [ -n "$$NEWEST_SOURCE" ]; then \
-			echo "rebuild_needed" > $(APPIMAGE_MARKER); \
-		else \
-			for DEP in $(DOCKER_DEPS); do \
-				if [ "$$DEP" -nt "$(APPIMAGE_PATH)" ]; then \
-					echo "rebuild_needed" > $(APPIMAGE_MARKER); \
-					break; \
-				fi; \
-			done; \
-		fi; \
-	fi
-
-# Build AppImage only if sources are newer
-.PHONY: playground-build-internal
-playground-build-internal: playground-docker-image
-	@echo "$(BLUE)Building Kit Playground for Linux ($(UNAME_M)) in container...$(NC)"
-	@mkdir -p $(KIT_PLAYGROUND_DIR)/ui/dist
-	@docker run --rm \
-		-v $(KIT_PLAYGROUND_DIR)/ui/dist:/app/ui/dist \
-		kit-playground:latest \
-		sh -c "cd ui && npm run dist"
-	@# Fix ownership of files created by Docker (they're owned by root)
-	@echo "$(BLUE)Fixing file permissions...$(NC)"
-	@sudo chown -R $(USER):$(USER) $(KIT_PLAYGROUND_DIR)/ui/dist 2>/dev/null || true
-	@chmod +x $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || true
-	@rm -f $(APPIMAGE_MARKER)
-	@echo "$(GREEN)Build complete!$(NC)"
-	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
-
-# Build target - checks if rebuild is needed
+# Kit Playground - Simple Web-based Build
 .PHONY: playground-build
-playground-build: check-appimage-freshness
-	@if [ -f "$(APPIMAGE_MARKER)" ]; then \
-		echo "$(YELLOW)Sources have changed, rebuilding...$(NC)"; \
-		$(MAKE) playground-build-internal; \
-	elif [ ! -f "$(APPIMAGE_PATH)" ]; then \
-		echo "$(YELLOW)AppImage not found, building...$(NC)"; \
-		$(MAKE) playground-build-internal; \
-	else \
-		echo "$(GREEN)✓ AppImage is up to date: $(APPIMAGE_PATH)$(NC)"; \
+playground-build:
+	@echo "$(BLUE)Building Kit Playground UI...$(NC)"
+	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
 	fi
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
+	@echo "$(GREEN)✓ Kit Playground UI built successfully!$(NC)"
 
 # Main playground target: build and launch
 .PHONY: playground
 playground: playground-build
-	@echo "$(BLUE)Launching Kit Playground...$(NC)"
-	@# Check for X server / display
-	@if [ -z "$$DISPLAY" ]; then \
-		echo "$(RED)Error: No X server detected (DISPLAY not set)$(NC)"; \
-		echo ""; \
-		echo "Kit Playground requires a graphical environment to run."; \
-		echo ""; \
-		echo "$(YELLOW)Solutions:$(NC)"; \
-		echo "  1. If using SSH: Connect with X11 forwarding enabled"; \
-		echo "     ssh -X user@host"; \
-		echo ""; \
-		echo "  2. If on a headless system: Set up X11 forwarding or VNC"; \
-		echo "     - Install and configure x11vnc or TigerVNC"; \
-		echo "     - Connect via VNC client"; \
-		echo ""; \
-		echo "  3. If on local system: Start your desktop environment"; \
-		echo "     export DISPLAY=:0"; \
-		echo ""; \
-		echo "  4. Use X virtual framebuffer (headless testing):"; \
-		echo "     xvfb-run make playground"; \
-		echo ""; \
-		exit 1; \
-	fi
-	@APPIMAGE=$$(find $(KIT_PLAYGROUND_DIR)/ui/dist -name "*.AppImage" -type f | head -1); \
-	if [ -n "$$APPIMAGE" ]; then \
-		"$$APPIMAGE"; \
-	else \
-		echo "$(RED)Error: AppImage not found in $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"; \
-		exit 1; \
-	fi
+	@echo "$(BLUE)Starting Kit Playground...$(NC)"
+	@$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8081 --open-browser
 
 # Development mode (requires Node.js on host for hot reload)
 .PHONY: playground-dev
@@ -409,46 +327,21 @@ playground-dev:
 		echo "  Run: make install-npm"; \
 		exit 1; \
 	fi
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
+	@echo "$(YELLOW)Starting backend server and React dev server...$(NC)"
+	@echo "$(YELLOW)Backend will be available at: http://localhost:8081$(NC)"
+	@echo "$(YELLOW)React dev server will be available at: http://localhost:3000$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
 	@cd $(KIT_PLAYGROUND_DIR) && pip3 install -r backend/requirements.txt
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dev
-
-# Native build (requires Node.js on host)
-.PHONY: playground-build-native
-playground-build-native:
-	@echo "$(BLUE)Building Kit Playground natively for Linux ($(UNAME_M))...$(NC)"
-	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
-		echo "$(RED)✗ Node.js and npm are required for native builds$(NC)"; \
-		echo "  Run: make install-npm"; \
-		exit 1; \
-	fi
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install --legacy-peer-deps
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run dist
-	@echo "$(GREEN)Build complete!$(NC)"
-	@ls -lh $(KIT_PLAYGROUND_DIR)/ui/dist/*.AppImage 2>/dev/null || echo "$(YELLOW)AppImage not found in expected location$(NC)"
-
-# Open shell in container for debugging
-.PHONY: playground-shell
-playground-shell: playground-docker-image
-	@echo "$(BLUE)Starting interactive shell in Kit Playground container...$(NC)"
-	@docker run --rm -it \
-		-v $(KIT_PLAYGROUND_DIR):/app \
-		kit-playground:latest \
-		/bin/bash
+	@echo "$(GREEN)Please run these commands in separate terminals:$(NC)"
+	@echo "  Terminal 1: cd $(KIT_PLAYGROUND_DIR)/backend && python3 web_server.py --port 8081"
+	@echo "  Terminal 2: cd $(KIT_PLAYGROUND_DIR)/ui && npm start"
 
 # Clean build artifacts
 .PHONY: playground-clean
 playground-clean:
 	@echo "$(BLUE)Cleaning Kit Playground artifacts...$(NC)"
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/electron
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/backend
-	@rm -f $(DOCKER_IMAGE_MARKER)
-	@rm -f $(APPIMAGE_MARKER)
-	@docker rmi kit-playground:latest 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete$(NC)"
 
 # Create new template (CLI)
