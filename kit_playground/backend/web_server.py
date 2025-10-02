@@ -23,7 +23,8 @@ import threading
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from tools.repoman.template_engine import TemplateEngine
+from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
+from tools.repoman.template_engine import TemplateEngine  # Legacy support
 from kit_playground.core.playground_app import PlaygroundApp
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +43,10 @@ class PlaygroundWebServer:
 
         # Running processes
         self.processes: Dict[str, subprocess.Popen] = {}
+
+        # Initialize unified Template API
+        repo_root = Path(__file__).parent.parent.parent
+        self.template_api = TemplateAPI(str(repo_root))
 
         # Setup routes
         self._setup_routes()
@@ -189,6 +194,103 @@ class PlaygroundWebServer:
                 })
             except Exception as e:
                 logger.error(f"Failed to create project: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        # ============= Unified Template API Routes =============
+        # These routes use the shared template_api module for consistency between CLI and GUI
+
+        @self.app.route('/api/v2/license/status', methods=['GET'])
+        def get_license_status():
+            """Get license acceptance status."""
+            try:
+                status = self.template_api.check_license()
+                return jsonify({
+                    'accepted': status.accepted,
+                    'timestamp': status.timestamp,
+                    'version': status.version
+                })
+            except Exception as e:
+                logger.error(f"Failed to check license: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/v2/license/text', methods=['GET'])
+        def get_license_text():
+            """Get license text."""
+            try:
+                text = self.template_api.get_license_text()
+                return jsonify({'text': text})
+            except Exception as e:
+                logger.error(f"Failed to get license text: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/v2/license/accept', methods=['POST'])
+        def accept_license():
+            """Accept license terms."""
+            try:
+                success = self.template_api.accept_license()
+                return jsonify({'success': success})
+            except Exception as e:
+                logger.error(f"Failed to accept license: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/v2/templates', methods=['GET'])
+        def list_templates_v2():
+            """List templates using unified API."""
+            try:
+                template_type = request.args.get('type')
+                category = request.args.get('category')
+                templates = self.template_api.list_templates(template_type, category)
+
+                # Convert to dict for JSON serialization
+                result = []
+                for t in templates:
+                    result.append({
+                        'id': t.name,
+                        'name': t.name,
+                        'displayName': t.display_name,
+                        'type': t.type,
+                        'category': t.category,
+                        'description': t.description,
+                        'version': t.version,
+                        'tags': t.tags,
+                        'documentation': t.documentation
+                    })
+                return jsonify(result)
+            except Exception as e:
+                logger.error(f"Failed to list templates: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/v2/templates/generate', methods=['POST'])
+        def generate_template_v2():
+            """Generate a template using unified API."""
+            try:
+                data = request.json
+                req = TemplateGenerationRequest(
+                    template_name=data.get('templateName'),
+                    name=data.get('name'),
+                    display_name=data.get('displayName'),
+                    version=data.get('version', '0.1.0'),
+                    config_file=data.get('configFile'),
+                    output_dir=data.get('outputDir'),
+                    add_layers=data.get('addLayers', False),
+                    layers=data.get('layers'),
+                    accept_license=data.get('acceptLicense', False),
+                    extra_params=data.get('extraParams')
+                )
+
+                result = self.template_api.generate_template(req)
+
+                if result.success:
+                    return jsonify({
+                        'success': True,
+                        'playbackFile': result.playback_file,
+                        'message': result.message
+                    })
+                else:
+                    return jsonify({'success': False, 'error': result.error}), 400
+
+            except Exception as e:
+                logger.error(f"Failed to generate template: {e}")
                 return jsonify({'error': str(e)}), 500
 
         # Filesystem routes

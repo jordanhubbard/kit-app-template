@@ -90,18 +90,24 @@ class LicenseManager:
             print(f"Warning: Failed to store license acceptance: {e}", file=sys.stderr)
             return False
 
-    def prompt_for_acceptance(self, force: bool = False) -> bool:
+    def prompt_for_acceptance(self, force: bool = False, auto_accept: bool = False) -> bool:
         """
-        Prompt user to accept license terms.
+        Prompt user to accept license terms (interactive mode only).
 
         Args:
             force: If True, prompt even if already accepted
+            auto_accept: If True, automatically accept without prompting (for --accept-license flag)
 
         Returns:
             True if accepted, False if declined
         """
         # Check if already accepted
         if not force and self.is_license_accepted():
+            return True
+
+        # Auto-accept mode (for CLI flags)
+        if auto_accept:
+            self.store_acceptance(True)
             return True
 
         # Print license text
@@ -124,13 +130,25 @@ class LicenseManager:
                 print("\n\nLicense terms not accepted. Cannot proceed.", file=sys.stderr)
                 return False
 
-def check_and_prompt_license(force: bool = False, config_dir: Optional[Path] = None) -> bool:
+    def accept_license(self) -> bool:
+        """
+        Accept license programmatically (for API/non-interactive use).
+
+        Returns:
+            True if stored successfully
+        """
+        return self.store_acceptance(True)
+
+def check_and_prompt_license(force: bool = False, config_dir: Optional[Path] = None,
+                             auto_accept: bool = False, require_acceptance: bool = True) -> bool:
     """
     Check license acceptance and prompt if necessary.
 
     Args:
         force: If True, prompt even if already accepted
         config_dir: Optional custom config directory
+        auto_accept: If True, automatically accept without prompting
+        require_acceptance: If True, return False if not accepted; if False, only warn
 
     Returns:
         True if license is accepted, False otherwise
@@ -139,6 +157,26 @@ def check_and_prompt_license(force: bool = False, config_dir: Optional[Path] = N
 
     if not force and manager.is_license_accepted():
         return True
+
+    if auto_accept:
+        return manager.accept_license()
+
+    # In non-interactive mode, cannot prompt
+    if not sys.stdin.isatty():
+        if require_acceptance:
+            print("ERROR: License terms have not been accepted.", file=sys.stderr)
+            print("License acceptance is required to use templates.", file=sys.stderr)
+            print("", file=sys.stderr)
+            print("To accept the license terms, run:", file=sys.stderr)
+            print("  ./repo.sh template --accept-license", file=sys.stderr)
+            print("", file=sys.stderr)
+            print("Or in Python:", file=sys.stderr)
+            print("  from license_manager import LicenseManager", file=sys.stderr)
+            print("  LicenseManager().accept_license()", file=sys.stderr)
+            return False
+        else:
+            print("Warning: License terms not accepted. Continuing anyway.", file=sys.stderr)
+            return True
 
     return manager.prompt_for_acceptance(force)
 

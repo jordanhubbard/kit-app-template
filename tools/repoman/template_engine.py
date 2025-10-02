@@ -1029,30 +1029,32 @@ def main():
         print("Usage: template_engine.py <command> [options]")
         print("")
         print("Commands:")
-        print("  <template_name> [options]  Generate template (backward compatibility)")
+        print("  <template_name> [options]  Generate template")
         print("  docs [template_name]       Show template documentation")
         print("  list [--type=TYPE]         List available templates")
         print("")
         print("Options for generation:")
+        print("  --name=<name>         Application/extension name (required)")
+        print("  --display-name=<name> Display name (required)")
+        print("  --version=<version>   Version in semver format (required)")
         print("  --config=<file>       Configuration file to use")
-        print("  --name=<name>         Application/extension name")
-        print("  --display-name=<name> Display name")
-        print("  --version=<version>   Version (semver format)")
         print("  --output-dir=<dir>    Output directory for standalone projects")
+        print("  --add-layers          Add application layers (e.g., streaming)")
+        print("  --layers=<l1,l2>      Comma-separated list of layer templates")
+        print("  --accept-license      Accept license terms non-interactively")
+        print("")
+        print("Examples:")
+        print("  # Simple application")
+        print("  template_engine.py kit_base_editor --name=my.app --display-name=\"My App\" --version=1.0.0")
+        print("")
+        print("  # With streaming layer")
+        print("  template_engine.py kit_base_editor --name=my.app --display-name=\"My App\" \\")
+        print("    --version=1.0.0 --layers=omni_default_streaming")
+        print("")
+        print("  # Accept license non-interactively (for CI/CD)")
+        print("  template_engine.py kit_base_editor --name=my.app --display-name=\"My App\" \\")
+        print("    --version=1.0.0 --accept-license")
         sys.exit(1)
-
-    # Check license acceptance before proceeding with template generation
-    command = sys.argv[1]
-    if command not in ['docs', 'list', '--help', '-h']:
-        # This is a template generation command - check license
-        try:
-            from license_manager import check_and_prompt_license
-            if not check_and_prompt_license():
-                print("Error: License terms must be accepted to use templates.", file=sys.stderr)
-                sys.exit(1)
-        except Exception as e:
-            # If license check fails, warn but don't block (for backwards compatibility)
-            print(f"Warning: Could not verify license acceptance: {e}", file=sys.stderr)
 
     # Initialize engine with OS-independent path handling
     script_dir = Path(__file__).resolve().parent
@@ -1131,16 +1133,33 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
     kwargs = {}
     config_file = None
     output_dir = None
+    add_layers = False
+    layers = []
+    accept_license = False
 
     for arg in args:
         if arg.startswith('--config='):
             config_file = arg.split('=', 1)[1]
         elif arg.startswith('--output-dir='):
             output_dir = arg.split('=', 1)[1]
+        elif arg == '--add-layers':
+            add_layers = True
+        elif arg.startswith('--layers='):
+            layers_str = arg.split('=', 1)[1]
+            layers = [l.strip() for l in layers_str.split(',')]
+            add_layers = True  # Implies --add-layers
+        elif arg == '--accept-license':
+            accept_license = True
         elif arg.startswith('--'):
             if '=' in arg:
                 key, value = arg[2:].split('=', 1)
                 kwargs[key.replace('-', '_')] = value
+
+    # Handle layers
+    if add_layers:
+        kwargs['add_layers'] = 'Yes'
+        if layers:
+            kwargs['layers'] = layers
 
     # Backward compatibility with positional arguments
     non_flag_args = [arg for arg in args if not arg.startswith('--')]
@@ -1150,6 +1169,12 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
         kwargs['display_name'] = non_flag_args[1]
     if len(non_flag_args) > 2:
         kwargs['version'] = non_flag_args[2]
+
+    # Check license with auto-accept if flag provided
+    from license_manager import check_and_prompt_license
+    if not check_and_prompt_license(auto_accept=accept_license):
+        print("Error: License terms must be accepted to use templates.", file=sys.stderr)
+        sys.exit(1)
 
     # Generate template
     playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)
