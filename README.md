@@ -134,15 +134,17 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 
 You can develop Kit applications using either the **Visual Kit Playground** (recommended for beginners) or the **Command Line Interface**. Choose the approach that best fits your workflow.
 
+> **Architecture Note:** The CLI and Kit Playground are **independent systems**. The CLI is a monolithic application that works standalone without any web server or background services. Kit Playground is an optional browser-based UI that provides a visual development experience. You can use either or both, and they do not interfere with each other.
+
 ### Option 1: Visual Development with Kit Playground (Recommended)
 
-Kit Playground provides a Swift Playgrounds-like visual environment where you can browse, edit, build, and run templates side-by-side without using the command line.
+Kit Playground provides a Swift Playgrounds-like visual environment where you can browse, edit, build, and run templates side-by-side without using the command line. **This is an optional tool** that launches a local web server for the visual interface.
 
 **[Jump to Kit Playground Setup →](#kit-playground---visual-development-environment)**
 
 ### Option 2: Command Line Development
 
-For developers who prefer traditional command-line workflows, follow the steps below. For a more comprehensive explanation of functionality, reference the [Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html).
+For developers who prefer traditional command-line workflows, follow the steps below. **The CLI tools work completely standalone** - no web server or additional services are required. For a more comprehensive explanation of functionality, reference the [Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html).
 
 ### 1. Clone the Repository
 
@@ -289,6 +291,8 @@ Initiate your newly created application using:
 </p>
 
 Kit Playground is a **visual development environment** inspired by Swift Playgrounds that allows you to develop Omniverse Kit applications without touching the command line. It features a side-by-side editor and live preview, visual template gallery, and one-click build and deployment.
+
+> **Important:** Kit Playground is an **optional tool** that provides a browser-based visual interface. It runs a local Flask web server on port 8081 for the UI. When you use `make playground`, it starts this web server which runs until you stop it (Ctrl+C). **The CLI commands (`./repo.sh`) work completely independently** and do not require the playground server to be running.
 
 ### Getting Started with Kit Playground
 

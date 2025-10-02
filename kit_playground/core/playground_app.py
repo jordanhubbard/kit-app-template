@@ -322,21 +322,11 @@ class PlaygroundApp:
         port = self.config.get('server.port', 8080)
         host = self.config.get('server.host', 'localhost')
 
-        # Start the web server
-        await self.server.start(host, port)
-
-        if open_browser:
-            url = f"http://{host}:{port}"
-            logger.info(f"Opening browser at {url}")
-            webbrowser.open(url)
-
         logger.info(f"Kit Playground Web UI running at http://{host}:{port}")
 
-        # Keep the server running
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            await self.server.stop()
+        # Start the web server (blocking call - it runs in the current thread)
+        # The web server's start() method is synchronous and blocks
+        self.server.start(host, port, open_browser=open_browser)
 
     async def start_native_mode(self):
         """Start Kit Playground in native mode with Qt."""
@@ -365,15 +355,10 @@ class PlaygroundApp:
         port = self.config.get('server.port', 8080)
         host = self.config.get('server.host', 'localhost')
 
-        await self.server.start(host, port)
-
         logger.info(f"Kit Playground API running at http://{host}:{port}")
 
-        # Keep the server running
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            await self.server.stop()
+        # Start the API server (blocking call)
+        self.server.start(host, port)
 
     # Template Gallery Methods
     def get_all_templates(self) -> Dict[str, Any]:
