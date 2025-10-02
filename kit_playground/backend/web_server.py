@@ -434,19 +434,45 @@ class PlaygroundWebServer:
 
     def start(self, host: str = 'localhost', port: int = 8081, open_browser: bool = False):
         """Start the web server."""
-        logger.info(f"Starting Kit Playground Web Server on {host}:{port}")
+        # Try to find an available port if the specified port is in use
+        original_port = port
+        max_attempts = 10
 
-        # Open browser after server starts
-        if open_browser:
-            def open_browser_delayed():
-                time.sleep(1.5)  # Wait for server to start
-                url = f"http://{host}:{port}"
-                logger.info(f"Opening browser at {url}")
-                webbrowser.open(url)
+        for attempt in range(max_attempts):
+            try:
+                # Test if port is available
+                import socket
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.bind((host, port))
+                sock.close()
 
-            threading.Thread(target=open_browser_delayed, daemon=True).start()
+                # Port is available
+                if port != original_port:
+                    logger.warning(f"Port {original_port} is in use, using port {port} instead")
 
-        self.socketio.run(self.app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
+                logger.info(f"Starting Kit Playground Web Server on {host}:{port}")
+
+                # Open browser after server starts
+                if open_browser:
+                    def open_browser_delayed():
+                        time.sleep(1.5)  # Wait for server to start
+                        url = f"http://{host}:{port}"
+                        logger.info(f"Opening browser at {url}")
+                        webbrowser.open(url)
+
+                    threading.Thread(target=open_browser_delayed, daemon=True).start()
+
+                self.socketio.run(self.app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
+                return
+
+            except OSError as e:
+                if attempt < max_attempts - 1:
+                    port += 1
+                    continue
+                else:
+                    logger.error(f"Failed to find an available port after {max_attempts} attempts")
+                    raise
 
     def stop(self):
         """Stop the web server."""
