@@ -98,14 +98,38 @@ class PlaygroundWebServer:
 
         @self.app.route('/api/templates/<template_id>/code', methods=['GET'])
         def get_template_code(template_id):
-            """Get template source code."""
+            """Get template information and description."""
             try:
-                code = self.playground_app.get_template_code(template_id)
-                if code is None:
+                # Get template metadata
+                templates = self.playground_app.get_all_templates()
+                template = templates.get(template_id)
+
+                if not template:
                     return jsonify({'error': 'Template not found'}), 404
-                return jsonify({'code': code})
+
+                # Return template description as "code" for now
+                # In a real implementation, this would generate sample code from the template
+                description = f"""# {template.get('display_name', template_id)}
+
+## Description
+{template.get('description', 'No description available')}
+
+## Type
+{template.get('type', 'unknown')}
+
+## Category
+{template.get('category', 'unknown')}
+
+## Usage
+This is a template that can be used to generate new projects.
+Click "Build" to generate a project from this template.
+
+## Connectors
+{chr(10).join(f"- {conn.get('name')}: {conn.get('type')} ({conn.get('direction')})" for conn in template.get('connectors', []))}
+"""
+                return description, 200, {'Content-Type': 'text/plain'}
             except Exception as e:
-                logger.error(f"Failed to get template code: {e}")
+                logger.error(f"Failed to get template info: {e}")
                 return jsonify({'error': str(e)}), 500
 
         @self.app.route('/api/templates/<template_id>/update', methods=['POST'])
