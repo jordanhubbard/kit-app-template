@@ -467,27 +467,38 @@ On first launch, Kit Playground will:
   - Save projects regularly
   - Use version control for team projects
 
-## Creating Standalone Projects
+## Working with Multiple Applications
 
-For self-contained projects that don't require the main repository structure, use the `--output-dir` option:
+By default, `./repo.sh template new` creates application `.kit` files in `source/apps/`. You can create multiple applications:
 
-**Create a standalone project:**
+```bash
+# Create first application
+./repo.sh template new kit_base_editor --name my_company.app_one --display-name "App One" --version 1.0.0
+
+# Create second application
+./repo.sh template new kit_base_editor --name my_company.app_two --display-name "App Two" --version 1.0.0
+```
+
+Both applications will be created in `source/apps/`:
+- `source/apps/my_company.app_one.kit`
+- `source/apps/my_company.app_two.kit`
+
+To launch a specific application:
+```bash
+./repo.sh launch --name my_company.app_one
+```
+
+## Creating Standalone Projects (Experimental)
+
+> **Note:** Standalone project generation with `--output-dir` is currently experimental and has known limitations.
+
+For self-contained projects, you can use the `--output-dir` option, though this feature is still being refined:
+
 ```bash
 ./repo.sh template new kit_service --name my_company.my_api --display-name "My API Service" --output-dir ./my-standalone-project
 ```
 
-This creates a complete, self-contained project with:
-- All necessary source code and configuration
-- Complete build tooling (`repo.sh`, `premake5.lua`, etc.)
-- Project-specific documentation
-- Independent git repository ready for deployment
-
-The generated project can be built and deployed independently:
-```bash
-cd ./my-standalone-project
-./repo.sh build
-./repo.sh launch
-```
+This creates a project structure with build tooling, but full standalone functionality is under development.
 
 ## Enhanced Template System
 

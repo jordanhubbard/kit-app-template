@@ -710,7 +710,7 @@ class TemplateEngine:
             error_msg += "Only 'application' and 'microservice' templates can be generated as standalone projects."
             raise ValueError(error_msg)
 
-        print(f"Generating standalone {template_type} project from template '{template_name}'...")
+        print(f"Generating standalone {template_type} project from template '{template_name}'...", file=sys.stderr)
 
         try:
             # Generate normal template configuration first
@@ -718,11 +718,11 @@ class TemplateEngine:
             resolved_config = self._resolve_template_composition(template_config, config)
 
             # Create project structure in output directory
-            print(f"Creating project structure in {output_path}...")
+            print(f"Creating project structure in {output_path}...", file=sys.stderr)
             self._create_project_structure(output_path, template_config, resolved_config)
 
             # Copy essential repository files to make it self-contained
-            print("Copying build system and tools...")
+            print("Copying build system and tools...", file=sys.stderr)
             self._copy_repository_essentials(output_path)
 
             # Generate project-specific configuration
@@ -731,11 +731,11 @@ class TemplateEngine:
             # Create a README for the standalone project
             self._create_standalone_readme(output_path, template_name, template_config, resolved_config)
 
-            print(f"\n✓ Standalone project generated successfully in: {output_path}")
-            print(f"\nTo build your project:")
-            print(f"  cd {output_path}")
-            print(f"  ./repo.sh build    # On Linux")
-            print(f"  .\\repo.bat build   # On Windows")
+            print(f"\n✓ Standalone project generated successfully in: {output_path}", file=sys.stderr)
+            print(f"\nTo build your project:", file=sys.stderr)
+            print(f"  cd {output_path}", file=sys.stderr)
+            print(f"  ./repo.sh build    # On Linux", file=sys.stderr)
+            print(f"  .\\repo.bat build   # On Windows", file=sys.stderr)
 
             return project_playbook
 
@@ -844,36 +844,29 @@ class TemplateEngine:
             templates_src = self.repo_root / "templates"
             templates_dest = output_path / "templates"
 
-            # Copy templates.toml if it exists (for legacy compatibility)
-            templates_toml = templates_src / "templates.toml"
-            if templates_toml.exists():
-                shutil.copy2(templates_toml, templates_dest / "templates.toml")
-
-            # Copy config directory
-            config_src = templates_src / "config"
-            config_dest = templates_dest / "config"
-            if config_src.exists():
-                shutil.copytree(config_src, config_dest, dirs_exist_ok=True)
+            # Copy the entire templates directory so replay can find template files
+            if templates_src.exists():
+                shutil.copytree(templates_src, templates_dest, dirs_exist_ok=True)
 
         except Exception as e:
             print(f"Warning: Some files could not be copied: {e}", file=sys.stderr)
 
     def _generate_project_playbook(self, template_name: str, template_config: Dict[str, Any], config: Dict[str, Any], output_path: Path) -> Dict[str, Any]:
         """Generate playbook configuration for the standalone project."""
-        # Create a modified playbook that references the local project structure
-        playbook = {
-            "project_info": {
-                "name": config.get('application', {}).get('name', template_name),
-                "display_name": config.get('application', {}).get('display_name', template_name),
-                "version": config.get('application', {}).get('version', '0.1.0'),
-                "template": template_name,
-                "output_directory": str(output_path)
-            },
-            "standalone": True,
+        # Generate the normal playback for the template
+        playback = self._generate_playback(template_name, template_config, config)
+
+        # Add standalone project metadata
+        playback["_standalone_project"] = {
+            "name": config.get('application', {}).get('name', template_name),
+            "display_name": config.get('application', {}).get('display_name', template_name),
+            "version": config.get('application', {}).get('version', '0.1.0'),
+            "template": template_name,
+            "output_directory": str(output_path),
             "self_contained": True
         }
 
-        return playbook
+        return playback
 
     def _create_standalone_readme(self, output_path: Path, template_name: str, template_config: Dict[str, Any], config: Dict[str, Any]) -> None:
         """Create a README file for the standalone project."""
@@ -992,19 +985,23 @@ Generated with the Kit App Template system
         # Use text mode explicitly for cross-platform compatibility
         fd, temp_path = tempfile.mkstemp(suffix='.toml', text=True)
         try:
-            with os.fdopen(fd, 'w') as f:
-                if HAS_TOMLI_W:
-                    # tomli_w expects a binary file
-                    os.close(fd)
-                    with open(temp_path, 'wb') as bf:
-                        tomli_w.dump(playback, bf)
-                elif HAS_TOML:
+            if HAS_TOMLI_W:
+                # tomli_w expects a binary file - close the text fd first
+                os.close(fd)
+                with open(temp_path, 'wb') as bf:
+                    tomli_w.dump(playback, bf)
+            elif HAS_TOML:
+                with os.fdopen(fd, 'w') as f:
                     toml.dump(playback, f)
-                else:
-                    # Manual TOML writing
+            else:
+                # Manual TOML writing
+                with os.fdopen(fd, 'w') as f:
                     self._write_toml_manual(f, playback)
         except Exception as e:
-            os.close(fd)
+            try:
+                os.close(fd)
+            except:
+                pass  # fd might already be closed
             raise e
 
         return temp_path
@@ -1175,6 +1172,9 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
     if not check_and_prompt_license(auto_accept=accept_license):
         print("Error: License terms must be accepted to use templates.", file=sys.stderr)
         sys.exit(1)
+
+    # Note: --output-dir can be used to create standalone projects
+    # By default (when output_dir is None), templates are created in source/apps/
 
     # Generate template
     playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)

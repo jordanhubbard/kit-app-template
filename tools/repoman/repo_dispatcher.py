@@ -89,18 +89,41 @@ def handle_template_command(args: List[str]) -> int:
                 python_cmd = get_python_command(repo_root)
 
                 try:
+                    # Run template_engine with stderr passthrough so user sees progress messages
                     result = subprocess.run([
                         python_cmd, str(template_engine)
                     ] + engine_args,
-                    capture_output=True, text=True, cwd=str(repo_root))
+                    capture_output=False,  # Let stderr passthrough
+                    stdout=subprocess.PIPE,  # But capture stdout (playback file path)
+                    text=True, cwd=str(repo_root))
 
                     if result.returncode != 0:
-                        print(result.stderr, file=sys.stderr)
                         return result.returncode
 
                     playback_file = result.stdout.strip()
 
-                    # Run template replay with generated playbook file
+                    # Check if this is a standalone project by reading the playback file
+                    standalone_dir = None
+                    try:
+                        try:
+                            import tomllib
+                            # Python 3.11+ tomllib needs binary mode
+                            with open(playback_file, 'rb') as f:
+                                playback_data = tomllib.load(f)
+                        except ImportError:
+                            # Fallback to toml library which needs text mode
+                            import toml
+                            with open(playback_file, 'r') as f:
+                                playback_data = toml.load(f)
+
+                        if "_standalone_project" in playback_data:
+                            standalone_dir = playback_data["_standalone_project"].get("output_directory")
+                    except Exception:
+                        pass  # If we can't read it, proceed normally
+
+                    # Run template replay in the repo root (normal behavior)
+                    # Note: Standalone projects with --output-dir need additional work
+                    # to properly relocate files post-replay (future enhancement)
                     return subprocess.run([
                         python_cmd, str(repo_root / "tools" / "repoman" / "repoman.py"),
                         "template", "replay", playback_file
