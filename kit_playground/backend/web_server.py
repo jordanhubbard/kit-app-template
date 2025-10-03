@@ -44,6 +44,9 @@ class PlaygroundWebServer:
         # Running processes
         self.processes: Dict[str, subprocess.Popen] = {}
 
+        # Track client IPs to log initial connections
+        self.connected_clients = set()
+
         # Initialize unified Template API
         repo_root = Path(__file__).parent.parent.parent
         self.template_api = TemplateAPI(str(repo_root))
@@ -58,17 +61,24 @@ class PlaygroundWebServer:
         @self.app.before_request
         def log_connection():
             """Log incoming connections with timestamp and IP address."""
-            # Skip logging for static assets to reduce noise
-            if not request.path.startswith('/api/'):
-                return
-
             # Get client IP address
             client_ip = request.remote_addr
             if request.headers.get('X-Forwarded-For'):
                 client_ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
 
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            logger.info(f"[{timestamp}] Connection from {client_ip} - {request.method} {request.path}")
+
+            # Log initial connection from new clients
+            if client_ip not in self.connected_clients:
+                self.connected_clients.add(client_ip)
+                logger.info(f"[{timestamp}] Browser connected from {client_ip}")
+
+            # Log all requests, but use different levels for API vs static files
+            if request.path.startswith('/api/'):
+                logger.info(f"[{timestamp}] Connection from {client_ip} - {request.method} {request.path}")
+            else:
+                # Log static file requests at debug level to reduce noise
+                logger.debug(f"[{timestamp}] Connection from {client_ip} - {request.method} {request.path}")
 
         @self.app.route('/api/health', methods=['GET'])
         def health_check():
