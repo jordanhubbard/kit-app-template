@@ -42,7 +42,7 @@
     "react-flow-renderer": "^10.3.0",
     "react-redux": "^8.0.5",
     "react-router-dom": "^6.11.0",
-    "react-scripts": "^0.0.0",
+    "react-scripts": "^5.0.1",
     "react-split-pane": "^0.1.92",
     "socket.io-client": "^4.6.0",
     "uuid": "^9.0.0",
