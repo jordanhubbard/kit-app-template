@@ -83,56 +83,18 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
 
   // Connect to WebSocket for streaming logs
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port || 8081}/ws/logs`;
+    // Disable WebSocket connection for now - will be re-enabled with Socket.IO
+    // The console will still capture logs from console intercept
+    console.log('Console initialized (WebSocket disabled temporarily)');
 
-    let ws: WebSocket;
-
-    try {
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log('Console WebSocket connected');
-        addLog({
-          level: 'info',
-          source: 'system',
-          message: 'Connected to log stream',
-        });
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          addLog({
-            level: data.level || 'info',
-            source: data.source || 'runtime',
-            message: data.message,
-          });
-        } catch (err) {
-          // If not JSON, treat as plain text
-          addLog({
-            level: 'info',
-            source: 'runtime',
-            message: event.data,
-          });
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('Console WebSocket error:', error);
-      };
-
-      ws.onclose = () => {
-        console.log('Console WebSocket disconnected');
-      };
-    } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
-    }
+    addLog({
+      level: 'info',
+      source: 'system',
+      message: 'Console ready - WebSocket log streaming disabled',
+    });
 
     return () => {
-      if (ws) {
-        ws.close();
-      }
+      // Cleanup if needed
     };
   }, [addLog]);
 
