@@ -37,7 +37,8 @@ class PlaygroundWebServer:
     def __init__(self, playground_app: PlaygroundApp, config):
         self.playground_app = playground_app
         self.config = config
-        self.app = Flask(__name__)
+        # Disable Flask's default static folder to avoid conflicts with our custom routing
+        self.app = Flask(__name__, static_folder=None)
         CORS(self.app)  # Enable CORS for Electron renderer
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
 
@@ -378,10 +379,11 @@ class PlaygroundWebServer:
                 return jsonify({'error': 'API endpoint not found'}), 404
 
             if path and (static_dir / path).exists():
-                return send_from_directory(static_dir, path)
+                # Use absolute path to ensure correct file serving
+                return send_from_directory(str(static_dir), path)
             else:
                 # For React Router - serve index.html for all routes
-                return send_from_directory(static_dir, 'index.html')
+                return send_from_directory(str(static_dir), 'index.html')
 
     def _setup_websocket(self):
         """Setup WebSocket handlers for streaming logs."""
