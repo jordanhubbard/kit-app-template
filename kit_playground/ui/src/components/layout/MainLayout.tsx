@@ -16,7 +16,6 @@ import {
   ContentCopy as CopyIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
-import SplitPane from 'react-split-pane';
 import TemplateBrowser from '../browser/TemplateBrowser';
 import TemplateGallery from '../gallery/TemplateGallery';
 import CodeEditor from '../editor/CodeEditor';
@@ -225,28 +224,9 @@ const MainLayout: React.FC = () => {
       case 'split':
       default:
         return (
-          <SplitPane
-            split="vertical"
-            minSize={300}
-            maxSize={-300}
-            defaultSize={leftPaneSize}
-            onChange={setLeftPaneSize}
-            resizerStyle={{
-              background: '#000',
-              opacity: 0.2,
-              zIndex: 1,
-              boxSizing: 'border-box',
-              backgroundClip: 'padding-box',
-              width: 11,
-              margin: '0 -5px',
-              borderLeft: '5px solid transparent',
-              borderRight: '5px solid transparent',
-              cursor: 'col-resize'
-            }}
-            {...({} as any)}
-          >
+          <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
             {/* Left Pane - Editor/Gallery */}
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ width: '50%', height: '100%', display: 'flex', flexDirection: 'column', borderRight: 1, borderColor: 'divider' }}>
               <Tabs
                 value={activeView === 'gallery' ? 0 : 1}
                 onChange={(e, v) => dispatch(setActiveView(v === 0 ? 'gallery' : 'editor'))}
@@ -275,7 +255,7 @@ const MainLayout: React.FC = () => {
             </Box>
 
             {/* Right Pane - Preview/Browser */}
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ width: '50%', height: '100%', display: 'flex', flexDirection: 'column' }}>
               {/* Preview Toolbar */}
               <Paper
                 elevation={0}
@@ -414,7 +394,7 @@ const MainLayout: React.FC = () => {
                 </Box>
               </Box>
             </Box>
-          </SplitPane>
+          </Box>
         );
     }
   };
@@ -479,18 +459,13 @@ const MainLayout: React.FC = () => {
       </Paper>
 
       {/* Main Content Area */}
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        <SplitPane
-          split="horizontal"
-          minSize={100}
-          maxSize={-50}
-          defaultSize={-consoleHeight}
-          onChange={(size) => setConsoleHeight(window.innerHeight - size)}
-          primary="first"
-        >
+      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, overflow: 'hidden' }}>
           {renderMainContent()}
+        </Box>
+        <Box sx={{ height: consoleHeight, borderTop: 1, borderColor: 'divider' }}>
           <Console height={consoleHeight} />
-        </SplitPane>
+        </Box>
       </Box>
 
       {/* Status Bar */}
