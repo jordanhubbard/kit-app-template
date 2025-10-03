@@ -24,8 +24,8 @@ The kit-app-template follows a **monolithic CLI with optional visual frontend** 
 │   (Monolithic)        │         │  (Web-based Visual UI)    │
 ├───────────────────────┤         ├───────────────────────────┤
 │ - ./repo.sh           │         │ - Flask Web Server        │
-│ - ./repo.bat          │         │ - Electron Desktop App    │
-│ - Standalone          │         │ - Port 8081 (default)     │
+│ - ./repo.bat          │         │ - React Frontend          │
+│ - Standalone          │         │ - Port 8888 (default)     │
 │ - No dependencies     │         │ - Requires Node.js        │
 │   on web server       │         │ - Browser-based UI        │
 └───────────┬───────────┘         └───────────┬───────────────┘
@@ -90,11 +90,11 @@ The kit-app-template follows a **monolithic CLI with optional visual frontend** 
 - `playground.py` - Main entry point
 - `backend/web_server.py` - Flask REST API server
 - `core/playground_app.py` - Core application logic
-- `ui/` - React-based frontend (Electron)
+- `ui/` - React-based frontend
 
 **Characteristics:**
 - **Optional tool** - Not required for CLI functionality
-- **Web server** - Runs Flask on port 8081 (configurable)
+- **Web server** - Runs Flask on port 8888 (configurable)
 - **Blocking execution** - Server runs until stopped (Ctrl+C)
 - **Visual interface** - Browser-based UI for template browsing and editing
 - **Requires Node.js** - For building the React frontend
@@ -148,9 +148,9 @@ Command completes and exits
 ```
 User runs: make playground
        ↓
-Flask web server starts on port 8081
+Flask web server starts on port 8888
        ↓
-Electron/browser opens UI
+Browser opens UI
        ↓
 User interacts with visual interface
        ↓
@@ -247,9 +247,9 @@ They don't interfere because:
 
 ### Playground won't start
 
-1. **Check port availability** - Port 8081 might be in use
+1. **Check port availability** - Port 8888 might be in use
    ```bash
-   lsof -i :8081  # See what's using the port
+   lsof -i :8888  # See what's using the port
    ```
 2. **Check dependencies** - Playground requires Node.js and npm
    ```bash

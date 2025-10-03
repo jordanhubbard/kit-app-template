@@ -2,12 +2,12 @@
 
 ## Overview
 
-Kit Playground is an Electron application with two build modes:
+Kit Playground is a web-based application with two build modes:
 
 1. **Container builds (Recommended)**: Build in Docker container - no Node.js required on host
 2. **Native builds**: Build directly on host - requires Node.js/npm installation
 
-Both modes support Linux x86_64 and ARM64 (electron-builder auto-detects architecture).
+Both modes support Linux x86_64 and ARM64.
 
 ## System Requirements
 
@@ -25,8 +25,6 @@ Both modes support Linux x86_64 and ARM64 (electron-builder auto-detects archite
 - Python 3.8+
 - Git
 - Standard build tools: `build-essential` (for native npm modules)
-- FUSE 2 (for running AppImage)
-- GTK dependencies: `libgtk-3-0` and `libnotify4`
 
 ### Windows Native Builds
 - Node.js 16+ and npm 7+
@@ -66,9 +64,9 @@ make playground
 ```
 
 This will:
-1. Start React dev server on http://localhost:3000
-2. Launch Electron app
-3. Spawn Python backend on http://localhost:8081
+1. Build the React UI
+2. Start Python Flask backend on http://localhost:8888
+3. Open web browser to the application
 4. Enable hot-reload for development
 
 ---
@@ -86,7 +84,7 @@ make playground
 make playground-build
 ```
 
-This creates: `kit_playground/ui/dist/Kit Playground-1.0.0.AppImage` (for your architecture)
+This creates: `kit_playground/ui/build/` (production-optimized React build)
 
 **Benefits:**
 - ✅ No Node.js installation needed on host
@@ -111,7 +109,6 @@ make playground-build-native
 cd kit_playground/ui
 npm install --legacy-peer-deps
 npm run build
-npm run dist
 ```
 
 **Windows:**
@@ -135,10 +132,9 @@ kit_playground/
 ├── ui/
 │   ├── build/          # Compiled React app (npm run build)
 │   │   └── index.html
-│   ├── dist/           # Electron distributables (npm run dist)
-│   │   ├── Kit Playground-1.0.0.AppImage           # Linux (x86_64 or ARM64)
-│   │   └── Kit Playground Setup 1.0.0.exe          # Windows
 │   └── node_modules/   # Dependencies
+├── backend/
+│   └── web_server.py   # Flask backend server
 ```
 
 ---
@@ -147,14 +143,12 @@ kit_playground/
 
 ### How Dependencies Are Installed
 
-#### Frontend (Electron + React)
+#### Frontend (React)
 ```bash
 npm install
 ```
 
 This installs from `package.json`:
-- **Electron**: `electron@^27.0.0`
-- **Electron Builder**: `electron-builder@^24.0.0`
 - **React**: `react@^18.2.0`, `react-dom@^18.2.0`
 - **Material-UI**: `@mui/material@^5.13.0`
 - **Monaco Editor**: `@monaco-editor/react@^4.6.0`
@@ -179,12 +173,12 @@ All from **public PyPI**.
 
 ### Bundled Resources
 
-When building with `electron-builder`, these are bundled into the app:
+When building for production, these are packaged together:
 
 1. **Templates** (`../templates/`) - All Kit SDK templates
 2. **Tools** (`../tools/`) - Template engine, repoman, packman
 3. **Backend** (`backend/`) - Python Flask server
-4. **Node modules** - Only production dependencies
+4. **React Build** (`ui/build/`) - Compiled frontend assets
 
 ---
 
@@ -197,65 +191,47 @@ cd kit_playground
 npm start
 ```
 
-Should open the Electron app with all features working.
+Should start the React dev server at http://localhost:3000.
 
 ### Test Production Build
 
-**Linux:**
+**All Platforms:**
 ```bash
-cd kit_playground/ui/dist
-
-# Make executable
-chmod +x "Kit Playground-1.0.0.AppImage"
-
-# Run
-./"Kit Playground-1.0.0.AppImage"
+cd kit_playground
+make playground
+# or
+python3 backend/web_server.py --port 8888 --open-browser
 ```
 
-**Windows:**
-```cmd
-cd kit_playground\ui\dist
-"Kit Playground Setup 1.0.0.exe"
-```
+Should serve the production build and open in your browser.
 
 ---
 
 ## Build System Architecture
 
-### electron-builder Configuration
+### Build Configuration
 
-In `package.json`, the `"build"` section configures:
+The build is configured in `package.json`:
 
 ```json
 {
-  "appId": "com.nvidia.kit-playground",
-  "productName": "Kit Playground",
-  "files": [
-    "electron/**/*",      // Electron main/preload
-    "build/**/*",         // React build output
-    "backend/**/*",       // Python backend
-    "node_modules/**/*"   // Dependencies
-  ],
-  "extraResources": [
-    { "from": "../tools", "to": "tools" },
-    { "from": "../templates", "to": "templates" }
-  ],
-  "linux": {
-    "target": "AppImage",
-    "category": "Development"
+  "name": "kit-playground",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test"
   }
 }
 ```
 
-### What Gets Bundled
+### What Gets Built
 
-1. **Electron Runtime** - Chromium + Node.js (~150MB)
-2. **React App** - Compiled JavaScript (~5MB)
-3. **Python Backend** - Source files (~2MB)
-4. **Templates + Tools** - Kit SDK tools (~50MB)
-5. **Node Modules** - Production deps (~100MB)
+1. **React App** - Compiled JavaScript (~5MB)
+2. **Python Backend** - Source files (~2MB)
+3. **Templates + Tools** - Kit SDK tools (~50MB)
+4. **Static Assets** - Images, CSS, etc. (~1MB)
 
-**Total AppImage size**: ~300-400MB
+**Total build size**: ~60MB
 
 ---
 
@@ -277,7 +253,7 @@ make playground-build
 # Or from kit_playground directory
 ./build.sh
 
-# Output: ui/dist/Kit Playground-1.0.0.AppImage
+# Output: ui/build/ (production React build)
 ```
 
 **Windows:**
@@ -285,18 +261,18 @@ make playground-build
 # From kit_playground directory
 build.bat
 
-REM Output: ui\dist\Kit Playground Setup 1.0.0.exe
+REM Output: ui\build\ (production React build)
 ```
 
 ---
 
 ## Troubleshooting
 
-### Issue: "electron-builder: command not found"
+### Issue: "react-scripts: command not found"
 
 **Solution**: Install dependencies first
 ```bash
-cd kit_playground
+cd kit_playground/ui
 npm install
 ```
 
@@ -307,19 +283,6 @@ npm install
 pip install -r backend/requirements.txt
 ```
 
-### Issue: AppImage won't run
-
-**Solution**: Install FUSE
-```bash
-sudo apt-get install fuse libfuse2
-```
-
-### Issue: Build fails with "Missing GTK"
-
-**Solution**: Install GTK dependencies
-```bash
-sudo apt-get install libgtk-3-0 libnotify4 libnss3 libxss1
-```
 
 ---
 
@@ -351,17 +314,16 @@ jobs:
           npm install
           pip install -r backend/requirements.txt
 
-      - name: Build AppImage
+      - name: Build React App
         run: |
-          cd kit_playground
+          cd kit_playground/ui
           npm run build
-          npm run dist
 
-      - name: Upload AppImage
+      - name: Upload Build
         uses: actions/upload-artifact@v3
         with:
-          name: kit-playground-linux
-          path: kit_playground/dist/*.AppImage
+          name: kit-playground-build
+          path: kit_playground/ui/build/
 ```
 
 ---
@@ -372,16 +334,16 @@ jobs:
 - **Requires on host:** Docker, Python, Git (NO Node.js needed!)
 - **Command:** `make playground` or `make playground-build`
 - **Works on:** Linux x86_64, Linux ARM64
-- **Output:** `ui/dist/Kit Playground-1.0.0.AppImage` (~350MB)
+- **Output:** `ui/build/` (~60MB production React build)
 
 **Alternative: Native Builds**
 - **Requires on host:** Node.js, npm, Python, Git
 - **Command:** `./build.sh` (Linux) or `build.bat` (Windows)
 - **Works on:** Linux x86_64, Linux ARM64, Windows x86_64
-- **Output:** AppImage (Linux) or `.exe` (Windows)
+- **Output:** `ui/build/` (production React build)
 
 **Key Points:**
 - ✅ Container builds = no Node.js on host
 - ✅ Both modes support x86_64 and ARM64
-- ❌ No cross-platform builds (Linux→Windows)
+- ✅ Web-based application served by Flask backend
 - ✅ All dependencies from public registries (npm, PyPI)

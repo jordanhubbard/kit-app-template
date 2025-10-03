@@ -179,7 +179,6 @@ make install-deps
 This will install:
 - Python packages (toml/tomli) required for the template system
 - Node.js and npm (if using Kit Playground)
-- FUSE library (for running AppImages on Linux)
 
 > **TIP:** If you only need to install Python dependencies, run `make install-python-deps`
 
@@ -313,7 +312,6 @@ make install-deps
 This will install:
 - Python packages (toml/tomli) required for the template system
 - Node.js and npm (required for Kit Playground UI)
-- FUSE library (for running AppImages on Linux)
 
 #### Installation
 
@@ -333,7 +331,7 @@ make playground
 .\repo.bat playground
 ```
 
-The application will launch as a native desktop app using Electron.
+The application will open in your default web browser.
 
 #### First Run Setup
 
