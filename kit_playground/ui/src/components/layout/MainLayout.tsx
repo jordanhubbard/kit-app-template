@@ -224,39 +224,35 @@ const MainLayout: React.FC = () => {
       case 'split':
       default:
         return (
-          <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-            {/* Left Pane - Editor/Gallery */}
-            <Box sx={{ width: '50%', height: '100%', display: 'flex', flexDirection: 'column', borderRight: 1, borderColor: 'divider' }}>
-              <Tabs
-                value={activeView === 'gallery' ? 0 : 1}
-                onChange={(e, v) => dispatch(setActiveView(v === 0 ? 'gallery' : 'editor'))}
-                sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 36 }}
-              >
-                <Tab label="Templates" sx={{ minHeight: 36 }} />
-                <Tab label="Code" sx={{ minHeight: 36 }} />
-              </Tabs>
+          <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden', flexDirection: 'column' }}>
+            {/* Tabs for Templates, Code, and Preview */}
+            <Tabs
+              value={activeView === 'gallery' ? 0 : activeView === 'editor' ? 1 : 2}
+              onChange={(e, v) => dispatch(setActiveView(v === 0 ? 'gallery' : v === 1 ? 'editor' : 'preview'))}
+              sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 36 }}
+            >
+              <Tab label="Templates" sx={{ minHeight: 36 }} />
+              <Tab label="Code" sx={{ minHeight: 36 }} />
+              <Tab label="Preview" sx={{ minHeight: 36 }} />
+            </Tabs>
 
-              <Box sx={{ flex: 1, overflow: 'hidden' }}>
-                {activeView === 'gallery' ? (
-                  <TemplateGallery
-                    onSelectTemplate={handleTemplateSelect}
-                    selectedTemplate={selectedTemplate}
-                    compact
-                  />
-                ) : (
-                  <CodeEditor
-                    value={editorContent}
-                    onChange={handleCodeChange}
-                    language="python"
-                    templateId={selectedTemplate}
-                  />
-                )}
-              </Box>
-            </Box>
-
-            {/* Right Pane - Preview/Browser */}
-            <Box sx={{ width: '50%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {/* Preview Toolbar */}
+            {/* Main Content Area */}
+            <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {activeView === 'gallery' ? (
+                <TemplateGallery
+                  onSelectTemplate={handleTemplateSelect}
+                  selectedTemplate={selectedTemplate}
+                />
+              ) : activeView === 'editor' ? (
+                <CodeEditor
+                  value={editorContent}
+                  onChange={handleCodeChange}
+                  language="python"
+                  templateId={selectedTemplate}
+                />
+              ) : (
+                <>
+                  {/* Preview Toolbar */}
               <Paper
                 elevation={0}
                 sx={{
@@ -374,7 +370,7 @@ const MainLayout: React.FC = () => {
                 {/* File Explorer - Build Output Directory Selector */}
                 <Box
                   sx={{
-                    height: 320,
+                    height: 250,
                     p: 2,
                     borderTop: 1,
                     borderColor: 'divider',
@@ -393,6 +389,8 @@ const MainLayout: React.FC = () => {
                   />
                 </Box>
               </Box>
+                </>
+              )}
             </Box>
           </Box>
         );

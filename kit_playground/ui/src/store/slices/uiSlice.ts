@@ -8,7 +8,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 interface UIState {
   sidebarVisible: boolean;
   theme: 'dark' | 'light';
-  activeView: 'gallery' | 'editor' | 'connections';
+  activeView: 'gallery' | 'editor' | 'connections' | 'preview';
   consoleHeight: number;
   splitPaneSize: number;
 }
@@ -34,7 +34,7 @@ const uiSlice = createSlice({
     setTheme: (state, action: PayloadAction<'dark' | 'light'>) => {
       state.theme = action.payload;
     },
-    setActiveView: (state, action: PayloadAction<'gallery' | 'editor' | 'connections'>) => {
+    setActiveView: (state, action: PayloadAction<'gallery' | 'editor' | 'connections' | 'preview'>) => {
       state.activeView = action.payload;
     },
     setConsoleHeight: (state, action: PayloadAction<number>) => {
