@@ -62,7 +62,8 @@ all: check-deps
 	@echo "  make test              - Run test suite"
 	@echo ""
 	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
-	@echo "  make playground                    - Build UI and launch web server"
+	@echo "  make playground                    - Build UI and launch web server (localhost)"
+	@echo "  make playground REMOTE=1           - Launch with remote access (0.0.0.0)"
 	@echo "  make playground-build              - Build UI only (requires Node.js)"
 	@echo "  make playground-dev                - Run in development mode (hot reload)"
 	@echo "  make playground-clean              - Remove build artifacts"
@@ -313,10 +314,17 @@ playground-build:
 	@echo "$(GREEN)✓ Kit Playground UI built successfully!$(NC)"
 
 # Main playground target: build and launch
+# Usage: make playground          - Local access only (localhost)
+#        make playground REMOTE=1 - Remote access (0.0.0.0)
 .PHONY: playground
 playground: playground-build
 	@echo "$(BLUE)Starting Kit Playground...$(NC)"
-	@$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8081 --open-browser
+	@if [ "$(REMOTE)" = "1" ]; then \
+		echo "$(YELLOW)Starting in remote mode (listening on 0.0.0.0)$(NC)"; \
+		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --host 0.0.0.0 --open-browser; \
+	else \
+		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --open-browser; \
+	fi
 
 # Development mode (requires Node.js on host for hot reload)
 .PHONY: playground-dev
@@ -328,12 +336,12 @@ playground-dev:
 		exit 1; \
 	fi
 	@echo "$(YELLOW)Starting backend server and React dev server...$(NC)"
-	@echo "$(YELLOW)Backend will be available at: http://localhost:8081$(NC)"
+	@echo "$(YELLOW)Backend will be available at: http://localhost:8888$(NC)"
 	@echo "$(YELLOW)React dev server will be available at: http://localhost:3000$(NC)"
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
 	@cd $(KIT_PLAYGROUND_DIR) && pip3 install -r backend/requirements.txt
 	@echo "$(GREEN)Please run these commands in separate terminals:$(NC)"
-	@echo "  Terminal 1: cd $(KIT_PLAYGROUND_DIR)/backend && python3 web_server.py --port 8081"
+	@echo "  Terminal 1: cd $(KIT_PLAYGROUND_DIR)/backend && python3 web_server.py --port 8888"
 	@echo "  Terminal 2: cd $(KIT_PLAYGROUND_DIR)/ui && npm start"
 
 # Clean build artifacts

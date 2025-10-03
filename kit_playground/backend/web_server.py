@@ -55,6 +55,21 @@ class PlaygroundWebServer:
     def _setup_routes(self):
         """Setup Flask routes."""
 
+        @self.app.before_request
+        def log_connection():
+            """Log incoming connections with timestamp and IP address."""
+            # Skip logging for static assets to reduce noise
+            if not request.path.startswith('/api/'):
+                return
+
+            # Get client IP address
+            client_ip = request.remote_addr
+            if request.headers.get('X-Forwarded-For'):
+                client_ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            logger.info(f"[{timestamp}] Connection from {client_ip} - {request.method} {request.path}")
+
         @self.app.route('/api/health', methods=['GET'])
         def health_check():
             return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
@@ -489,8 +504,8 @@ if __name__ == '__main__':
     # Standalone mode
     import argparse
     parser = argparse.ArgumentParser(description='Kit Playground Web Server')
-    parser.add_argument('--port', type=int, default=8081, help='Server port')
-    parser.add_argument('--host', default='localhost', help='Server host')
+    parser.add_argument('--port', type=int, default=8888, help='Server port (default: 8888)')
+    parser.add_argument('--host', default='localhost', help='Server host (use 0.0.0.0 for remote access)')
     parser.add_argument('--open-browser', action='store_true', help='Automatically open browser')
     args = parser.parse_args()
 
