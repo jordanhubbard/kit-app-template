@@ -33,12 +33,92 @@ const MainLayoutWorkflow: React.FC = () => {
   const [history, setHistory] = useState<WorkflowStep[]>(['browse']);
   const [historyIndex, setHistoryIndex] = useState(0);
 
+  // Path state
+  const [templatesPath, setTemplatesPath] = useState<string>('templates');
+  const [projectsPath, setProjectsPath] = useState<string>('source/apps');
+
   // Editor state
   const [editorContent, setEditorContent] = useState<string>('');
   const [outputPath, setOutputPathLocal] = useState<string>('');
   const [isBuilding, setIsBuilding] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>('');
+
+  // Templates state
+  const [templates, setTemplates] = useState<any[]>([]);
+
+  // Load templates from API
+  const loadTemplatesData = useCallback(async () => {
+    try {
+      const response = await fetch('/api/v2/templates');
+      const data = await response.json();
+      setTemplates(data);
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+      setTemplates([]);
+    }
+  }, []);
+
+  // Load templates on mount and when path changes
+  React.useEffect(() => {
+    loadTemplatesData();
+  }, [loadTemplatesData, templatesPath]);
+
+  // Convert templates to WorkflowNode tree structure
+  const templateNodes = useMemo((): WorkflowNode[] => {
+    if (templates.length === 0) return [];
+
+    // Group templates by type
+    const applicationTemplates = templates.filter(t => t.type === 'application');
+    const extensionTemplates = templates.filter(t => t.type === 'extension');
+    const serviceTemplates = templates.filter(t => t.type === 'microservice');
+
+    const nodes: WorkflowNode[] = [];
+
+    // Applications category
+    if (applicationTemplates.length > 0) {
+      nodes.push({
+        id: 'cat-applications',
+        label: `Applications (${applicationTemplates.length})`,
+        type: 'category',
+        children: applicationTemplates.map(t => ({
+          id: t.id || t.name,
+          label: t.displayName || t.display_name,
+          type: 'template' as const,
+        })),
+      });
+    }
+
+    // Extensions category
+    if (extensionTemplates.length > 0) {
+      nodes.push({
+        id: 'cat-extensions',
+        label: `Extensions (${extensionTemplates.length})`,
+        type: 'category',
+        children: extensionTemplates.map(t => ({
+          id: t.id || t.name,
+          label: t.displayName || t.display_name,
+          type: 'template' as const,
+        })),
+      });
+    }
+
+    // Services category
+    if (serviceTemplates.length > 0) {
+      nodes.push({
+        id: 'cat-services',
+        label: `Services (${serviceTemplates.length})`,
+        type: 'category',
+        children: serviceTemplates.map(t => ({
+          id: t.id || t.name,
+          label: t.displayName || t.display_name,
+          type: 'template' as const,
+        })),
+      });
+    }
+
+    return nodes;
+  }, [templates]);
 
   // Load user projects from API
   const projectNodes = useMemo((): WorkflowNode[] => {
@@ -78,9 +158,14 @@ const MainLayoutWorkflow: React.FC = () => {
     setSelectedProject(null);
   }, [navigateToStep]);
 
-  // Sidebar node selection (only for projects)
+  // Sidebar node selection
   const handleSelectNode = useCallback((node: WorkflowNode) => {
-    if (node.type === 'project') {
+    if (node.type === 'template') {
+      setSelectedTemplate(node.id);
+      setSelectedProject(null);
+      // Navigate to browse to show template details
+      navigateToStep('browse');
+    } else if (node.type === 'project') {
       setSelectedProject(node.id);
       setSelectedTemplate(null);
       // TODO: Load project files
@@ -264,11 +349,8 @@ const MainLayoutWorkflow: React.FC = () => {
         }}
         selectedTemplate={selectedTemplate}
         onCreateProject={(projectInfo) => {
+          // handleCreateProject already loads the project files
           handleCreateProject(projectInfo);
-          // Load the template code for editing
-          if (selectedTemplate) {
-            loadTemplate(selectedTemplate);
-          }
           navigateToStep('edit');
         }}
       />
@@ -439,12 +521,26 @@ const MainLayoutWorkflow: React.FC = () => {
 
       {/* Main content with sidebar */}
       <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Sidebar - Only show projects, not templates */}
+        {/* Sidebar - Show templates and projects */}
         <WorkflowSidebar
-          templates={[]}
+          templates={templateNodes}
           projects={projectNodes}
           selectedId={getSelectedId()}
+          templatesPath={templatesPath}
+          projectsPath={projectsPath}
           onSelectNode={handleSelectNode}
+          onTemplatesPathChange={(path) => {
+            setTemplatesPath(path);
+            loadTemplatesData();
+          }}
+          onProjectsPathChange={(path) => {
+            setProjectsPath(path);
+            // TODO: Reload projects
+          }}
+          onRefreshTemplates={loadTemplatesData}
+          onRefreshProjects={() => {
+            // TODO: Reload projects
+          }}
         />
 
         {/* Sliding panels */}

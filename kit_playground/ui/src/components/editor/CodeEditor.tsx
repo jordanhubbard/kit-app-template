@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import Editor, { Monaco, OnMount } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import { parse as parseToml } from 'smol-toml';
 
 interface CodeEditorProps {
   value: string;
@@ -40,6 +41,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 }) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+  const validationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -53,13 +55,22 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         setEditorLanguage('python');
       } else if (templateId.includes('cpp') || templateId.includes('c++')) {
         setEditorLanguage('cpp');
-      } else if (templateId.includes('kit')) {
-        setEditorLanguage('json'); // .kit files are JSON-like
+      } else if (templateId.includes('kit') || language === 'toml') {
+        setEditorLanguage('toml'); // .kit files are TOML format
       } else {
         setEditorLanguage(language);
       }
     }
   }, [templateId, language]);
+
+  // Cleanup validation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (validationTimerRef.current) {
+        clearTimeout(validationTimerRef.current);
+      }
+    };
+  }, []);
 
   // Handle editor mount
   const handleEditorMount: OnMount = (editor, monaco) => {
@@ -117,11 +128,26 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     editor.onDidChangeModelContent(() => {
       setHasChanges(true);
       setError(null);
+      // Debounced validation
+      validateContent();
     });
 
-    // Setup error markers
-    setupErrorMarkers(monaco);
+    // Initial validation
+    validateContent();
   };
+
+  // Debounced validation function
+  const validateContent = useCallback(() => {
+    if (validationTimerRef.current) {
+      clearTimeout(validationTimerRef.current);
+    }
+
+    validationTimerRef.current = setTimeout(() => {
+      if (monacoRef.current && editorRef.current) {
+        setupErrorMarkers(monacoRef.current);
+      }
+    }, 500); // 500ms debounce
+  }, [editorLanguage]);
 
   // Setup error markers for syntax checking
   const setupErrorMarkers = (monaco: Monaco) => {
@@ -130,17 +156,49 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     const model = editorRef.current.getModel();
     if (!model) return;
 
-    // Clear existing markers
-    monaco.editor.setModelMarkers(model, 'syntax', []);
+    const content = model.getValue();
+    const markers: editor.IMarkerData[] = [];
 
-    // Add syntax validation (basic example)
-    // In production, this would call a backend linter
     try {
-      // Example: Check for common Python errors
+      // TOML validation
+      if (editorLanguage === 'toml') {
+        try {
+          parseToml(content);
+          // If parsing succeeds, clear any previous errors
+          monaco.editor.setModelMarkers(model, 'toml-syntax', []);
+        } catch (err: any) {
+          // Parse error - try to extract line/column information
+          const errorMessage = err.message || 'TOML syntax error';
+          let lineNumber = 1;
+          let column = 1;
+
+          // Try to extract line number from error message
+          // smol-toml error messages often include line numbers
+          const lineMatch = errorMessage.match(/line (\d+)/i);
+          if (lineMatch) {
+            lineNumber = parseInt(lineMatch[1], 10);
+          }
+
+          // Try to extract column from error message
+          const colMatch = errorMessage.match(/column (\d+)/i);
+          if (colMatch) {
+            column = parseInt(colMatch[1], 10);
+          }
+
+          markers.push({
+            severity: monaco.MarkerSeverity.Error,
+            startLineNumber: lineNumber,
+            startColumn: column,
+            endLineNumber: lineNumber,
+            endColumn: column + 10,
+            message: errorMessage,
+          });
+        }
+      }
+
+      // Python validation
       if (editorLanguage === 'python') {
-        const content = model.getValue();
         const lines = content.split('\n');
-        const markers: editor.IMarkerData[] = [];
 
         lines.forEach((line, index) => {
           // Check for tabs (PEP 8 violation)
@@ -167,9 +225,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             });
           }
         });
-
-        monaco.editor.setModelMarkers(model, 'syntax', markers);
       }
+
+      monaco.editor.setModelMarkers(model, 'syntax', markers);
     } catch (err) {
       console.error('Error setting markers:', err);
     }

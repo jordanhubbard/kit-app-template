@@ -14,6 +14,10 @@ import {
   ListItemText,
   Collapse,
   Chip,
+  IconButton,
+  Tooltip,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   ExpandLess,
@@ -25,6 +29,10 @@ import {
   Apps as AppsIcon,
   Extension as ExtensionIcon,
   Cloud as CloudIcon,
+  FolderSpecial as BrowseIcon,
+  Refresh as RefreshIcon,
+  KeyboardArrowDown as CollapseIcon,
+  KeyboardArrowRight as ExpandIcon,
 } from '@mui/icons-material';
 import { WorkflowNode } from '../../types/workflow';
 
@@ -32,16 +40,34 @@ interface WorkflowSidebarProps {
   templates: WorkflowNode[];
   projects: WorkflowNode[];
   selectedId: string | null;
+  templatesPath: string;
+  projectsPath: string;
   onSelectNode: (node: WorkflowNode) => void;
+  onTemplatesPathChange: (path: string) => void;
+  onProjectsPathChange: (path: string) => void;
+  onRefreshTemplates: () => void;
+  onRefreshProjects: () => void;
 }
 
 const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
   templates,
   projects,
   selectedId,
+  templatesPath,
+  projectsPath,
   onSelectNode,
+  onTemplatesPathChange,
+  onProjectsPathChange,
+  onRefreshTemplates,
+  onRefreshProjects,
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
+  const [projectsCollapsed, setProjectsCollapsed] = useState(false);
+  const [editingTemplatesPath, setEditingTemplatesPath] = useState(false);
+  const [editingProjectsPath, setEditingProjectsPath] = useState(false);
+  const [tempTemplatesPath, setTempTemplatesPath] = useState(templatesPath);
+  const [tempProjectsPath, setTempProjectsPath] = useState(projectsPath);
 
   const toggleExpand = (nodeId: string) => {
     const newExpanded = new Set(expandedNodes);
@@ -120,6 +146,95 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
     );
   };
 
+  // Path section component
+  const PathSelector: React.FC<{
+    path: string;
+    tempPath: string;
+    editing: boolean;
+    onBrowse: () => void;
+    onRefresh: () => void;
+    onStartEdit: () => void;
+    onPathChange: (path: string) => void;
+    onSavePath: () => void;
+    onCancelEdit: () => void;
+    setTempPath: (path: string) => void;
+  }> = ({ path, tempPath, editing, onBrowse, onRefresh, onStartEdit, onPathChange, onSavePath, onCancelEdit, setTempPath }) => {
+    if (editing) {
+      return (
+        <Box sx={{ px: 2, py: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            value={tempPath}
+            onChange={(e) => setTempPath(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onPathChange(tempPath);
+                onSavePath();
+              } else if (e.key === 'Escape') {
+                onCancelEdit();
+              }
+            }}
+            onBlur={() => {
+              onPathChange(tempPath);
+              onSavePath();
+            }}
+            autoFocus
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <FolderIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        sx={{
+          px: 2,
+          py: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.5,
+          backgroundColor: '#2a2a2a',
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Tooltip title={path}>
+          <Typography
+            variant="caption"
+            sx={{
+              flex: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              '&:hover': { color: 'primary.main' },
+            }}
+            onClick={onStartEdit}
+          >
+            {path}
+          </Typography>
+        </Tooltip>
+        <Tooltip title="Browse directory">
+          <IconButton size="small" onClick={onBrowse}>
+            <BrowseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Refresh">
+          <IconButton size="small" onClick={onRefresh}>
+            <RefreshIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -133,45 +248,159 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
         flexDirection: 'column',
       }}
     >
-      {/* Projects Section */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Templates Section */}
+      <Box sx={{ borderBottom: 2, borderColor: 'divider' }}>
+        {/* Templates Header */}
         <Box
           sx={{
-            p: 2,
+            px: 2,
+            py: 1.5,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            backgroundColor: '#252526',
+            cursor: 'pointer',
+            '&:hover': { backgroundColor: '#2a2a2a' },
           }}
+          onClick={() => setTemplatesCollapsed(!templatesCollapsed)}
         >
-          <Typography variant="subtitle2" fontWeight="bold">
-            My Projects
-          </Typography>
-          {projects.length > 0 && <Chip label={projects.length} size="small" />}
-        </Box>
-        {projects.length === 0 ? (
-          <Box
-            sx={{
-              p: 3,
-              textAlign: 'center',
-              color: 'text.secondary',
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              No projects yet
-            </Typography>
-            <Typography variant="caption">
-              Browse templates and click<br/>"Create Project" to get started
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {templatesCollapsed ? (
+              <ExpandIcon fontSize="small" />
+            ) : (
+              <CollapseIcon fontSize="small" />
+            )}
+            <Typography variant="subtitle2" fontWeight="bold">
+              Templates
             </Typography>
           </Box>
-        ) : (
-          <List dense>
-            {projects.map(node => renderNode(node))}
-          </List>
+          {templates.length > 0 && <Chip label={templates.length} size="small" />}
+        </Box>
+
+        {/* Templates Path Selector */}
+        {!templatesCollapsed && (
+          <PathSelector
+            path={templatesPath}
+            tempPath={tempTemplatesPath}
+            editing={editingTemplatesPath}
+            onBrowse={() => {
+              // TODO: Open directory browser dialog
+              console.log('Browse templates path');
+            }}
+            onRefresh={onRefreshTemplates}
+            onStartEdit={() => setEditingTemplatesPath(true)}
+            onPathChange={onTemplatesPathChange}
+            onSavePath={() => setEditingTemplatesPath(false)}
+            onCancelEdit={() => {
+              setTempTemplatesPath(templatesPath);
+              setEditingTemplatesPath(false);
+            }}
+            setTempPath={setTempTemplatesPath}
+          />
+        )}
+
+        {/* Templates List */}
+        {!templatesCollapsed && (
+          <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+            {templates.length === 0 ? (
+              <Box
+                sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  color: 'text.secondary',
+                }}
+              >
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  No templates found
+                </Typography>
+                <Typography variant="caption">
+                  Check the templates path
+                </Typography>
+              </Box>
+            ) : (
+              <List dense>
+                {templates.map(node => renderNode(node))}
+              </List>
+            )}
+          </Box>
+        )}
+      </Box>
+
+      {/* Projects Section */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Projects Header */}
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#252526',
+            cursor: 'pointer',
+            '&:hover': { backgroundColor: '#2a2a2a' },
+          }}
+          onClick={() => setProjectsCollapsed(!projectsCollapsed)}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {projectsCollapsed ? (
+              <ExpandIcon fontSize="small" />
+            ) : (
+              <CollapseIcon fontSize="small" />
+            )}
+            <Typography variant="subtitle2" fontWeight="bold">
+              My Projects
+            </Typography>
+          </Box>
+          {projects.length > 0 && <Chip label={projects.length} size="small" />}
+        </Box>
+
+        {/* Projects Path Selector */}
+        {!projectsCollapsed && (
+          <PathSelector
+            path={projectsPath}
+            tempPath={tempProjectsPath}
+            editing={editingProjectsPath}
+            onBrowse={() => {
+              // TODO: Open directory browser dialog
+              console.log('Browse projects path');
+            }}
+            onRefresh={onRefreshProjects}
+            onStartEdit={() => setEditingProjectsPath(true)}
+            onPathChange={onProjectsPathChange}
+            onSavePath={() => setEditingProjectsPath(false)}
+            onCancelEdit={() => {
+              setTempProjectsPath(projectsPath);
+              setEditingProjectsPath(false);
+            }}
+            setTempPath={setTempProjectsPath}
+          />
+        )}
+
+        {/* Projects List */}
+        {!projectsCollapsed && (
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
+            {projects.length === 0 ? (
+              <Box
+                sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  color: 'text.secondary',
+                }}
+              >
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  No projects yet
+                </Typography>
+                <Typography variant="caption">
+                  Browse templates and click<br/>"Create Project" to get started
+                </Typography>
+              </Box>
+            ) : (
+              <List dense>
+                {projects.map(node => renderNode(node))}
+              </List>
+            )}
+          </Box>
         )}
       </Box>
     </Box>
