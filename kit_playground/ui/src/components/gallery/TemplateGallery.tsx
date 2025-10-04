@@ -39,6 +39,7 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import CreateProjectDialog from '../dialogs/CreateProjectDialog';
+import TemplateDetailPanel from './TemplateDetailPanel';
 
 interface Template {
   name: string;
@@ -402,8 +403,11 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
     );
   }
 
+  // Get selected template object
+  const selectedTemplateObj = templates.find(t => t.name === selectedTemplate);
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Create Project Dialog */}
       <CreateProjectDialog
         open={createDialogOpen}
@@ -420,6 +424,18 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           }
         }}
       />
+
+      {/* Main Gallery */}
+      <Box
+        sx={{
+          flex: selectedTemplate ? '0 0 60%' : 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          transition: 'flex 0.3s ease-in-out',
+          overflow: 'hidden',
+        }}
+      >
 
       {/* Search and Filters */}
       {!compact && (
@@ -541,6 +557,27 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           </Grid>
         )}
       </Box>
+      </Box>
+
+      {/* Detail Panel */}
+      {selectedTemplateObj && (
+        <Box
+          sx={{
+            flex: '0 0 40%',
+            height: '100%',
+            overflow: 'hidden',
+          }}
+        >
+          <TemplateDetailPanel
+            template={selectedTemplateObj}
+            onClose={() => onSelectTemplate('')}
+            onCreateProject={(template) => {
+              setTemplateForCreate(template);
+              setCreateDialogOpen(true);
+            }}
+          />
+        </Box>
+      )}
     </Box>
   );
 };
