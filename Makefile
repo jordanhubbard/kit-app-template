@@ -62,10 +62,9 @@ all: check-deps
 	@echo "  make test              - Run test suite"
 	@echo ""
 	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
-	@echo "  make playground                    - Build UI and launch web server (localhost)"
-	@echo "  make playground REMOTE=1           - Launch with remote access (0.0.0.0)"
-	@echo "  make playground-dev (or make dev)  - Development mode with hot-reload ⚡"
-	@echo "  make playground-build              - Build UI only (requires Node.js)"
+	@echo "  make playground                    - Launch with hot-reload (localhost) ⚡"
+	@echo "  make playground REMOTE=1           - Launch with remote access (0.0.0.0) ⚡"
+	@echo "  make playground-build              - Build production bundle (optional)"
 	@echo "  make playground-clean              - Remove build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
@@ -344,10 +343,28 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Kit Playground - Simple Web-based Build
+# Main playground target: Always use development mode with hot-reload
+# Usage: make playground          - Local access only (localhost)
+#        make playground REMOTE=1 - Remote access (0.0.0.0)
+.PHONY: playground
+playground:
+	@echo "$(BLUE)Starting Kit Playground with hot-reload...$(NC)"
+	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
+	fi
+	@if [ "$(REMOTE)" = "1" ]; then \
+		echo "$(YELLOW)Starting in remote mode (listening on 0.0.0.0)$(NC)"; \
+		REMOTE=1 $(KIT_PLAYGROUND_DIR)/dev.sh; \
+	else \
+		$(KIT_PLAYGROUND_DIR)/dev.sh; \
+	fi
+
+# Production build (optional - mainly for testing the build process)
 .PHONY: playground-build
 playground-build:
-	@echo "$(BLUE)Building Kit Playground UI...$(NC)"
+	@echo "$(BLUE)Building Kit Playground UI (production bundle)...$(NC)"
 	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
 		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
 		echo "  Run: make install-npm"; \
@@ -356,35 +373,7 @@ playground-build:
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
 	@echo "$(GREEN)✓ Kit Playground UI built successfully!$(NC)"
-
-# Main playground target: build and launch
-# Usage: make playground          - Local access only (localhost)
-#        make playground REMOTE=1 - Remote access (0.0.0.0)
-.PHONY: playground
-playground: playground-build
-	@echo "$(BLUE)Starting Kit Playground...$(NC)"
-	@if [ "$(REMOTE)" = "1" ]; then \
-		echo "$(YELLOW)Starting in remote mode (listening on 0.0.0.0)$(NC)"; \
-		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --host 0.0.0.0 --open-browser; \
-	else \
-		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --open-browser; \
-	fi
-
-# Development mode with hot-reload (requires Node.js on host)
-.PHONY: playground-dev
-playground-dev:
-	@echo "$(BLUE)Starting Kit Playground in development mode...$(NC)"
-	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
-		echo "$(RED)✗ Node.js and npm are required for development mode$(NC)"; \
-		echo "  Run: make install-npm"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)Launching development servers with hot-reload...$(NC)"
-	@$(KIT_PLAYGROUND_DIR)/dev.sh
-
-# Alias for dev mode
-.PHONY: dev
-dev: playground-dev
+	@echo "$(YELLOW)Note: This is a production build. For development, use 'make playground'$(NC)"
 
 # Clean build artifacts
 .PHONY: playground-clean

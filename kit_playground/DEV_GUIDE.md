@@ -1,40 +1,35 @@
 # Kit Playground Development Guide
 
-## Development Modes
+## Running the Playground
 
-### Production Mode (Full Build)
-For testing the production build or when Node.js is not available:
+Kit Playground **always runs in development mode** with hot-reload enabled:
+
 ```bash
-make playground
-# or
-./kit_playground/playground.sh
-```
+make playground          # Local access (localhost only)
+make playground REMOTE=1 # Remote access (all interfaces)
 
-This builds the React app once and serves it from the Flask backend.
-
-### Development Mode (Hot Reload) ⚡ RECOMMENDED
-For active development with instant hot-reloading:
-```bash
-make playground-dev
-# or shortcut
-make dev
-# or directly
+# Or directly:
 ./kit_playground/dev.sh  # Linux/Mac
 ./kit_playground/dev.bat # Windows
 ```
 
-**What happens:**
-- Backend runs on `http://localhost:8081` (API server)
-- Frontend runs on `http://localhost:3000` (React dev server with hot-reload)
-- API calls are automatically proxied from frontend to backend
+**What runs:**
+- Backend API server on `http://localhost:8081` (Flask)
+- Frontend dev server on `http://localhost:3000` (React with hot-reload)
+- API calls automatically proxied from frontend → backend
 - Changes to `.tsx`, `.ts`, `.css` files reload instantly (< 1 second)
-- No need to manually rebuild!
 
-**Benefits:**
-- ⚡ **Hot Module Replacement (HMR)** - Changes appear instantly without full page reload
-- 🔍 **Better error messages** - See TypeScript/React errors in browser console
-- 🚀 **Faster iteration** - No build step between changes
-- 🎯 **Component-level updates** - Only changed components refresh
+**Why always development mode?**
+- ⚡ **Instant feedback** - Changes appear in < 1 second
+- 🔍 **Better debugging** - See TypeScript/React errors in console
+- 🚀 **Faster workflow** - No build step between changes
+- 🎯 **Component-level HMR** - Only changed components refresh
+- 💾 **Saves time** - No need to wait for production builds
+
+**Production builds are optional** and only needed for:
+- Creating deployment artifacts
+- Testing the build process itself
+- CI/CD pipelines
 
 ## Project Structure
 
@@ -59,20 +54,24 @@ kit_playground/
 ## Making Changes
 
 ### Frontend Changes (React/TypeScript)
-1. Run `make dev` once
+1. Run `make playground` once
 2. Edit files in `kit_playground/ui/src/`
-3. Save - changes appear instantly in browser!
+3. Save - changes appear instantly in browser! ⚡
 
 ### Backend Changes (Python/Flask)
-1. Run `make dev` once
+1. Run `make playground` once
 2. Edit files in `kit_playground/backend/`
-3. Press Ctrl+C and restart `make dev` (or use a Python auto-reload tool)
+3. Press Ctrl+C and restart `make playground` (or use a Python auto-reload tool)
 
-### When to Use Production Build
-- Testing the final bundled app
-- Before creating a pull request
-- When deploying to production
-- When you don't have Node.js installed
+### Optional: Production Build
+
+Only needed if you're testing the build process or creating deployment artifacts:
+
+```bash
+make playground-build  # Creates optimized bundle in ui/build/
+```
+
+**You don't need this for normal development!** Always use `make playground` instead.
 
 ## Common Tasks
 
@@ -112,9 +111,9 @@ lsof -ti:8081 | xargs kill
 ```
 
 ### Changes Not Appearing
-1. Make sure you're running `make dev` (not `make playground`)
-2. Check browser console for errors
-3. Hard refresh: Ctrl+Shift+R (Linux/Windows) or Cmd+Shift+R (Mac)
+1. Check browser console for errors
+2. Hard refresh: Ctrl+Shift+R (Linux/Windows) or Cmd+Shift+R (Mac)
+3. Restart: Press Ctrl+C and run `make playground` again
 
 ### API Calls Failing
 - Dev mode proxies `/api/*` to `http://localhost:8081`
@@ -129,24 +128,17 @@ npm run build  # Check for compilation errors
 
 ## Architecture
 
-### Development Flow
+### Standard Flow (Always Used)
 ```
 Browser (localhost:3000)
-    ↓ React DevServer (Hot Reload)
+    ↓ React DevServer (Hot Reload ⚡)
     ↓ /api/* requests proxied to →
 Flask Backend (localhost:8081)
     ↓
-Template API / File System
+Template API / File System / Xpra
 ```
 
-### Production Flow
-```
-Browser (localhost:8888)
-    ↓
-Flask Backend (serves static React build)
-    ↓
-Template API / File System
-```
+**No production mode needed!** Development mode is fast enough for all use cases.
 
 ## Performance Tips
 
@@ -158,7 +150,7 @@ Template API / File System
 ## Contributing
 
 When submitting changes:
-1. Test in **dev mode** (`make dev`)
-2. Test **production build** (`make playground`)
-3. Verify TypeScript compilation (`npm run build`)
-4. Run tests if available (`npm test`)
+1. Test changes (`make playground`)
+2. Verify TypeScript compilation (`cd kit_playground/ui && npm run build`)
+3. Run tests if available (`npm test`)
+4. Commit and push

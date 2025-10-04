@@ -36,13 +36,27 @@ if [ ! -d "$UI_DIR/node_modules" ]; then
     cd "$SCRIPT_DIR"
 fi
 
+# Determine host based on REMOTE environment variable
+if [ "$REMOTE" = "1" ]; then
+    BACKEND_HOST="0.0.0.0"
+    FRONTEND_HOST="0.0.0.0"
+    DISPLAY_HOST="0.0.0.0"
+else
+    BACKEND_HOST="localhost"
+    FRONTEND_HOST="localhost"
+    DISPLAY_HOST="localhost"
+fi
+
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  Kit Playground Development Mode                          ║${NC}"
+echo -e "${GREEN}║  Kit Playground - Development Mode with Hot Reload        ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}Starting services:${NC}"
-echo -e "  • Backend API:  ${GREEN}http://localhost:8081${NC}"
-echo -e "  • Frontend UI:  ${GREEN}http://localhost:3000${NC} ${YELLOW}(with hot-reload)${NC}"
+echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:8081${NC}"
+echo -e "  • Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:3000${NC} ${YELLOW}(with hot-reload)${NC}"
+if [ "$REMOTE" = "1" ]; then
+    echo -e "  ${YELLOW}⚠ Remote mode: Listening on 0.0.0.0 (all interfaces)${NC}"
+fi
 echo ""
 echo -e "${YELLOW}Changes to React/TypeScript files will hot-reload automatically!${NC}"
 echo -e "${YELLOW}Press Ctrl+C to stop both servers${NC}"
@@ -60,7 +74,7 @@ trap cleanup EXIT INT TERM
 # Start backend in background
 echo -e "${BLUE}[1/2] Starting Backend API server...${NC}"
 cd "$BACKEND_DIR"
-python3 web_server.py --port 8081 > /tmp/playground-backend.log 2>&1 &
+python3 web_server.py --port 8081 --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
 BACKEND_PID=$!
 
 # Wait for backend to start
@@ -74,7 +88,11 @@ echo -e "${GREEN}✓ Backend running (PID: $BACKEND_PID)${NC}"
 # Start frontend dev server
 echo -e "${BLUE}[2/2] Starting React dev server with hot-reload...${NC}"
 cd "$UI_DIR"
-BROWSER=none npm start &
+if [ "$REMOTE" = "1" ]; then
+    BROWSER=none HOST="$FRONTEND_HOST" npm start &
+else
+    BROWSER=none npm start &
+fi
 FRONTEND_PID=$!
 
 echo ""
