@@ -626,7 +626,7 @@ Click "Build" to generate a project from this template.
                 'message': f'Run error: {str(e)}'
             })
 
-    def start(self, host: str = 'localhost', port: int = 8081, open_browser: bool = False):
+    def start(self, host: str = 'localhost', port: int = 8200, open_browser: bool = False):
         """Start the web server."""
         # Try to find an available port if the specified port is in use
         original_port = port
@@ -687,7 +687,7 @@ if __name__ == '__main__':
     # Standalone mode
     import argparse
     parser = argparse.ArgumentParser(description='Kit Playground Web Server')
-    parser.add_argument('--port', type=int, default=8888, help='Server port (default: 8888)')
+    parser.add_argument('--port', type=int, default=8200, help='Server port (default: 8200)')
     parser.add_argument('--host', default='localhost', help='Server host (use 0.0.0.0 for remote access)')
     parser.add_argument('--open-browser', action='store_true', help='Automatically open browser')
     args = parser.parse_args()

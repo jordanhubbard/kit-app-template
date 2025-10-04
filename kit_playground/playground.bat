@@ -72,6 +72,6 @@ echo The web interface will open in your default browser
 echo Press Ctrl+C to stop the server
 echo.
 
-%PYTHON_CMD% "%BACKEND_DIR%\web_server.py" --port 8081 --open-browser
+%PYTHON_CMD% "%BACKEND_DIR%\web_server.py" --port 8200 --open-browser
 
 pause

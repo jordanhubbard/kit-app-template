@@ -49,8 +49,8 @@ def parse_arguments():
     parser.add_argument(
         '--port',
         type=int,
-        default=8080,
-        help='Port for web server (default: 8080)'
+        default=8200,
+        help='Port for web server (default: 8200)'
     )
 
     parser.add_argument(

@@ -2,7 +2,7 @@
   "name": "kit-playground",
   "version": "1.0.0",
   "description": "Visual Development Environment for NVIDIA Omniverse Kit SDK",
-  "proxy": "http://localhost:8081",
+  "proxy": "http://localhost:8200",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

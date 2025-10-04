@@ -102,11 +102,27 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   const loadTemplates = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/templates');
+      // Use v2 API endpoint which returns all templates
+      const response = await fetch('/api/v2/templates');
       const data = await response.json();
 
-      // Convert object to array
-      const templateArray = Object.values(data) as Template[];
+      // v2 API returns array directly with camelCase fields, map to component's format
+      const templateArray = data.map((t: any) => ({
+        name: t.id || t.name,
+        display_name: t.displayName,
+        type: t.type,
+        category: t.category || 'general',
+        description: t.description,
+        thumbnail: undefined,
+        icon: undefined,
+        color_scheme: undefined,
+        connectors: [],
+        metadata: {
+          version: t.version,
+          tags: t.tags || []
+        }
+      })) as Template[];
+
       setTemplates(templateArray);
     } catch (error) {
       console.error('Failed to load templates:', error);

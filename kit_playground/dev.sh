@@ -52,7 +52,7 @@ echo -e "${GREEN}║  Kit Playground - Development Mode with Hot Reload        �
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}Starting services:${NC}"
-echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:8081${NC}"
+echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:8200${NC}"
 echo -e "  • Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:3000${NC} ${YELLOW}(with hot-reload)${NC}"
 if [ "$REMOTE" = "1" ]; then
     echo -e "  ${YELLOW}⚠ Remote mode: Listening on 0.0.0.0 (all interfaces)${NC}"
@@ -74,7 +74,7 @@ trap cleanup EXIT INT TERM
 # Start backend in background
 echo -e "${BLUE}[1/2] Starting Backend API server...${NC}"
 cd "$BACKEND_DIR"
-python3 web_server.py --port 8081 --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
+python3 web_server.py --port 8200 --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
 BACKEND_PID=$!
 
 # Wait for backend to start

@@ -37,7 +37,7 @@ if not exist "%UI_DIR%\node_modules" (
 )
 
 echo Starting services:
-echo   • Backend API:  http://localhost:8081
+echo   • Backend API:  http://localhost:8200
 echo   • Frontend UI:  http://localhost:3000 (with hot-reload)
 echo.
 echo Changes to React/TypeScript files will hot-reload automatically!
@@ -47,7 +47,7 @@ echo.
 REM Start backend in background
 echo [1/2] Starting Backend API server...
 cd "%BACKEND_DIR%"
-start /B python web_server.py --port 8081 > %TEMP%\playground-backend.log 2>&1
+start /B python web_server.py --port 8200 > %TEMP%\playground-backend.log 2>&1
 
 REM Wait a moment for backend to start
 timeout /t 2 /nobreak >nul

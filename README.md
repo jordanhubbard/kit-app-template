@@ -291,7 +291,7 @@ Initiate your newly created application using:
 
 Kit Playground is a **visual development environment** inspired by Swift Playgrounds that allows you to develop Omniverse Kit applications without touching the command line. It features a side-by-side editor and live preview, visual template gallery, and one-click build and deployment.
 
-> **Important:** Kit Playground is an **optional tool** that provides a browser-based visual interface. It runs a local Flask web server on port 8081 for the UI. When you use `make playground`, it starts this web server which runs until you stop it (Ctrl+C). **The CLI commands (`./repo.sh`) work completely independently** and do not require the playground server to be running.
+> **Important:** Kit Playground is an **optional tool** that provides a browser-based visual interface. It runs a local Flask web server on port 8200 for the UI. When you use `make playground`, it starts this web server which runs until you stop it (Ctrl+C). **The CLI commands (`./repo.sh`) work completely independently** and do not require the playground server to be running.
 
 ### Getting Started with Kit Playground
 

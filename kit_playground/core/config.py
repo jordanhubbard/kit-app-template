@@ -17,7 +17,7 @@ class PlaygroundConfig:
             'hot_reload': False,
             'server': {
                 'host': 'localhost',
-                'port': 8081,
+                'port': 8200,
             },
             'ui': {
                 'mode': 'web',  # web, native, headless

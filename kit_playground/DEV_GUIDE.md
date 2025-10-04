@@ -103,11 +103,11 @@ tail -f /tmp/playground-backend.log
 ## Troubleshooting
 
 ### Port Already in Use
-If port 3000 or 8081 is in use:
+If port 3000 or 8200 is in use:
 ```bash
 # Find and kill processes
 lsof -ti:3000 | xargs kill
-lsof -ti:8081 | xargs kill
+lsof -ti:8200 | xargs kill
 ```
 
 ### Changes Not Appearing

@@ -106,7 +106,7 @@ npm run build
 
 # Start the server
 cd ../backend
-python3 web_server.py --port 8081 --open-browser
+python3 web_server.py --port 8200 --open-browser
 ```
 
 ### Development Mode (with hot reload)
@@ -114,7 +114,7 @@ python3 web_server.py --port 8081 --open-browser
 **Terminal 1 - Backend:**
 ```bash
 cd kit_playground/backend
-python3 web_server.py --port 8081
+python3 web_server.py --port 8200
 ```
 
 **Terminal 2 - Frontend:**
@@ -215,7 +215,7 @@ Kit Playground can be configured via command-line arguments:
 
 ```bash
 # Custom port
-python3 backend/web_server.py --port 8082
+python3 backend/web_server.py --port 8201
 
 # Custom host
 python3 backend/web_server.py --host 0.0.0.0
