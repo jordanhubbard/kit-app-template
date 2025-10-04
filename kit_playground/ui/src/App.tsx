@@ -7,7 +7,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Provider } from 'react-redux';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { store } from './store/store';
-import MainLayout from './components/layout/MainLayout';
+import MainLayoutWorkflow from './components/layout/MainLayoutWorkflow';
 import { initializeAPI } from './services/api';
 import { useAppDispatch } from './hooks/redux';
 import { loadTemplates } from './store/slices/templatesSlice';
@@ -116,7 +116,7 @@ function AppContent() {
     );
   }
 
-  return <MainLayout />;
+  return <MainLayoutWorkflow />;
 }
 
 function App() {
