@@ -109,14 +109,21 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
 
   const loadHomeDirectory = async () => {
     try {
-      // Get home directory from backend API (which knows the server's environment)
-      // For now, use a sensible default - could be enhanced to ask backend
-      const platform = navigator.platform.toLowerCase();
-      const isWindows = platform.includes('win');
-      const defaultHome = isWindows ? 'C:\\Users' : '/home';
-      setCurrentPath(defaultHome);
+      // Get current working directory from backend API
+      const response = await fetch('/api/filesystem/cwd');
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentPath(data.realpath || data.cwd);
+      } else {
+        // Fallback to sensible default
+        const platform = navigator.platform.toLowerCase();
+        const isWindows = platform.includes('win');
+        const defaultHome = isWindows ? 'C:\\Users' : '/home';
+        setCurrentPath(defaultHome);
+      }
     } catch (err) {
-      console.error('Failed to get home directory:', err);
+      console.error('Failed to get current directory:', err);
+      // Fallback to root
       setCurrentPath('/');
     }
   };

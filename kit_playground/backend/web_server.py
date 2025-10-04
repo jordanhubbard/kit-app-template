@@ -474,6 +474,19 @@ Click "Build" to generate a project from this template.
                 return jsonify({'installed': False, 'error': str(e)})
 
         # Filesystem routes
+        @self.app.route('/api/filesystem/cwd', methods=['GET'])
+        def get_current_directory():
+            """Get current working directory."""
+            try:
+                cwd = os.getcwd()
+                return jsonify({
+                    'cwd': cwd,
+                    'realpath': str(Path(cwd).resolve())
+                })
+            except Exception as e:
+                logger.error(f"Failed to get current directory: {e}")
+                return jsonify({'error': str(e)}), 500
+
         @self.app.route('/api/filesystem/list', methods=['GET'])
         def list_directory():
             """List directory contents."""
