@@ -4,7 +4,13 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Box } from '@mui/material';
+import { Box, Toolbar, IconButton, Tooltip, Typography, Divider } from '@mui/material';
+import {
+  Build as BuildIcon,
+  PlayArrow as RunIcon,
+  Stop as StopIcon,
+  Save as SaveIcon,
+} from '@mui/icons-material';
 import SlidingPanelLayout from './SlidingPanelLayout';
 import WorkflowSidebar from './WorkflowSidebar';
 import WorkflowBreadcrumbs from './WorkflowBreadcrumbs';
@@ -30,6 +36,9 @@ const MainLayoutWorkflow: React.FC = () => {
   // Editor state
   const [editorContent, setEditorContent] = useState<string>('');
   const [outputPath, setOutputPathLocal] = useState<string>('');
+  const [isBuilding, setIsBuilding] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentProjectPath, setCurrentProjectPath] = useState<string>('');
 
   // Load user projects from API
   const projectNodes = useMemo((): WorkflowNode[] => {
@@ -95,66 +104,149 @@ const MainLayoutWorkflow: React.FC = () => {
     setEditorContent(newCode);
   }, []);
 
+  const handleSave = useCallback(async () => {
+    if (!currentProjectPath) return;
+
+    try {
+      // TODO: Implement save via API
+      console.log('Saving project...');
+    } catch (error) {
+      console.error('Failed to save:', error);
+    }
+  }, [currentProjectPath]);
+
+  const handleBuild = useCallback(async () => {
+    if (!selectedProject || !currentProjectPath) return;
+
+    setIsBuilding(true);
+    try {
+      // Call repo.sh build command via API
+      const response = await fetch('/api/projects/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: currentProjectPath,
+          projectName: selectedProject,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('Build successful!');
+      } else {
+        console.error('Build failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Build error:', error);
+    } finally {
+      setIsBuilding(false);
+    }
+  }, [selectedProject, currentProjectPath]);
+
+  const handleRun = useCallback(async () => {
+    if (!selectedProject || !currentProjectPath) return;
+
+    setIsRunning(true);
+    try {
+      // Build first, then run
+      await handleBuild();
+
+      // Call repo.sh launch command via API
+      const response = await fetch('/api/projects/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: currentProjectPath,
+          projectName: selectedProject,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('Application launched!');
+        // Navigate to preview if Xpra session available
+        if (result.previewUrl) {
+          navigateToStep('preview');
+        }
+      } else {
+        console.error('Launch failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Run error:', error);
+      setIsRunning(false);
+    }
+  }, [selectedProject, currentProjectPath, handleBuild, navigateToStep]);
+
+  const handleStop = useCallback(async () => {
+    if (!selectedProject) return;
+
+    try {
+      const response = await fetch('/api/projects/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectName: selectedProject,
+        }),
+      });
+
+      if (response.ok) {
+        setIsRunning(false);
+        console.log('Application stopped');
+      }
+    } catch (error) {
+      console.error('Stop error:', error);
+    }
+  }, [selectedProject]);
+
   const handleCreateProject = useCallback(async (projectInfo: any) => {
     console.log('Project created:', projectInfo);
 
-    // Load the generated project's main extension file
+    // Store project info for build/run operations
+    setSelectedProject(projectInfo.projectName);
+
+    // Load the generated project's .kit configuration file (TOML)
     try {
       // The generated project is in source/apps/{projectName}.kit
       const projectPath = `${projectInfo.outputDir}/${projectInfo.projectName}.kit`;
+      const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
 
-      // Try to find and load the main Python extension file
-      const response = await fetch(`/api/filesystem/list?path=${encodeURIComponent(projectPath)}/exts`);
+      // Store project path for build/run operations
+      setCurrentProjectPath(projectPath);
+
+      // Try to read the .kit configuration file
+      const response = await fetch(`/api/filesystem/read?path=${encodeURIComponent(kitFilePath)}`);
+
       if (response.ok) {
-        const items = await response.json();
-
-        // Find the extension directory (usually matches project name)
-        const extDir = items.find((item: any) => item.isDirectory && item.name.includes(projectInfo.projectName));
-
-        if (extDir) {
-          // Load the main extension Python file
-          const extPath = `${extDir.path}/${projectInfo.projectName}`;
-          const pyResponse = await fetch(`/api/filesystem/list?path=${encodeURIComponent(extPath)}`);
-
-          if (pyResponse.ok) {
-            const pyItems = await pyResponse.json();
-            const pyFile = pyItems.find((item: any) => item.name === 'extension.py' || item.name === '__init__.py');
-
-            if (pyFile) {
-              // Read the Python file content
-              const contentResponse = await fetch(`/api/filesystem/read?path=${encodeURIComponent(pyFile.path)}`);
-              if (contentResponse.ok) {
-                const content = await contentResponse.text();
-                setEditorContent(content);
-              }
-            }
-          }
-        }
-      }
-
-      // Fallback: show a welcome message with project info
-      if (!editorContent) {
+        const content = await response.text();
+        setEditorContent(content);
+        setOutputPathLocal(projectPath);
+      } else {
+        // Fallback: show a welcome message with project info
         setEditorContent(`# ${projectInfo.displayName}
 #
 # Project created successfully!
 # Location: ${projectPath}
 #
-# Your Kit application template has been generated.
-# Edit the files in: ${projectPath}/exts/${projectInfo.projectName}
+# Your Kit application has been generated from the ${projectInfo.templateName} template.
 #
-# Template: ${projectInfo.templateName}
-
+# To view and edit the configuration:
+# Open: ${kitFilePath}
+#
+# To build: Click the "Build" button in the toolbar
+# To run: Click the "Run" button in the toolbar
 `);
       }
     } catch (error) {
       console.error('Failed to load project files:', error);
       setEditorContent(`# Project created: ${projectInfo.displayName}
 #
-# Error loading project files. Please navigate to:
-# ${projectInfo.outputDir}/${projectInfo.projectName}.kit
+# Error loading configuration file.
+# Location: ${projectInfo.outputDir}/${projectInfo.projectName}.kit
+#
+# You can manually navigate to this directory to view your project.
 `);
     }
-  }, [editorContent]);
+  }, []);
 
   // Get current selection for breadcrumbs
   const getSelectedId = () => {
@@ -192,12 +284,93 @@ const MainLayoutWorkflow: React.FC = () => {
         flexDirection: 'column',
       }}
     >
-      {/* Editor and build controls */}
+      {/* Toolbar */}
+      <Toolbar
+        variant="dense"
+        sx={{
+          backgroundColor: '#252526',
+          borderBottom: 1,
+          borderColor: '#3e3e42',
+          minHeight: 40,
+          gap: 1,
+        }}
+      >
+        <Tooltip title="Save (Ctrl+S)">
+          <IconButton
+            size="small"
+            onClick={handleSave}
+            disabled={!currentProjectPath}
+            sx={{ color: '#cccccc' }}
+          >
+            <SaveIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 1, backgroundColor: '#3e3e42' }} />
+
+        <Tooltip title="Build project">
+          <IconButton
+            size="small"
+            onClick={handleBuild}
+            disabled={!currentProjectPath || isBuilding || isRunning}
+            sx={{
+              color: isBuilding ? '#4ec9b0' : '#cccccc',
+              '&:hover': { backgroundColor: '#2d2d30' },
+            }}
+          >
+            <BuildIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {!isRunning ? (
+          <Tooltip title="Run (Build + Launch)">
+            <IconButton
+              size="small"
+              onClick={handleRun}
+              disabled={!currentProjectPath || isBuilding || isRunning}
+              sx={{
+                color: '#4ec9b0',
+                '&:hover': { backgroundColor: '#2d2d30' },
+              }}
+            >
+              <RunIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Tooltip title="Stop application">
+            <IconButton
+              size="small"
+              onClick={handleStop}
+              sx={{
+                color: '#f48771',
+                '&:hover': { backgroundColor: '#2d2d30' },
+              }}
+            >
+              <StopIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        <Typography
+          variant="caption"
+          sx={{
+            ml: 'auto',
+            color: '#858585',
+            fontFamily: 'monospace',
+          }}
+        >
+          {selectedProject || 'No project selected'}
+          {isBuilding && ' • Building...'}
+          {isRunning && ' • Running'}
+        </Typography>
+      </Toolbar>
+
+      {/* Editor */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         <CodeEditor
           value={editorContent}
           onChange={handleCodeChange}
-          language="python"
+          language="toml"
           templateId={selectedTemplate}
           readOnly={false}
         />

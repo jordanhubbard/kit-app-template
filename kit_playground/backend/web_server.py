@@ -250,6 +250,116 @@ Click "Build" to generate a project from this template.
                 logger.error(f"Failed to create project: {e}")
                 return jsonify({'error': str(e)}), 500
 
+        @self.app.route('/api/projects/build', methods=['POST'])
+        def build_project():
+            """Build a Kit project using repo.sh."""
+            try:
+                data = request.json
+                project_path = data.get('projectPath')
+                project_name = data.get('projectName')
+
+                if not project_path:
+                    return jsonify({'error': 'projectPath required'}), 400
+
+                # Run repo.sh build command
+                repo_root = Path(__file__).parent.parent.parent
+                result = subprocess.run(
+                    [f'{repo_root}/repo.sh', 'build', '--path', project_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    cwd=str(repo_root)
+                )
+
+                # Emit build logs
+                if result.stdout:
+                    self.socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'build',
+                        'message': result.stdout
+                    })
+
+                if result.stderr:
+                    self.socketio.emit('log', {
+                        'level': 'error',
+                        'source': 'build',
+                        'message': result.stderr
+                    })
+
+                success = result.returncode == 0
+                return jsonify({
+                    'success': success,
+                    'output': result.stdout,
+                    'error': result.stderr if not success else None
+                })
+            except subprocess.TimeoutExpired:
+                return jsonify({'error': 'Build timeout'}), 500
+            except Exception as e:
+                logger.error(f"Failed to build project: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/projects/run', methods=['POST'])
+        def run_project():
+            """Run a Kit project using repo.sh launch."""
+            try:
+                data = request.json
+                project_path = data.get('projectPath')
+                project_name = data.get('projectName')
+
+                if not project_path:
+                    return jsonify({'error': 'projectPath required'}), 400
+
+                # Run repo.sh launch command in background
+                repo_root = Path(__file__).parent.parent.parent
+                process = subprocess.Popen(
+                    [f'{repo_root}/repo.sh', 'launch', '--path', project_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=str(repo_root)
+                )
+
+                # Store process for later stop
+                self.processes[project_name] = process
+
+                self.socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'Launched {project_name}'
+                })
+
+                return jsonify({
+                    'success': True,
+                    'message': 'Application launched',
+                    'previewUrl': None  # TODO: Integrate with Xpra if available
+                })
+            except Exception as e:
+                logger.error(f"Failed to run project: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/projects/stop', methods=['POST'])
+        def stop_project():
+            """Stop a running Kit project."""
+            try:
+                data = request.json
+                project_name = data.get('projectName')
+
+                if project_name in self.processes:
+                    process = self.processes[project_name]
+                    process.terminate()
+                    del self.processes[project_name]
+
+                    self.socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Stopped {project_name}'
+                    })
+
+                return jsonify({'success': True})
+            except Exception as e:
+                logger.error(f"Failed to stop project: {e}")
+                return jsonify({'error': str(e)}), 500
+
         # ============= Unified Template API Routes =============
         # These routes use the shared template_api module for consistency between CLI and GUI
 
