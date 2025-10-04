@@ -288,15 +288,7 @@ const MainLayoutWorkflow: React.FC = () => {
       </Box>
 
       {/* Status Bar */}
-      <StatusBar
-        selectedTemplate={selectedTemplate}
-        currentProject={currentProject}
-        isBuilding={isBuilding}
-        isRunning={isRunning}
-        onBuild={handleBuild}
-        onRun={handleRun}
-        onStop={handleStop}
-      />
+      <StatusBar />
     </Box>
   );
 };
