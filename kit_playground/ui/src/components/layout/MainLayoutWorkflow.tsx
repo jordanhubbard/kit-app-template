@@ -34,33 +34,10 @@ const MainLayoutWorkflow: React.FC = () => {
   const [outputPath, setOutputPathLocal] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string>('');
 
-  // Build template tree from API
-  const templateNodes = useMemo((): WorkflowNode[] => {
-    // TODO: Load from API
-    return [
-      {
-        id: 'apps',
-        label: 'Applications',
-        type: 'category',
-        children: [
-          { id: 'omni_usd_composer', label: 'USD Composer', type: 'template' },
-          { id: 'omni_usd_viewer', label: 'USD Viewer', type: 'template' },
-        ],
-      },
-      {
-        id: 'extensions',
-        label: 'Extensions',
-        type: 'category',
-        children: [
-          { id: 'basic_python', label: 'Basic Python', type: 'template' },
-          { id: 'python_ui', label: 'Python UI', type: 'template' },
-        ],
-      },
-    ];
-  }, []);
-
+  // Load user projects from API
   const projectNodes = useMemo((): WorkflowNode[] => {
     // TODO: Load user projects from API
+    // For now, return empty array - projects will be added when users create them
     return [];
   }, []);
 
@@ -95,19 +72,15 @@ const MainLayoutWorkflow: React.FC = () => {
     setSelectedProject(null);
   }, [navigateToStep]);
 
-  // Sidebar node selection
+  // Sidebar node selection (only for projects)
   const handleSelectNode = useCallback((node: WorkflowNode) => {
-    if (node.type === 'template') {
-      setSelectedTemplate(node.id);
-      setSelectedProject(null);
-      // Load template code
-      loadTemplate(node.id);
-      navigateToStep('edit');
-    } else if (node.type === 'project') {
+    if (node.type === 'project') {
       setSelectedProject(node.id);
       setSelectedTemplate(null);
+      // TODO: Load project files
       navigateToStep('edit');
     }
+    // Categories are not selectable, just expand/collapse
   }, [navigateToStep]);
 
   // Template/Project operations
@@ -160,11 +133,18 @@ const MainLayoutWorkflow: React.FC = () => {
     <Box sx={{ width: '100%', height: '100%', overflow: 'hidden' }}>
       <TemplateGallery
         onSelectTemplate={(id) => {
+          // Just select the template, don't navigate yet
           setSelectedTemplate(id);
-          navigateToStep('edit');
         }}
         selectedTemplate={selectedTemplate}
-        onCreateProject={handleCreateProject}
+        onCreateProject={(projectInfo) => {
+          handleCreateProject(projectInfo);
+          // Load the template code for editing
+          if (selectedTemplate) {
+            loadTemplate(selectedTemplate);
+          }
+          navigateToStep('edit');
+        }}
       />
     </Box>
   );
@@ -261,9 +241,9 @@ const MainLayoutWorkflow: React.FC = () => {
 
       {/* Main content with sidebar */}
       <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Sidebar */}
+        {/* Sidebar - Only show projects, not templates */}
         <WorkflowSidebar
-          templates={templateNodes}
+          templates={[]}
           projects={projectNodes}
           selectedId={getSelectedId()}
           onSelectNode={handleSelectNode}

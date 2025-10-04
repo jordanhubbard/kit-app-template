@@ -13,7 +13,6 @@ import {
   ListItemIcon,
   ListItemText,
   Collapse,
-  Divider,
   Chip,
 } from '@mui/material';
 import {
@@ -134,30 +133,8 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
         flexDirection: 'column',
       }}
     >
-      {/* Templates Section */}
-      <Box>
-        <Box
-          sx={{
-            p: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Typography variant="subtitle2" fontWeight="bold">
-            Templates
-          </Typography>
-          <Chip label={templates.length} size="small" />
-        </Box>
-        <List dense>
-          {templates.map(node => renderNode(node))}
-        </List>
-      </Box>
-
-      <Divider />
-
       {/* Projects Section */}
-      <Box sx={{ flex: 1 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Box
           sx={{
             p: 2,
@@ -167,23 +144,28 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
           }}
         >
           <Typography variant="subtitle2" fontWeight="bold">
-            Projects
+            My Projects
           </Typography>
-          <Chip label={projects.length} size="small" />
+          {projects.length > 0 && <Chip label={projects.length} size="small" />}
         </Box>
         {projects.length === 0 ? (
           <Box
             sx={{
-              p: 2,
+              p: 3,
               textAlign: 'center',
               color: 'text.secondary',
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ mb: 1 }}>
               No projects yet
             </Typography>
             <Typography variant="caption">
-              Create from a template
+              Browse templates and click<br/>"Create Project" to get started
             </Typography>
           </Box>
         ) : (
