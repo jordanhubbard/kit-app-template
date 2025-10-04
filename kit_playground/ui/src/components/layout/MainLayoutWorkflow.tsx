@@ -184,6 +184,7 @@ const MainLayoutWorkflow: React.FC = () => {
           value={editorContent}
           onChange={handleCodeChange}
           language="python"
+          templateId={selectedTemplate}
           readOnly={false}
         />
       </Box>

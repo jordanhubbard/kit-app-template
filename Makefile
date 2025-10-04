@@ -344,29 +344,16 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Main playground target: Build and serve (production mode)
+# Main playground target: Development mode with hot-reload (always dev mode)
 # Usage: make playground          - Local access only (localhost)
 #        make playground REMOTE=1 - Remote access (0.0.0.0)
 .PHONY: playground
-playground: playground-build
-	@echo "$(BLUE)Starting Kit Playground...$(NC)"
-	@if [ "$(REMOTE)" = "1" ]; then \
-		echo "$(YELLOW)Starting in remote mode (listening on 0.0.0.0)$(NC)"; \
-		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --host 0.0.0.0 --open-browser; \
-	else \
-		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --open-browser; \
-	fi
-
-# Development mode with hot-reload (for active development)
-.PHONY: playground-dev dev
-playground-dev dev:
-	@echo "$(BLUE)Starting Kit Playground in development mode with hot-reload...$(NC)"
+playground:
 	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
-		echo "$(RED)✗ Node.js and npm are required for dev mode$(NC)"; \
+		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
 		echo "  Run: make install-npm"; \
 		exit 1; \
 	fi
-	@echo "$(YELLOW)Dev mode only works on localhost - use 'make playground REMOTE=1' for remote access$(NC)"
 	@$(KIT_PLAYGROUND_DIR)/dev.sh
 
 # Build UI (production bundle)
