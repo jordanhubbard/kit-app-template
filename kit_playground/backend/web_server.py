@@ -668,6 +668,71 @@ Click "Build" to generate a project from this template.
                 logger.error(f"Failed to read file: {e}")
                 return jsonify({'error': str(e)}), 500
 
+        # Configuration routes
+        @self.app.route('/api/config/paths', methods=['GET'])
+        def get_default_paths():
+            """Get default paths for templates and projects."""
+            try:
+                repo_root = Path(__file__).parent.parent.parent
+
+                # Default paths relative to repo root
+                templates_path = str(repo_root / 'templates')
+                projects_path = str(repo_root / 'source' / 'apps')
+
+                return jsonify({
+                    'templatesPath': templates_path,
+                    'projectsPath': projects_path,
+                    'repoRoot': str(repo_root)
+                })
+            except Exception as e:
+                logger.error(f"Failed to get default paths: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        # Project discovery routes
+        @self.app.route('/api/projects/discover', methods=['GET'])
+        def discover_projects():
+            """Discover projects in a directory."""
+            try:
+                projects_path = request.args.get('path', str(Path(__file__).parent.parent.parent / 'source' / 'apps'))
+                projects_dir = Path(projects_path)
+
+                if not projects_dir.exists():
+                    return jsonify({'projects': []})
+
+                projects = []
+
+                # Look for .kit directories (each project is a .kit directory)
+                for item in projects_dir.iterdir():
+                    if item.is_dir() and item.suffix == '.kit':
+                        project_name = item.stem
+                        kit_file = item / f"{project_name}.kit"
+
+                        # Check if .kit file exists
+                        if kit_file.exists():
+                            # Try to read project metadata from .kit file
+                            try:
+                                # Basic project info
+                                project_info = {
+                                    'id': project_name,
+                                    'name': project_name,
+                                    'displayName': project_name.replace('_', ' ').title(),
+                                    'path': str(item),
+                                    'kitFile': str(kit_file),
+                                    'status': 'ready',  # TODO: Detect if built/running
+                                    'lastModified': item.stat().st_mtime
+                                }
+                                projects.append(project_info)
+                            except Exception as e:
+                                logger.warning(f"Failed to read project {project_name}: {e}")
+
+                # Sort by last modified (newest first)
+                projects.sort(key=lambda p: p['lastModified'], reverse=True)
+
+                return jsonify({'projects': projects})
+            except Exception as e:
+                logger.error(f"Failed to discover projects: {e}")
+                return jsonify({'error': str(e)}), 500
+
         # Serve static React build files (catch-all, must be last)
         @self.app.route('/', defaults={'path': ''})
         @self.app.route('/<path:path>')

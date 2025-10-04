@@ -44,8 +44,21 @@ const MainLayoutWorkflow: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>('');
 
-  // Templates state
+  // Templates and projects state
   const [templates, setTemplates] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+
+  // Load default paths from backend
+  const loadDefaultPaths = useCallback(async () => {
+    try {
+      const response = await fetch('/api/config/paths');
+      const data = await response.json();
+      setTemplatesPath(data.templatesPath);
+      setProjectsPath(data.projectsPath);
+    } catch (error) {
+      console.error('Failed to load default paths:', error);
+    }
+  }, []);
 
   // Load templates from API
   const loadTemplatesData = useCallback(async () => {
@@ -59,10 +72,32 @@ const MainLayoutWorkflow: React.FC = () => {
     }
   }, []);
 
-  // Load templates on mount and when path changes
+  // Load projects from backend
+  const loadProjectsData = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/projects/discover?path=${encodeURIComponent(projectsPath)}`);
+      const data = await response.json();
+      setProjects(data.projects || []);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      setProjects([]);
+    }
+  }, [projectsPath]);
+
+  // Load default paths on mount
+  React.useEffect(() => {
+    loadDefaultPaths();
+  }, [loadDefaultPaths]);
+
+  // Load templates when path changes
   React.useEffect(() => {
     loadTemplatesData();
   }, [loadTemplatesData, templatesPath]);
+
+  // Load projects when path changes
+  React.useEffect(() => {
+    loadProjectsData();
+  }, [loadProjectsData, projectsPath]);
 
   // Convert templates to WorkflowNode tree structure
   const templateNodes = useMemo((): WorkflowNode[] => {
@@ -120,12 +155,14 @@ const MainLayoutWorkflow: React.FC = () => {
     return nodes;
   }, [templates]);
 
-  // Load user projects from API
+  // Convert projects to WorkflowNode format
   const projectNodes = useMemo((): WorkflowNode[] => {
-    // TODO: Load user projects from API
-    // For now, return empty array - projects will be added when users create them
-    return [];
-  }, []);
+    return projects.map(project => ({
+      id: project.id,
+      label: project.displayName,
+      type: 'project' as const,
+    }));
+  }, [projects]);
 
   // Navigation handlers
   const navigateToStep = useCallback((step: WorkflowStep) => {
@@ -535,12 +572,10 @@ const MainLayoutWorkflow: React.FC = () => {
           }}
           onProjectsPathChange={(path) => {
             setProjectsPath(path);
-            // TODO: Reload projects
+            loadProjectsData();
           }}
           onRefreshTemplates={loadTemplatesData}
-          onRefreshProjects={() => {
-            // TODO: Reload projects
-          }}
+          onRefreshProjects={loadProjectsData}
         />
 
         {/* Sliding panels */}
