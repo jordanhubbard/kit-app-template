@@ -64,8 +64,8 @@ all: check-deps
 	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
 	@echo "  make playground                    - Build UI and launch web server (localhost)"
 	@echo "  make playground REMOTE=1           - Launch with remote access (0.0.0.0)"
+	@echo "  make playground-dev (or make dev)  - Development mode with hot-reload ⚡"
 	@echo "  make playground-build              - Build UI only (requires Node.js)"
-	@echo "  make playground-dev                - Run in development mode (hot reload)"
 	@echo "  make playground-clean              - Remove build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
@@ -288,7 +288,7 @@ playground: playground-build
 		$(PYTHON) $(KIT_PLAYGROUND_DIR)/backend/web_server.py --port 8888 --open-browser; \
 	fi
 
-# Development mode (requires Node.js on host for hot reload)
+# Development mode with hot-reload (requires Node.js on host)
 .PHONY: playground-dev
 playground-dev:
 	@echo "$(BLUE)Starting Kit Playground in development mode...$(NC)"
@@ -297,14 +297,12 @@ playground-dev:
 		echo "  Run: make install-npm"; \
 		exit 1; \
 	fi
-	@echo "$(YELLOW)Starting backend server and React dev server...$(NC)"
-	@echo "$(YELLOW)Backend will be available at: http://localhost:8888$(NC)"
-	@echo "$(YELLOW)React dev server will be available at: http://localhost:3000$(NC)"
-	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
-	@cd $(KIT_PLAYGROUND_DIR) && pip3 install -r backend/requirements.txt
-	@echo "$(GREEN)Please run these commands in separate terminals:$(NC)"
-	@echo "  Terminal 1: cd $(KIT_PLAYGROUND_DIR)/backend && python3 web_server.py --port 8888"
-	@echo "  Terminal 2: cd $(KIT_PLAYGROUND_DIR)/ui && npm start"
+	@echo "$(GREEN)Launching development servers with hot-reload...$(NC)"
+	@$(KIT_PLAYGROUND_DIR)/dev.sh
+
+# Alias for dev mode
+.PHONY: dev
+dev: playground-dev
 
 # Clean build artifacts
 .PHONY: playground-clean
