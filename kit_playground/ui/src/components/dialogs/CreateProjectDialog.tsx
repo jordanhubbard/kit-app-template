@@ -27,6 +27,7 @@ import {
   Info as InfoIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import DirectoryBrowserDialog from './DirectoryBrowserDialog';
 
 interface Template {
   name: string;
@@ -62,6 +63,7 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [dirBrowserOpen, setDirBrowserOpen] = useState(false);
 
   // Reset form when template changes
   useEffect(() => {
@@ -306,7 +308,10 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
                   }}
                 />
                 <Tooltip title="Browse for directory">
-                  <IconButton disabled={loading}>
+                  <IconButton
+                    disabled={loading}
+                    onClick={() => setDirBrowserOpen(true)}
+                  >
                     <FolderIcon />
                   </IconButton>
                 </Tooltip>
@@ -360,6 +365,17 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
           {loading ? 'Creating...' : 'Create Project'}
         </Button>
       </DialogActions>
+
+      {/* Directory Browser Dialog */}
+      <DirectoryBrowserDialog
+        open={dirBrowserOpen}
+        onClose={() => setDirBrowserOpen(false)}
+        onSelect={(path) => {
+          setOutputDir(path);
+          setDirBrowserOpen(false);
+        }}
+        initialPath={outputDir}
+      />
     </Dialog>
   );
 };

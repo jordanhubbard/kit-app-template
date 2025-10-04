@@ -31,8 +31,6 @@ import {
   Apps as AppsIcon,
   Cloud as CloudIcon,
   Code as CodeIcon,
-  PlayArrow as PlayIcon,
-  Edit as EditIcon,
   Info as InfoIcon,
   Folder as FolderIcon,
   Star as StarIcon,

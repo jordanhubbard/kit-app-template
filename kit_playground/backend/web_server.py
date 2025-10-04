@@ -534,6 +534,30 @@ Click "Build" to generate a project from this template.
                 logger.error(f"Failed to create directory: {e}")
                 return jsonify({'error': str(e)}), 500
 
+        @self.app.route('/api/filesystem/read', methods=['GET'])
+        def read_file():
+            """Read file contents."""
+            try:
+                path = request.args.get('path')
+
+                if not path:
+                    return jsonify({'error': 'path required'}), 400
+
+                path_obj = Path(path)
+
+                if not path_obj.exists():
+                    return jsonify({'error': 'File does not exist'}), 404
+
+                if not path_obj.is_file():
+                    return jsonify({'error': 'Path is not a file'}), 400
+
+                # Read file content
+                content = path_obj.read_text(encoding='utf-8')
+                return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+            except Exception as e:
+                logger.error(f"Failed to read file: {e}")
+                return jsonify({'error': str(e)}), 500
+
         # Serve static React build files (catch-all, must be last)
         @self.app.route('/', defaults={'path': ''})
         @self.app.route('/<path:path>')

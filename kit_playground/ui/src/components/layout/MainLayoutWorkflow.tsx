@@ -10,17 +10,15 @@ import WorkflowSidebar from './WorkflowSidebar';
 import WorkflowBreadcrumbs from './WorkflowBreadcrumbs';
 import TemplateGallery from '../gallery/TemplateGallery';
 import CodeEditor from '../editor/CodeEditor';
-import PreviewPane from '../preview/PreviewPane';
 import Console from '../console/Console';
 import StatusBar from './StatusBar';
 import FileExplorer from '../controls/FileExplorer';
 import { WorkflowStep, WorkflowNode } from '../../types/workflow';
-import { useAppSelector, useAppDispatch } from '../../hooks/redux';
+import { useAppDispatch } from '../../hooks/redux';
 import { setOutputPath } from '../../store/slices/projectSlice';
 
 const MainLayoutWorkflow: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { currentProject, isBuilding, isRunning } = useAppSelector(state => state.project);
 
   // Workflow state
   const [workflowStep, setWorkflowStep] = useState<WorkflowStep>('browse');
@@ -32,7 +30,6 @@ const MainLayoutWorkflow: React.FC = () => {
   // Editor state
   const [editorContent, setEditorContent] = useState<string>('');
   const [outputPath, setOutputPathLocal] = useState<string>('');
-  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   // Load user projects from API
   const projectNodes = useMemo((): WorkflowNode[] => {
@@ -98,29 +95,66 @@ const MainLayoutWorkflow: React.FC = () => {
     setEditorContent(newCode);
   }, []);
 
-  const handleBuild = useCallback(async () => {
-    if (!selectedTemplate && !selectedProject) return;
-    // TODO: Call build API
-    console.log('Building...');
-  }, [selectedTemplate, selectedProject]);
-
-  const handleRun = useCallback(async () => {
-    if (!selectedTemplate && !selectedProject) return;
-    // TODO: Call run API and set preview URL
-    setPreviewUrl('http://localhost:10000'); // Example Xpra URL
-    navigateToStep('preview');
-  }, [selectedTemplate, selectedProject, navigateToStep]);
-
-  const handleStop = useCallback(() => {
-    setPreviewUrl('');
-    navigateToStep('edit');
-  }, [navigateToStep]);
-
-  const handleCreateProject = useCallback((projectInfo: any) => {
+  const handleCreateProject = useCallback(async (projectInfo: any) => {
     console.log('Project created:', projectInfo);
-    // Refresh project list
-    // TODO: Load new project
-  }, []);
+
+    // Load the generated project's main extension file
+    try {
+      // The generated project is in source/apps/{projectName}.kit
+      const projectPath = `${projectInfo.outputDir}/${projectInfo.projectName}.kit`;
+
+      // Try to find and load the main Python extension file
+      const response = await fetch(`/api/filesystem/list?path=${encodeURIComponent(projectPath)}/exts`);
+      if (response.ok) {
+        const items = await response.json();
+
+        // Find the extension directory (usually matches project name)
+        const extDir = items.find((item: any) => item.isDirectory && item.name.includes(projectInfo.projectName));
+
+        if (extDir) {
+          // Load the main extension Python file
+          const extPath = `${extDir.path}/${projectInfo.projectName}`;
+          const pyResponse = await fetch(`/api/filesystem/list?path=${encodeURIComponent(extPath)}`);
+
+          if (pyResponse.ok) {
+            const pyItems = await pyResponse.json();
+            const pyFile = pyItems.find((item: any) => item.name === 'extension.py' || item.name === '__init__.py');
+
+            if (pyFile) {
+              // Read the Python file content
+              const contentResponse = await fetch(`/api/filesystem/read?path=${encodeURIComponent(pyFile.path)}`);
+              if (contentResponse.ok) {
+                const content = await contentResponse.text();
+                setEditorContent(content);
+              }
+            }
+          }
+        }
+      }
+
+      // Fallback: show a welcome message with project info
+      if (!editorContent) {
+        setEditorContent(`# ${projectInfo.displayName}
+#
+# Project created successfully!
+# Location: ${projectPath}
+#
+# Your Kit application template has been generated.
+# Edit the files in: ${projectPath}/exts/${projectInfo.projectName}
+#
+# Template: ${projectInfo.templateName}
+
+`);
+      }
+    } catch (error) {
+      console.error('Failed to load project files:', error);
+      setEditorContent(`# Project created: ${projectInfo.displayName}
+#
+# Error loading project files. Please navigate to:
+# ${projectInfo.outputDir}/${projectInfo.projectName}.kit
+`);
+    }
+  }, [editorContent]);
 
   // Get current selection for breadcrumbs
   const getSelectedId = () => {
@@ -192,26 +226,17 @@ const MainLayoutWorkflow: React.FC = () => {
   );
 
   const renderPreviewPanel = () => (
-    <Box sx={{ width: '100%', height: '100%' }}>
-      {previewUrl ? (
-        <PreviewPane
-          url={previewUrl}
-          templateId={selectedTemplate}
-          mode="xpra"
-        />
-      ) : (
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            color: 'text.secondary',
-          }}
-        >
-          Click "Run" to start preview
-        </Box>
-      )}
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        width: '100%',
+        color: 'text.secondary',
+      }}
+    >
+      Preview functionality coming soon
     </Box>
   );
 
