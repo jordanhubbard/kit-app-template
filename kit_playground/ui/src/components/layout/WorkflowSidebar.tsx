@@ -35,6 +35,7 @@ import {
   KeyboardArrowRight as ExpandIcon,
 } from '@mui/icons-material';
 import { WorkflowNode } from '../../types/workflow';
+import DirectoryBrowserDialog from '../dialogs/DirectoryBrowserDialog';
 
 interface WorkflowSidebarProps {
   templates: WorkflowNode[];
@@ -68,6 +69,8 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
   const [editingProjectsPath, setEditingProjectsPath] = useState(false);
   const [tempTemplatesPath, setTempTemplatesPath] = useState(templatesPath);
   const [tempProjectsPath, setTempProjectsPath] = useState(projectsPath);
+  const [browserOpen, setBrowserOpen] = useState(false);
+  const [browserType, setBrowserType] = useState<'templates' | 'projects'>('templates');
 
   const toggleExpand = (nodeId: string) => {
     const newExpanded = new Set(expandedNodes);
@@ -284,8 +287,8 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
             tempPath={tempTemplatesPath}
             editing={editingTemplatesPath}
             onBrowse={() => {
-              // TODO: Open directory browser dialog
-              console.log('Browse templates path');
+              setBrowserType('templates');
+              setBrowserOpen(true);
             }}
             onRefresh={onRefreshTemplates}
             onStartEdit={() => setEditingTemplatesPath(true)}
@@ -362,8 +365,8 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
             tempPath={tempProjectsPath}
             editing={editingProjectsPath}
             onBrowse={() => {
-              // TODO: Open directory browser dialog
-              console.log('Browse projects path');
+              setBrowserType('projects');
+              setBrowserOpen(true);
             }}
             onRefresh={onRefreshProjects}
             onStartEdit={() => setEditingProjectsPath(true)}
@@ -403,6 +406,21 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
           </Box>
         )}
       </Box>
+
+      {/* Directory Browser Dialog */}
+      <DirectoryBrowserDialog
+        open={browserOpen}
+        onClose={() => setBrowserOpen(false)}
+        onSelect={(path) => {
+          if (browserType === 'templates') {
+            onTemplatesPathChange(path);
+          } else {
+            onProjectsPathChange(path);
+          }
+          setBrowserOpen(false);
+        }}
+        initialPath={browserType === 'templates' ? templatesPath : projectsPath}
+      />
     </Box>
   );
 };

@@ -81,21 +81,66 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
     };
   }, [addLog]);
 
-  // Connect to WebSocket for streaming logs
+  // Connect to Socket.IO for streaming logs
   useEffect(() => {
-    // Disable WebSocket connection for now - will be re-enabled with Socket.IO
-    // The console will still capture logs from console intercept
-    console.log('Console initialized (WebSocket disabled temporarily)');
+    // Import socket.io-client dynamically
+    import('socket.io-client').then(({ io }) => {
+      const socket = io({
+        path: '/socket.io',
+        transports: ['websocket', 'polling'],
+      });
 
-    addLog({
-      level: 'info',
-      source: 'system',
-      message: 'Console ready - WebSocket log streaming disabled',
+      socket.on('connect', () => {
+        addLog({
+          level: 'success',
+          source: 'system',
+          message: 'Connected to backend server',
+        });
+      });
+
+      socket.on('disconnect', () => {
+        addLog({
+          level: 'warning',
+          source: 'system',
+          message: 'Disconnected from backend server',
+        });
+      });
+
+      socket.on('log', (data: { level: string; source: string; message: string }) => {
+        addLog({
+          level: data.level as any,
+          source: data.source as any,
+          message: data.message,
+        });
+      });
+
+      socket.on('build-output', (data: { line: string }) => {
+        addLog({
+          level: 'info',
+          source: 'build',
+          message: data.line,
+        });
+      });
+
+      socket.on('runtime-output', (data: { line: string }) => {
+        addLog({
+          level: 'info',
+          source: 'runtime',
+          message: data.line,
+        });
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }).catch(error => {
+      console.error('Failed to load Socket.IO:', error);
+      addLog({
+        level: 'error',
+        source: 'system',
+        message: 'Failed to connect to backend: ' + error.message,
+      });
     });
-
-    return () => {
-      // Cleanup if needed
-    };
   }, [addLog]);
 
   // Filter logs based on tab, search, and level

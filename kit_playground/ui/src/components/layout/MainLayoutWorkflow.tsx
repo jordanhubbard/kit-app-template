@@ -22,6 +22,7 @@ import FileExplorer from '../controls/FileExplorer';
 import { WorkflowStep, WorkflowNode } from '../../types/workflow';
 import { useAppDispatch } from '../../hooks/redux';
 import { setOutputPath } from '../../store/slices/projectSlice';
+import { emitConsoleLog } from '../console/Console';
 
 const MainLayoutWorkflow: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -155,13 +156,27 @@ const MainLayoutWorkflow: React.FC = () => {
     return nodes;
   }, [templates]);
 
-  // Convert projects to WorkflowNode format
+  // Convert projects to WorkflowNode format with status indicators
   const projectNodes = useMemo((): WorkflowNode[] => {
-    return projects.map(project => ({
-      id: project.id,
-      label: project.displayName,
-      type: 'project' as const,
-    }));
+    return projects.map(project => {
+      // Add status icon to label
+      let statusIcon = '';
+      if (project.status === 'ready') {
+        statusIcon = '✓ ';
+      } else if (project.status === 'building') {
+        statusIcon = '⚙ ';
+      } else if (project.status === 'running') {
+        statusIcon = '▶ ';
+      } else if (project.status === 'error') {
+        statusIcon = '✗ ';
+      }
+
+      return {
+        id: project.id,
+        label: `${statusIcon}${project.displayName}`,
+        type: 'project' as const,
+      };
+    });
   }, [projects]);
 
   // Navigation handlers
@@ -205,11 +220,29 @@ const MainLayoutWorkflow: React.FC = () => {
     } else if (node.type === 'project') {
       setSelectedProject(node.id);
       setSelectedTemplate(null);
-      // TODO: Load project files
+
+      // Load project files
+      const project = projects.find(p => p.id === node.id);
+      if (project) {
+        setCurrentProjectPath(project.path);
+
+        // Try to load the .kit file
+        fetch(`/api/filesystem/read?path=${encodeURIComponent(project.kitFile)}`)
+          .then(response => response.text())
+          .then(content => {
+            setEditorContent(content);
+            setOutputPathLocal(project.path);
+          })
+          .catch(error => {
+            console.error('Failed to load project file:', error);
+            setEditorContent(`# ${project.displayName}\n# Failed to load project configuration file.`);
+          });
+      }
+
       navigateToStep('edit');
     }
     // Categories are not selectable, just expand/collapse
-  }, [navigateToStep]);
+  }, [navigateToStep, projects]);
 
   // Template/Project operations
   const loadTemplate = useCallback(async (templateId: string) => {
@@ -241,6 +274,8 @@ const MainLayoutWorkflow: React.FC = () => {
     if (!selectedProject || !currentProjectPath) return;
 
     setIsBuilding(true);
+    emitConsoleLog('info', 'build', `Starting build for ${selectedProject}...`);
+
     try {
       // Call repo.sh build command via API
       const response = await fetch('/api/projects/build', {
@@ -254,12 +289,12 @@ const MainLayoutWorkflow: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        console.log('Build successful!');
+        emitConsoleLog('success', 'build', `Build completed successfully for ${selectedProject}`);
       } else {
-        console.error('Build failed:', result.error);
+        emitConsoleLog('error', 'build', `Build failed: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error('Build error:', error);
+    } catch (error: any) {
+      emitConsoleLog('error', 'build', `Build error: ${error.message || error}`);
     } finally {
       setIsBuilding(false);
     }
@@ -269,6 +304,8 @@ const MainLayoutWorkflow: React.FC = () => {
     if (!selectedProject || !currentProjectPath) return;
 
     setIsRunning(true);
+    emitConsoleLog('info', 'runtime', `Launching ${selectedProject}...`);
+
     try {
       // Build first, then run
       await handleBuild();
@@ -285,22 +322,26 @@ const MainLayoutWorkflow: React.FC = () => {
 
       const result = await response.json();
       if (result.success) {
-        console.log('Application launched!');
+        emitConsoleLog('success', 'runtime', `Application launched: ${selectedProject}`);
         // Navigate to preview if Xpra session available
         if (result.previewUrl) {
           navigateToStep('preview');
+          emitConsoleLog('info', 'runtime', `Preview available at: ${result.previewUrl}`);
         }
       } else {
-        console.error('Launch failed:', result.error);
+        emitConsoleLog('error', 'runtime', `Launch failed: ${result.error || 'Unknown error'}`);
+        setIsRunning(false);
       }
-    } catch (error) {
-      console.error('Run error:', error);
+    } catch (error: any) {
+      emitConsoleLog('error', 'runtime', `Run error: ${error.message || error}`);
       setIsRunning(false);
     }
   }, [selectedProject, currentProjectPath, handleBuild, navigateToStep]);
 
   const handleStop = useCallback(async () => {
     if (!selectedProject) return;
+
+    emitConsoleLog('info', 'runtime', `Stopping ${selectedProject}...`);
 
     try {
       const response = await fetch('/api/projects/stop', {
@@ -313,15 +354,17 @@ const MainLayoutWorkflow: React.FC = () => {
 
       if (response.ok) {
         setIsRunning(false);
-        console.log('Application stopped');
+        emitConsoleLog('success', 'runtime', `Application stopped: ${selectedProject}`);
+      } else {
+        emitConsoleLog('error', 'runtime', `Failed to stop application`);
       }
-    } catch (error) {
-      console.error('Stop error:', error);
+    } catch (error: any) {
+      emitConsoleLog('error', 'runtime', `Stop error: ${error.message || error}`);
     }
   }, [selectedProject]);
 
   const handleCreateProject = useCallback(async (projectInfo: any) => {
-    console.log('Project created:', projectInfo);
+    emitConsoleLog('info', 'build', `Creating project: ${projectInfo.displayName}`);
 
     // Store project info for build/run operations
     setSelectedProject(projectInfo.projectName);
@@ -342,7 +385,10 @@ const MainLayoutWorkflow: React.FC = () => {
         const content = await response.text();
         setEditorContent(content);
         setOutputPathLocal(projectPath);
+        emitConsoleLog('success', 'build', `Project created successfully: ${projectInfo.displayName}`);
       } else {
+        emitConsoleLog('warning', 'build', `Project created but configuration file not found`);
+
         // Fallback: show a welcome message with project info
         setEditorContent(`# ${projectInfo.displayName}
 #
@@ -358,8 +404,8 @@ const MainLayoutWorkflow: React.FC = () => {
 # To run: Click the "Run" button in the toolbar
 `);
       }
-    } catch (error) {
-      console.error('Failed to load project files:', error);
+    } catch (error: any) {
+      emitConsoleLog('error', 'build', `Failed to load project files: ${error.message || error}`);
       setEditorContent(`# Project created: ${projectInfo.displayName}
 #
 # Error loading configuration file.
@@ -368,7 +414,10 @@ const MainLayoutWorkflow: React.FC = () => {
 # You can manually navigate to this directory to view your project.
 `);
     }
-  }, []);
+
+    // Reload projects list to show the new project
+    loadProjectsData();
+  }, [loadProjectsData]);
 
   // Get current selection for breadcrumbs
   const getSelectedId = () => {
