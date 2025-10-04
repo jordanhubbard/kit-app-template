@@ -38,7 +38,9 @@ import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   FilterList as FilterIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
+import CreateProjectDialog from '../dialogs/CreateProjectDialog';
 
 interface Template {
   name: string;
@@ -70,6 +72,7 @@ interface TemplateGalleryProps {
   compact?: boolean;
   onEditTemplate?: (templateId: string) => void;
   onRunTemplate?: (templateId: string) => void;
+  onCreateProject?: (projectInfo: any) => void;
 }
 
 const TemplateGallery: React.FC<TemplateGalleryProps> = ({
@@ -78,6 +81,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   compact = false,
   onEditTemplate,
   onRunTemplate,
+  onCreateProject,
 }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +90,8 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'all' | 'applications' | 'extensions' | 'microservices'>('all');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [templateForCreate, setTemplateForCreate] = useState<Template | null>(null);
 
   // Load templates from API
   useEffect(() => {
@@ -334,19 +340,6 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         {/* Actions */}
         <CardActions sx={{ justifyContent: 'space-between', px: 2, pt: 0 }}>
           <Box sx={{ display: 'flex', gap: 0.5 }}>
-            {onEditTemplate && (
-              <Tooltip title="Edit">
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditTemplate(template.name);
-                  }}
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            )}
             <Tooltip title="Details">
               <IconButton
                 size="small"
@@ -359,19 +352,19 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               </IconButton>
             </Tooltip>
           </Box>
-          {onRunTemplate && (
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<PlayIcon />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRunTemplate(template.name);
-              }}
-            >
-              Run
-            </Button>
-          )}
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setTemplateForCreate(template);
+              setCreateDialogOpen(true);
+            }}
+          >
+            Create Project
+          </Button>
         </CardActions>
       </Card>
     );
@@ -397,6 +390,23 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Create Project Dialog */}
+      <CreateProjectDialog
+        open={createDialogOpen}
+        template={templateForCreate}
+        onClose={() => {
+          setCreateDialogOpen(false);
+          setTemplateForCreate(null);
+        }}
+        onSuccess={(projectInfo) => {
+          setCreateDialogOpen(false);
+          setTemplateForCreate(null);
+          if (onCreateProject) {
+            onCreateProject(projectInfo);
+          }
+        }}
+      />
+
       {/* Search and Filters */}
       {!compact && (
         <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>

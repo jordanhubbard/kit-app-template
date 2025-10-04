@@ -310,6 +310,30 @@ Click "Build" to generate a project from this template.
                 logger.error(f"Failed to list templates: {e}")
                 return jsonify({'error': str(e)}), 500
 
+        @self.app.route('/api/v2/templates/<template_id>/docs', methods=['GET'])
+        def get_template_docs(template_id):
+            """Get template documentation."""
+            try:
+                templates = self.template_api.list_templates()
+                template = next((t for t in templates if t.name == template_id), None)
+
+                if not template:
+                    return jsonify({'error': 'Template not found'}), 404
+
+                return jsonify({
+                    'name': template.name,
+                    'displayName': template.display_name,
+                    'type': template.type,
+                    'category': template.category,
+                    'description': template.description,
+                    'version': template.version,
+                    'documentation': template.documentation or f"# {template.display_name}\n\n{template.description}",
+                    'tags': template.tags
+                })
+            except Exception as e:
+                logger.error(f"Failed to get template docs: {e}")
+                return jsonify({'error': str(e)}), 500
+
         @self.app.route('/api/v2/templates/generate', methods=['POST'])
         def generate_template_v2():
             """Generate a template using unified API."""
@@ -334,7 +358,8 @@ Click "Build" to generate a project from this template.
                     return jsonify({
                         'success': True,
                         'playbackFile': result.playback_file,
-                        'message': result.message
+                        'message': result.message,
+                        'outputDir': req.output_dir or 'source/apps'
                     })
                 else:
                     return jsonify({'success': False, 'error': result.error}), 400

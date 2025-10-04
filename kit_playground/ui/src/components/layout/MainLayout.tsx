@@ -33,7 +33,7 @@ type ViewMode = 'gallery' | 'browser' | 'editor' | 'connections' | 'split';
 
 const MainLayout: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { activeView } = useAppSelector(state => state.ui);
+  const { activeView, sidebarVisible } = useAppSelector(state => state.ui);
   const { currentProject, isBuilding, isRunning } = useAppSelector(state => state.project);
 
   const [viewMode, setViewMode] = useState<ViewMode>('split');
@@ -176,6 +176,16 @@ const MainLayout: React.FC = () => {
     }
   };
 
+  // Handle create project from template
+  const handleCreateProject = (projectInfo: any) => {
+    console.log('Project created:', projectInfo);
+    // Show success notification
+    alert(`Project "${projectInfo.displayName}" created successfully!\n\nLocation: ${projectInfo.outputDir}/${projectInfo.projectName}.kit\n\nYou can now build and run your project.`);
+
+    // TODO: Refresh project list, switch to build view, etc.
+    // For now, just log the success
+  };
+
   // Render main content based on view mode
   const renderMainContent = () => {
     switch (viewMode) {
@@ -242,6 +252,7 @@ const MainLayout: React.FC = () => {
                 <TemplateGallery
                   onSelectTemplate={handleTemplateSelect}
                   selectedTemplate={selectedTemplate}
+                  onCreateProject={handleCreateProject}
                 />
               ) : activeView === 'editor' ? (
                 <CodeEditor
@@ -456,13 +467,40 @@ const MainLayout: React.FC = () => {
         )}
       </Paper>
 
-      {/* Main Content Area */}
-      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ flex: 1, overflow: 'hidden' }}>
-          {renderMainContent()}
-        </Box>
-        <Box sx={{ height: consoleHeight, borderTop: 1, borderColor: 'divider' }}>
-          <Console height={consoleHeight} />
+      {/* Main Content Area with Sidebar */}
+      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        {/* Left Sidebar */}
+        {sidebarVisible && (
+          <Box
+            sx={{
+              width: 250,
+              borderRight: 1,
+              borderColor: 'divider',
+              backgroundColor: 'background.paper',
+              overflow: 'auto',
+              p: 2,
+            }}
+          >
+            <FileExplorer
+              selectedPath={outputPath}
+              onPathChange={(path) => {
+                setOutputPathLocal(path);
+                dispatch(setOutputPath(path));
+              }}
+              title="Project Files"
+              showFiles={true}
+            />
+          </Box>
+        )}
+
+        {/* Main Content */}
+        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ flex: 1, overflow: 'hidden' }}>
+            {renderMainContent()}
+          </Box>
+          <Box sx={{ height: consoleHeight, borderTop: 1, borderColor: 'divider' }}>
+            <Console height={consoleHeight} />
+          </Box>
         </Box>
       </Box>
 
