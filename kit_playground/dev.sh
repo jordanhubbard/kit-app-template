@@ -89,7 +89,7 @@ echo -e "${GREEN}✓ Backend running (PID: $BACKEND_PID)${NC}"
 echo -e "${BLUE}[2/2] Starting React dev server with hot-reload...${NC}"
 cd "$UI_DIR"
 if [ "$REMOTE" = "1" ]; then
-    BROWSER=none HOST="$FRONTEND_HOST" npm start &
+    BROWSER=none HOST="$FRONTEND_HOST" DANGEROUSLY_DISABLE_HOST_CHECK=true npm start &
 else
     BROWSER=none npm start &
 fi
