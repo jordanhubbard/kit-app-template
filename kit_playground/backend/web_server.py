@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
 from tools.repoman.template_engine import TemplateEngine  # Legacy support
 from kit_playground.core.playground_app import PlaygroundApp
+from kit_playground.backend.xpra_manager import XpraManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,6 +52,9 @@ class PlaygroundWebServer:
         # Initialize unified Template API
         repo_root = Path(__file__).parent.parent.parent
         self.template_api = TemplateAPI(str(repo_root))
+
+        # Initialize Xpra Manager
+        self.xpra_manager = XpraManager()
 
         # Setup routes
         self._setup_routes()
@@ -368,6 +372,107 @@ Click "Build" to generate a project from this template.
                 logger.error(f"Failed to generate template: {e}")
                 return jsonify({'error': str(e)}), 500
 
+        # Xpra routes
+        @self.app.route('/api/xpra/sessions', methods=['POST'])
+        def create_xpra_session():
+            """Create a new Xpra session."""
+            try:
+                data = request.json
+                session_id = data.get('sessionId', f'session_{int(time.time())}')
+
+                session = self.xpra_manager.create_session(session_id)
+                if session:
+                    return jsonify({
+                        'success': True,
+                        'sessionId': session_id,
+                        'displayNumber': session.display_number,
+                        'port': session.port,
+                        'url': self.xpra_manager.get_session_url(session_id)
+                    })
+                else:
+                    return jsonify({'error': 'Failed to create Xpra session'}), 500
+            except Exception as e:
+                logger.error(f"Failed to create Xpra session: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/xpra/sessions/<session_id>', methods=['GET'])
+        def get_xpra_session(session_id):
+            """Get Xpra session info."""
+            try:
+                session = self.xpra_manager.get_session(session_id)
+                if session:
+                    return jsonify({
+                        'sessionId': session_id,
+                        'displayNumber': session.display_number,
+                        'port': session.port,
+                        'url': self.xpra_manager.get_session_url(session_id),
+                        'running': session.started
+                    })
+                else:
+                    return jsonify({'error': 'Session not found'}), 404
+            except Exception as e:
+                logger.error(f"Failed to get Xpra session: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/xpra/sessions/<session_id>/launch', methods=['POST'])
+        def launch_app_in_xpra(session_id):
+            """Launch an application in an Xpra session."""
+            try:
+                data = request.json
+                app_command = data.get('command')
+
+                if not app_command:
+                    return jsonify({'error': 'command required'}), 400
+
+                session = self.xpra_manager.get_session(session_id)
+                if not session:
+                    return jsonify({'error': 'Session not found'}), 404
+
+                success = session.launch_app(app_command)
+                if success:
+                    return jsonify({
+                        'success': True,
+                        'url': self.xpra_manager.get_session_url(session_id)
+                    })
+                else:
+                    return jsonify({'error': 'Failed to launch app'}), 500
+            except Exception as e:
+                logger.error(f"Failed to launch app: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/xpra/sessions/<session_id>', methods=['DELETE'])
+        def stop_xpra_session(session_id):
+            """Stop an Xpra session."""
+            try:
+                self.xpra_manager.stop_session(session_id)
+                return jsonify({'success': True})
+            except Exception as e:
+                logger.error(f"Failed to stop Xpra session: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/xpra/check', methods=['GET'])
+        def check_xpra_installed():
+            """Check if Xpra is installed."""
+            try:
+                result = subprocess.run(['which', 'xpra'], capture_output=True)
+                installed = result.returncode == 0
+
+                version = None
+                if installed:
+                    version_result = subprocess.run(['xpra', '--version'],
+                                                  capture_output=True, text=True)
+                    if version_result.returncode == 0:
+                        version = version_result.stdout.split()[1] if version_result.stdout else 'unknown'
+
+                return jsonify({
+                    'installed': installed,
+                    'version': version,
+                    'installCommand': 'make install-xpra'
+                })
+            except Exception as e:
+                logger.error(f"Failed to check Xpra: {e}")
+                return jsonify({'installed': False, 'error': str(e)})
+
         # Filesystem routes
         @self.app.route('/api/filesystem/list', methods=['GET'])
         def list_directory():
@@ -558,6 +663,10 @@ Click "Build" to generate a project from this template.
                 process.terminate()
             except:
                 pass
+
+        # Stop all Xpra sessions
+        self.xpra_manager.stop_all()
+
         logger.info("Kit Playground Web Server stopped")
 
 

@@ -8,7 +8,18 @@ Xpra is a "screen for X" that allows you to run X11 programs on a remote host an
 
 ## Installation
 
-### Ubuntu/Debian (Linux)
+### Quick Install (Recommended)
+
+**All Platforms:**
+```bash
+make install-xpra
+```
+
+This automatically detects your OS and installs Xpra with all dependencies.
+
+### Manual Installation
+
+#### Ubuntu/Debian (Linux)
 ```bash
 # Add Xpra repository
 sudo wget -O "/usr/share/keyrings/xpra.asc" https://xpra.org/xpra.asc
@@ -23,7 +34,25 @@ sudo apt install -y xpra xpra-html5
 xpra --version
 ```
 
-### Windows
+#### Fedora/RHEL/CentOS
+```bash
+sudo dnf install xpra xpra-html5
+# or
+sudo yum install xpra xpra-html5
+```
+
+#### Arch Linux
+```bash
+sudo pacman -S xpra
+```
+
+#### macOS
+```bash
+brew install xpra
+# or download from https://xpra.org/dists/MacOS/
+```
+
+#### Windows
 ```powershell
 # Download and install from https://xpra.org/dists/windows/
 # Or use winget:
@@ -32,10 +61,16 @@ winget install Xpra
 
 ## How Xpra Works with Kit Playground
 
-1. **Xpra Server**: Runs on the host machine, creates a virtual X11 display
+1. **Xpra Server**: Automatically started when you run a Kit application
 2. **Kit Application**: Launches and connects to the Xpra virtual display
-3. **Xpra HTML5 Client**: Served to the browser, connects to Xpra server via WebSocket
-4. **User**: Sees the Kit application rendered in their browser
+3. **Xpra HTML5 Client**: Embedded in Preview pane, connects via WebSocket
+4. **User**: Sees the Kit application rendered directly in the browser
+
+**Fully Automated:** When you click "Run" on a Kit application in the Playground, the backend automatically:
+- Creates an Xpra session
+- Launches the app on a virtual display
+- Provides the Xpra HTML5 client URL to the frontend
+- Displays the app in the Preview tab
 
 ## Architecture
 
@@ -74,9 +109,39 @@ winget install Xpra
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Integration Steps
+## API Integration
 
-### 1. Start Xpra Server (automatically managed by Flask)
+The Xpra integration is fully automatic. Here's how it works internally:
+
+### 1. Backend API Endpoints
+
+#### Check Xpra Installation
+```bash
+GET /api/xpra/check
+Response: { "installed": true, "version": "5.0", "installCommand": "make install-xpra" }
+```
+
+#### Create Xpra Session
+```bash
+POST /api/xpra/sessions
+Body: { "sessionId": "my-session" }
+Response: { "success": true, "sessionId": "my-session", "displayNumber": 100, "port": 10000, "url": "http://localhost:10000" }
+```
+
+#### Launch App in Session
+```bash
+POST /api/xpra/sessions/my-session/launch
+Body: { "command": "/path/to/kit-app" }
+Response: { "success": true, "url": "http://localhost:10000" }
+```
+
+#### Stop Session
+```bash
+DELETE /api/xpra/sessions/my-session
+Response: { "success": true }
+```
+
+### 2. Automatic Session Management
 
 When a user clicks "Run" on a template, the Flask server will:
 
@@ -113,30 +178,39 @@ def launch_kit_app(app_path, display_number=100):
     return process
 ```
 
-### 2. Embed Xpra HTML5 Client in Preview Tab
+The Flask backend automatically manages Xpra sessions:
 
-The Xpra HTML5 client files are typically located at:
-- `/usr/share/xpra/www/` (Linux)
-- `C:\Program Files\Xpra\share\xpra\www\` (Windows)
+```python
+# XpraManager handles all sessions
+xpra_manager = XpraManager()
 
-We'll serve these files and embed them in an iframe:
+# Create session when app runs
+session = xpra_manager.create_session("session_id")
+
+# Launch app
+session.launch_app("/path/to/kit-app")
+
+# Get URL for frontend
+url = xpra_manager.get_session_url("session_id")
+# Returns: http://localhost:10000
+
+# Cleanup when done
+xpra_manager.stop_session("session_id")
+```
+
+### 3. Frontend Integration
+
+The PreviewPane component automatically detects Xpra mode:
 
 ```tsx
-<iframe
-  src="http://localhost:10000"
-  style={{ width: '100%', height: '100%', border: 'none' }}
-  title="Xpra Display"
+<PreviewPane
+  url="http://localhost:10000"
+  mode="xpra"
+  templateId={selectedTemplate}
 />
 ```
 
-### 3. Session Management
-
-Each running application gets its own Xpra session:
-- Display :100 for first app
-- Display :101 for second app
-- etc.
-
-The Flask server tracks which sessions are active and cleans them up when done.
+This embeds the Xpra HTML5 client (served by Xpra itself) in an iframe with full clipboard, keyboard, and mouse support.
 
 ## Configuration
 

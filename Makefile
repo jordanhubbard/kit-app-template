@@ -74,6 +74,7 @@ all: check-deps
 	@echo "  make install-python-deps   - Install required Python packages (toml, etc)"
 	@echo "  make install-npm           - Install Node.js and npm"
 	@echo "  make install-python        - Install Python"
+	@echo "  make install-xpra          - Install Xpra for remote X11 display"
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
 	@echo "  make clean             - Clean build artifacts"
@@ -142,7 +143,15 @@ check-deps deps:
 		echo "$(GREEN)✓ npm is installed$(NC) (v$$NPM_VERSION)"; \
 	fi
 
-
+	@# Check for Xpra (optional - needed for web-based X11 display)
+	@if command -v xpra >/dev/null 2>&1; then \
+		XPRA_VERSION=$$(xpra --version 2>&1 | head -1 | cut -d' ' -f2 || echo "unknown"); \
+		echo "$(GREEN)✓ Xpra is installed$(NC) (v$$XPRA_VERSION)"; \
+	else \
+		echo "$(YELLOW)⚠ Xpra is not installed (optional - for browser-based app display)$(NC)"; \
+		echo "  Enables running Kit apps and viewing them in your browser"; \
+		echo "  To install: make install-xpra"; \
+	fi
 
 	@# Check for NVIDIA GPU (optional but recommended)
 	@if command -v nvidia-smi >/dev/null 2>&1; then \
@@ -254,6 +263,79 @@ install-python-deps:
 	else \
 		echo "$(YELLOW)Warning: requirements.txt not found$(NC)"; \
 	fi
+
+# Install Xpra for web-based X11 display
+.PHONY: install-xpra
+install-xpra:
+	@echo "$(BLUE)Installing Xpra...$(NC)"
+ifeq ($(OS),linux)
+	@echo "Detecting Linux distribution..."
+	@if [ -f /etc/os-release ]; then \
+		. /etc/os-release; \
+		echo "Distribution: $$NAME $$VERSION_ID"; \
+		case "$$ID" in \
+			ubuntu|debian) \
+				echo "$(BLUE)Installing Xpra on Ubuntu/Debian...$(NC)"; \
+				echo "Adding Xpra repository..."; \
+				sudo wget -q -O "/usr/share/keyrings/xpra.asc" https://xpra.org/xpra.asc || { \
+					echo "$(RED)Failed to download Xpra key$(NC)"; \
+					exit 1; \
+				}; \
+				sudo wget -q -O "/etc/apt/sources.list.d/xpra.sources" https://xpra.org/repos/jammy/xpra.sources || { \
+					echo "$(RED)Failed to download Xpra sources list$(NC)"; \
+					exit 1; \
+				}; \
+				echo "Updating package list..."; \
+				sudo apt-get update -qq; \
+				echo "Installing xpra and xpra-html5..."; \
+				sudo apt-get install -y xpra xpra-html5 || { \
+					echo "$(RED)Failed to install Xpra$(NC)"; \
+					exit 1; \
+				}; \
+				;; \
+			fedora|rhel|centos) \
+				echo "$(BLUE)Installing Xpra on Fedora/RHEL/CentOS...$(NC)"; \
+				sudo dnf install -y xpra xpra-html5 || { \
+					echo "$(YELLOW)Failed with dnf, trying yum...$(NC)"; \
+					sudo yum install -y xpra xpra-html5 || { \
+						echo "$(RED)Failed to install Xpra$(NC)"; \
+						exit 1; \
+					}; \
+				}; \
+				;; \
+			arch) \
+				echo "$(BLUE)Installing Xpra on Arch Linux...$(NC)"; \
+				sudo pacman -S --noconfirm xpra || { \
+					echo "$(RED)Failed to install Xpra$(NC)"; \
+					exit 1; \
+				}; \
+				;; \
+			*) \
+				echo "$(YELLOW)Unknown distribution: $$ID$(NC)"; \
+				echo "Please install Xpra manually from: https://xpra.org/"; \
+				exit 1; \
+				;; \
+		esac; \
+	else \
+		echo "$(RED)Cannot detect Linux distribution$(NC)"; \
+		echo "Please install Xpra manually from: https://xpra.org/"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Xpra installed successfully!$(NC)"
+	@xpra --version
+endif
+ifeq ($(OS),macos)
+	@echo "$(YELLOW)Xpra installation on macOS:$(NC)"
+	@echo "1. Install via Homebrew: brew install xpra"
+	@echo "2. Or download from: https://xpra.org/dists/MacOS/"
+	@exit 1
+endif
+ifeq ($(OS),windows)
+	@echo "$(YELLOW)Xpra installation on Windows:$(NC)"
+	@echo "1. Download installer from: https://xpra.org/dists/windows/"
+	@echo "2. Or use winget: winget install Xpra"
+	@exit 1
+endif
 
 
 # Build Kit applications

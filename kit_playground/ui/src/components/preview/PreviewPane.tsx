@@ -22,6 +22,7 @@ import {
 interface PreviewPaneProps {
   url: string;
   templateId: string | null;
+  mode?: 'iframe' | 'xpra';
   onError?: (error: Error) => void;
 }
 
@@ -49,7 +50,7 @@ const devicePresets: DevicePreset[] = [
 ];
 
 const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
-  ({ url, templateId, onError }, ref) => {
+  ({ url, templateId, mode = 'iframe', onError }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [loading, setLoading] = useState(true);
@@ -58,6 +59,25 @@ const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
     const [zoom, setZoomState] = useState(100);
     const [selectedDevice, setSelectedDevice] = useState<DevicePreset | null>(null);
     const [iframeKey, setIframeKey] = useState(0);
+    const [xpraInstalled, setXpraInstalled] = useState<boolean | null>(null);
+
+    // Check if Xpra is installed (for Xpra mode)
+    useEffect(() => {
+      if (mode === 'xpra') {
+        fetch('/api/xpra/check')
+          .then(res => res.json())
+          .then(data => {
+            setXpraInstalled(data.installed);
+            if (!data.installed) {
+              setError(`Xpra is not installed. Run: ${data.installCommand || 'make install-xpra'}`);
+            }
+          })
+          .catch(err => {
+            console.error('Failed to check Xpra:', err);
+            setXpraInstalled(false);
+          });
+      }
+    }, [mode]);
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
@@ -373,12 +393,12 @@ const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
               key={iframeKey}
               ref={iframeRef}
               src={url}
-              title="Template Preview"
+              title={mode === 'xpra' ? "Xpra X11 Display" : "Template Preview"}
               style={getIframeStyle()}
               onLoad={handleIframeLoad}
               onError={handleIframeError}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-              allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone"
+              sandbox={mode === 'xpra' ? "allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads" : "allow-scripts allow-same-origin allow-forms allow-modals allow-popups"}
+              allow="accelerometer; camera; encrypted-media; geolocation; gyroscope; microphone; clipboard-read; clipboard-write"
             />
           </Box>
         )}
@@ -400,6 +420,30 @@ const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
             }}
           >
             {selectedDevice.name} ({selectedDevice.width}×{selectedDevice.height})
+          </Box>
+        )}
+
+        {/* Xpra mode indicator */}
+        {mode === 'xpra' && xpraInstalled && (
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 8,
+              left: 8,
+              backgroundColor: 'rgba(0,150,136,0.9)',
+              color: 'white',
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              fontSize: 11,
+              zIndex: 5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+            }}
+          >
+            <Box component="span" sx={{ fontSize: 16 }}>🖥️</Box>
+            Xpra Remote Display
           </Box>
         )}
       </Box>
