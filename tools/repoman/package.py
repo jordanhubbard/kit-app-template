@@ -285,7 +285,7 @@ def setup_repo_tool(parser, config):
     parser.add_argument(
         "--target-app",
         dest="target_app",
-        help="Optional target Kit app to be fed into container entrypoint. This is the filename located in source/apps/ e.g. `my_company.my_usd_explorer_streaming.kit`. To be used with `--container`.",
+        help="Optional target Kit app to be fed into container entrypoint. This is the filename located in _build/apps/ e.g. `my_company.my_usd_explorer_streaming.kit`. To be used with `--container`.",
         required=False,
     )
 

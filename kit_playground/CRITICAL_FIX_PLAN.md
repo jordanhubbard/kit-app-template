@@ -13,10 +13,10 @@
 $ ./repo.sh template new kit_base_editor --name=my_company.my_editor
 
 Output: "Application 'my_company.my_editor' created successfully in
-/home/jkh/Src/kit-app-template/source/apps/my_company.my_editor.kit"
+/home/jkh/Src/kit-app-template/_build/apps/my_company.my_editor.kit"
 
 Directory Structure Created:
-source/apps/
+_build/apps/
 └── my_company.my_editor.kit/     ← WRONG: Directory with .kit extension
     └── my_company.my_editor.kit  ← Actual config file
 ```
@@ -38,10 +38,10 @@ source/apps/
 $ ./repo.sh template new kit_base_editor --name=my_company.my_editor
 
 Output: "Application 'my_company.my_editor' created successfully in
-/home/jkh/Src/kit-app-template/source/apps/my_company.my_editor"
+/home/jkh/Src/kit-app-template/_build/apps/my_company.my_editor"
 
 Directory Structure Should Be:
-source/apps/
+_build/apps/
 └── my_company.my_editor/                    ← Directory WITHOUT .kit extension
     ├── my_company.my_editor.kit             ← Main Kit configuration file
     ├── premake5.lua                         ← Build configuration
@@ -212,7 +212,7 @@ After fixes are complete:
 
 1. **Directory Structure:**
    ```
-   source/apps/my_company.my_editor/
+   _build/apps/my_company.my_editor/
    ├── my_company.my_editor.kit
    ├── premake5.lua
    ├── README.md
@@ -223,10 +223,10 @@ After fixes are complete:
 2. **CLI Output:**
    ```
    Application 'my_company.my_editor' created successfully in
-   /path/to/source/apps/my_company.my_editor
+   /path/to/_build/apps/my_company.my_editor
 
    Main configuration: my_company.my_editor.kit
-   Build with: ./repo.sh build --path source/apps/my_company.my_editor
+   Build with: ./repo.sh build --path _build/apps/my_company.my_editor
    ```
 
 3. **UI Behavior:**
@@ -237,7 +237,7 @@ After fixes are complete:
    - Status bar shows build progress
 
 4. **Build Integration:**
-   - `./repo.sh build --path source/apps/my_company.my_editor` works
+   - `./repo.sh build --path _build/apps/my_company.my_editor` works
    - Build artifacts go to `_build/{platform}/`
    - Run button launches built application
 
@@ -249,13 +249,13 @@ This fix introduces **breaking changes** for existing projects:
 
 **Old projects:**
 ```
-source/apps/my_company.my_editor.kit/  ← Directory with .kit
+_build/apps/my_company.my_editor.kit/  ← Directory with .kit
 └── my_company.my_editor.kit
 ```
 
 **New projects:**
 ```
-source/apps/my_company.my_editor/      ← Directory without .kit
+_build/apps/my_company.my_editor/      ← Directory without .kit
 └── my_company.my_editor.kit
 ```
 

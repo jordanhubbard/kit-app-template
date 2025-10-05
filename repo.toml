@@ -14,15 +14,15 @@ import_configs = [
 name = "kit-app-template"
 
 [repo_build]
-# These are necessary to avoid a repo_build failure where the source/apps directory
+# These are necessary to avoid a repo_build failure where the _build/apps directory
 # is expected to always exist.
 fetch."platform:linux-x86_64".before_pull_commands = [
-    ["mkdir", "--parents", "${root}/source/apps"],
+    ["mkdir", "--parents", "${root}/_build/apps"],
 ]
 
 # Mute this command, don't emit to console.
 fetch."platform:windows-x86_64".before_pull_commands = [
-    ["powershell", "-Command", "New-Item -ItemType Directory -Path ${root}/source/apps -ErrorAction SilentlyContinue", ";", "Write-Host 'Done'"],
+    ["powershell", "-Command", "New-Item -ItemType Directory -Path ${root}/_build/apps -ErrorAction SilentlyContinue", ";", "Write-Host 'Done'"],
 ]
 
 # If caching do not try to cache extensions. These will come from the NGC Kit Extension Registry.
@@ -80,8 +80,14 @@ publish_pip_cache = false
 ########################################################################################################################
 
 [repo_precache_exts]
+# Override ext_folders to use _build/apps instead of source/apps
+ext_folders = [
+  "${root}/source/extensions",
+  "${root}/_build/apps",
+]
+
 # Apps to run and precache
-apps = []
+apps = ["${root}/_build/apps/my_company.my_editor.kit", "${root}/source/apps/test.app.kit", "${root}/source/apps/test.app2.kit", "${root}/source/apps/my_company.my_editor.kit", "${root}/source/apps/test.composer.kit", "${root}/source/apps/curl.test.kit"]
 
 registries = [
     { name = "kit/default", url = "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/${kit_version_major}/shared" },
@@ -165,6 +171,7 @@ files_exclude = [
 ########################################################################################################################
 [repo_kit_template]
 extension_templates_config = "templates/templates.toml"
+applications_path = "${root}/_build/apps"
 
 
 ########################################################################################################################
@@ -175,5 +182,3 @@ type_ordering = [
     "ApplicationTemplate",
     "ApplicationLayerTemplate",
 ]
-
-

@@ -152,7 +152,7 @@ Run validation on configurations or generated files:
 python3 tools/repoman/template_validator.py validate --config=my-project.toml
 
 # Validate a generated file
-python3 tools/repoman/template_validator.py validate --file=source/apps/my_app.kit
+python3 tools/repoman/template_validator.py validate --file=_build/apps/my_app.kit
 
 # Test a specific template
 python3 tools/repoman/template_validator.py test --template=kit_base_editor
@@ -203,10 +203,10 @@ After generating a template, build and run it:
 ./repo.sh build
 
 # Run an application
-./repo.sh launch --app source/apps/my_company.my_editor.kit
+./repo.sh launch --app _build/apps/my_company.my_editor.kit
 
 # Run with debugging
-./repo.sh launch --app source/apps/my_company.my_editor.kit --verbose
+./repo.sh launch --app _build/apps/my_company.my_editor.kit --verbose
 ```
 
 ## Testing Generated Templates
@@ -283,7 +283,7 @@ Always validate templates before attempting to build:
 ```bash
 # Generate and validate
 ./repo.sh template new kit_base_editor --name=test.app --version=1.0.0
-python3 tools/repoman/template_validator.py validate --file=source/apps/test.app.kit
+python3 tools/repoman/template_validator.py validate --file=_build/apps/test.app.kit
 
 # Then build
 ./repo.sh build
@@ -316,7 +316,7 @@ project/
    - Ensure template name is spelled correctly
 
 3. **"File already exists" error**
-   - Clean up existing files: `rm -rf source/apps/your_app.kit`
+   - Clean up existing files: `rm -rf _build/apps/your_app.kit`
    - Or choose a different name
 
 4. **Build failures after generation**

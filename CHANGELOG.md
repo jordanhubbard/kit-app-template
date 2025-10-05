@@ -203,7 +203,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Omniverse Product-Specific Terms (PRODUCT_TERMS_OMNIVERSE)
 - Support for type ordering in templates.toml
 - Metrics Assembler to Kit Base Editor Template to support unit correct assets
-- Support for automatic launch if only single `.kit` file is present in `source/apps`
+- Support for automatic launch if only single `.kit` file is present in `_build/apps`
 
 ### Changed
 - Updated to `Kit 106.0.2`
@@ -257,4 +257,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Removed
 - Top level build .bat/.sh scripts in favor of using `repo build` directly
 - Predefined `define_app` declarations from `premake5.lua` in favor of developer defined applications
-- Predefined source/apps in favor of templates for developers to build from
+- Predefined _build/apps in favor of templates for developers to build from

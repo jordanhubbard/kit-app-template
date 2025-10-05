@@ -17,14 +17,14 @@ Successfully fixed the fundamental design flaw in how Kit applications are gener
 
 **Added:** Post-processing function `_fix_application_structure()`
 - Automatically restructures applications after template replay
-- Moves `source/apps/{name}.kit` file → `source/apps/{name}/{name}.kit` directory
+- Moves `_build/apps/{name}.kit` file → `_build/apps/{name}/{name}.kit` directory
 - Copies README.md from template
 - Generates `.project-meta.toml` with project metadata
 - Works for both template_engine and template_helper paths
 
 **Output Structure (NEW):**
 ```
-source/apps/{application_name}/
+_build/apps/{application_name}/
 ├── {application_name}.kit      ← Main config file
 ├── README.md                    ← Copied from template
 ├── .project-meta.toml          ← Auto-generated metadata
@@ -124,7 +124,7 @@ readme = "README.md"
 
 **Old projects (if any exist):**
 The post-processing automatically handles migration:
-1. Detects `.kit` FILE in `source/apps/`
+1. Detects `.kit` FILE in `_build/apps/`
 2. Creates directory with same name (without .kit)
 3. Moves file inside directory
 4. Adds README.md and .project-meta.toml
@@ -138,17 +138,17 @@ The post-processing automatically handles migration:
 ### Before:
 ```
 Application 'my_company.my_editor' created successfully in
-/path/to/source/apps/my_company.my_editor.kit
+/path/to/_build/apps/my_company.my_editor.kit
 ```
 
 ### After:
 ```
 Restructuring application: my_company.my_editor
 ✓ Application 'my_company.my_editor' created successfully in
-  /path/to/source/apps/my_company.my_editor
+  /path/to/_build/apps/my_company.my_editor
 
 Main configuration: my_company.my_editor.kit
-Build with: ./repo.sh build --path source/apps/my_company.my_editor
+Build with: ./repo.sh build --path _build/apps/my_company.my_editor
 ```
 
 ---
@@ -165,7 +165,7 @@ Build with: ./repo.sh build --path source/apps/my_company.my_editor
 
 ### Expected Result:
 ```
-source/apps/test_company.test_app/
+_build/apps/test_company.test_app/
 ├── test_company.test_app.kit
 ├── README.md
 └── .project-meta.toml
@@ -184,13 +184,13 @@ source/apps/test_company.test_app/
 ### For Existing Code:
 
 **Before:**
-- Applications were created as FILES: `source/apps/{name}.kit`
+- Applications were created as FILES: `_build/apps/{name}.kit`
 - Project discovery looked for directories with `.kit` suffix
 - Build/launch commands pointed to files
 
 **After:**
-- Applications are DIRECTORIES: `source/apps/{name}/`
-- .kit file is inside: `source/apps/{name}/{name}.kit`
+- Applications are DIRECTORIES: `_build/apps/{name}/`
+- .kit file is inside: `_build/apps/{name}/{name}.kit`
 - Project discovery looks for directories containing .kit files
 - All tooling updated to handle new structure
 

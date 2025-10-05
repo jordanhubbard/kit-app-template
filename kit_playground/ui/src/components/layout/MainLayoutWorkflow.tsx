@@ -393,12 +393,23 @@ const MainLayoutWorkflow: React.FC = () => {
     try {
       // Get repo root path from backend
       const configResponse = await fetch('/api/config/paths');
+
+      if (!configResponse.ok) {
+        throw new Error(`Failed to get config paths: ${configResponse.statusText}`);
+      }
+
       const configData = await configResponse.json();
+
+      if (!configData.repoRoot) {
+        throw new Error('repoRoot not found in config response');
+      }
+
       const repoRoot = configData.repoRoot;
 
-      // The generated project is in source/apps/{projectName}/
+      // The generated project is in _build/apps/{projectName}/
       // Construct absolute paths (no .kit extension on directory)
-      const projectPath = `${repoRoot}/${projectInfo.outputDir}/${projectInfo.projectName}`;
+      const outputDir = projectInfo.outputDir || '_build/apps';
+      const projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
       const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
 
       // Store project path for build/run operations
@@ -415,6 +426,9 @@ const MainLayoutWorkflow: React.FC = () => {
         setOutputPathLocal(projectPath);
         emitConsoleLog('success', 'build', `Project created successfully: ${projectInfo.displayName}`);
         emitConsoleLog('info', 'build', `Project location: ${projectPath}`);
+
+        // Refresh projects list so the new project appears in the sidebar
+        loadProjectsData();
       } else {
         const errorText = await response.text();
         emitConsoleLog('warning', 'build', `Project created but configuration file not found: ${errorText}`);

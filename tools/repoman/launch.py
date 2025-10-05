@@ -25,7 +25,7 @@ from rich.theme import Theme
 
 logger = logging.getLogger(__name__)
 
-KIT_APP_PATH = Path(omni.repo.man.resolve_tokens("${root}/source/apps/"))
+KIT_APP_PATH = Path(omni.repo.man.resolve_tokens("${root}/_build/apps/"))
 
 PACKAGE_ARG = "--package"
 

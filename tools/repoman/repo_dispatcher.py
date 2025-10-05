@@ -59,8 +59,8 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any]) -
     """
     Fix application directory structure after template replay.
 
-    The template replay system creates source/apps/{name}.kit as a FILE,
-    but we need it to be source/apps/{name}/{name}.kit (directory with file inside).
+    The template replay system creates _build/apps/{name}.kit as a FILE,
+    but we need it to be _build/apps/{name}/{name}.kit (directory with file inside).
 
     Args:
         repo_root: Repository root directory
@@ -77,7 +77,7 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any]) -
             # Not an application, skip (might be extension)
             continue
 
-        # Check if .kit file exists in source/apps
+        # Check if .kit file exists in source/apps (where omni.repo.man creates it)
         old_kit_file = repo_root / "source" / "apps" / f"{app_name}.kit"
         if not old_kit_file.exists():
             # File not found, might already be structured correctly or error occurred
@@ -87,11 +87,12 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any]) -
             # Already a directory, skip
             continue
 
-        # Found a .kit FILE that should be a DIRECTORY
-        print(f"Restructuring application: {app_name}")
+        # Found a .kit FILE that should be moved to _build/apps DIRECTORY
+        print(f"\nRestructuring application: {app_name}")
+        print(f"Moving from source/apps/ to _build/apps/...")
 
-        # Create new directory structure
-        app_dir = repo_root / "source" / "apps" / app_name
+        # Create new directory structure in _build/apps
+        app_dir = repo_root / "_build" / "apps" / app_name
         app_dir.mkdir(parents=True, exist_ok=True)
 
         # Move the .kit file into the directory
@@ -211,8 +212,8 @@ def handle_template_command(args: List[str]) -> int:
                     ], cwd=str(repo_root))
 
                     # Post-process: Fix directory structure for applications
-                    # The replay creates source/apps/{name}.kit as a FILE
-                    # We need to restructure it as source/apps/{name}/{name}.kit
+                    # The replay creates _build/apps/{name}.kit as a FILE
+                    # We need to restructure it as _build/apps/{name}/{name}.kit
                     if result.returncode == 0:
                         _fix_application_structure(repo_root, playback_data)
 

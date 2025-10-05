@@ -54,7 +54,7 @@ The `template new` tooling ensures that any created application is properly conf
 
 2) The state of the `premake5.lua` file, particularly which `.kit` files are set to build via `define_app()` (e.g., `define_app("my_company.my_service.kit")`).
 
-3) The state of the `source` directory, specifically which `.kit` files are present within `source/apps`.
+3) The state of the `source` directory, specifically which `.kit` files are present within `_build/apps`.
 
 **To ensure a build proceeds as intended, verify that the same `.kit` files are listed or defined in all three locations.**
 

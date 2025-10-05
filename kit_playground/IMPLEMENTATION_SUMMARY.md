@@ -12,7 +12,7 @@ Successfully fixed the **critical design flaw** in both CLI and UI where applica
 ```bash
 $ ./repo.sh template new kit_base_editor --name=my_company.my_editor
 
-Output: source/apps/my_company.my_editor.kit  ← WRONG! This was a FILE!
+Output: _build/apps/my_company.my_editor.kit  ← WRONG! This was a FILE!
 ```
 
 **After (CORRECT):**
@@ -20,7 +20,7 @@ Output: source/apps/my_company.my_editor.kit  ← WRONG! This was a FILE!
 $ ./repo.sh template new kit_base_editor --name=my_company.my_editor
 
 Output:
-source/apps/my_company.my_editor/         ← Proper directory
+_build/apps/my_company.my_editor/         ← Proper directory
 ├── my_company.my_editor.kit              ← Config file inside
 ├── README.md                             ← Documentation
 └── .project-meta.toml                    ← Metadata
@@ -68,16 +68,16 @@ cd /home/jkh/Src/kit-app-template
 ```
 Restructuring application: my_company.my_test_app
 ✓ Application 'my_company.my_test_app' created successfully in
-  /home/jkh/Src/kit-app-template/source/apps/my_company.my_test_app
+  /home/jkh/Src/kit-app-template/_build/apps/my_company.my_test_app
 
 Main configuration: my_company.my_test_app.kit
-Build with: ./repo.sh build --path source/apps/my_company.my_test_app
+Build with: ./repo.sh build --path _build/apps/my_company.my_test_app
 ```
 
 ### 2. Verify Directory Structure:
 
 ```bash
-ls -la source/apps/my_company.my_test_app/
+ls -la _build/apps/my_company.my_test_app/
 ```
 
 **Should show:**
@@ -162,7 +162,7 @@ Then:
 
 The `omni.repo.man` template replay system (external packman dependency) creates:
 ```
-source/apps/{application_name}.kit  ← As a FILE
+_build/apps/{application_name}.kit  ← As a FILE
 ```
 
 ### The Solution:
@@ -175,7 +175,7 @@ if result.returncode == 0:
 ```
 
 This function:
-1. Detects .kit FILES in source/apps
+1. Detects .kit FILES in _build/apps
 2. Creates directory with project name
 3. Moves .kit file inside
 4. Adds README.md and .project-meta.toml
@@ -239,8 +239,8 @@ These are nice-to-have but not critical:
 The fundamental design flaw has been **completely fixed**. Applications now follow proper directory conventions:
 
 ```
-✅ source/apps/{name}/{name}.kit     (CORRECT)
-❌ source/apps/{name}.kit             (OLD - BROKEN)
+✅ _build/apps/{name}/{name}.kit     (CORRECT)
+❌ _build/apps/{name}.kit             (OLD - BROKEN)
 ```
 
 The entire system (CLI, UI, validation, discovery) has been updated to work with the corrected structure. Users can now create, discover, and work with projects correctly.

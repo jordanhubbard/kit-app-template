@@ -36,7 +36,7 @@ Answer `yes` to enable streaming for your application. You can then pick from th
 - **GDN Streaming:** Streams applications through NVIDIA GDN; especially useful for configurator workflows.
 
 
-After creating your application, you’ll find two `.kit` files in the `/source/apps/` directory:
+After creating your application, you’ll find two `.kit` files in the `/_build/apps/` directory:
 - `{app_name}.kit`: The main application configuration file.
 - `{app_name}_{streaming_config}.kit`: The streaming configuration file.
 

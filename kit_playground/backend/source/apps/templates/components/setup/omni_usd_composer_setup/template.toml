@@ -1,0 +1,71 @@
+# USD Composer Setup Extension Template
+# Setup extension component for USD Composer applications
+
+[metadata]
+name = "omni_usd_composer_setup"
+display_name = "Omni USD Composer Setup"
+type = "component"
+category = "setup"
+description = "Setup extension for USD Composer applications, configures authoring tools and workflows"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["setup", "composer", "authoring", "component", "usd"]
+
+[template]
+class = "SetupExtensionTemplate"
+source_dir = "../../extensions/usd_composer.setup/template"
+subtype = "setup"
+
+[variables]
+extension_name = "my_company.my_usd_composer_setup_extension"
+extension_display_name = "My USD Composer Setup Extension"
+version = "0.1.0"
+
+[documentation]
+overview = """
+The USD Composer Setup Extension configures the USD Composer application with
+necessary tools, layouts, and functionality for advanced USD authoring workflows.
+"""
+
+use_cases = [
+    "USD Composer application configuration",
+    "Authoring tools setup",
+    "Workflow customization",
+    "UI layout configuration"
+]
+
+key_features = [
+    "Composer-specific tool configuration",
+    "Default layout setup",
+    "Authoring workflow initialization",
+    "Custom UI panel configuration"
+]
+
+[dependencies]
+required_extensions = []
+optional_extensions = ["omni.kit.material.library"]
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+requires_host_application = true
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+
+[integration]
+requires_host_app = true
+can_be_standalone = false
+supported_app_types = ["application"]
+component_type = "setup"
+target_application = "omni_usd_composer"

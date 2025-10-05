@@ -112,8 +112,8 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         type: t.type,
         category: t.category || 'general',
         description: t.description,
-        thumbnail: undefined,
-        icon: undefined,
+        thumbnail: t.thumbnail,
+        icon: t.icon,
         color_scheme: undefined,
         connectors: [],
         metadata: {

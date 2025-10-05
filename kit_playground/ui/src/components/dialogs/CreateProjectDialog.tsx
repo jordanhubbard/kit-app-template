@@ -15,8 +15,6 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  FormControlLabel,
-  Checkbox,
   Divider,
   Chip,
   IconButton,
@@ -56,8 +54,7 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
   const [projectName, setProjectName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [version, setVersion] = useState('0.1.0');
-  const [outputDir, setOutputDir] = useState('');
-  const [useCustomOutput, setUseCustomOutput] = useState(false);
+  const [outputDir, setOutputDir] = useState('_build/apps');
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -65,18 +62,77 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [dirBrowserOpen, setDirBrowserOpen] = useState(false);
 
-  // Reset form when template changes
+  // Generate unique project name based on template
+  const generateUniqueProjectName = async (templateName: string, outputDirectory: string): Promise<{ projectName: string; displayName: string }> => {
+    try {
+      // Generate base name from template
+      let baseName = templateName
+        .replace('kit_', '')
+        .replace('omni_', '')
+        .replace('usd_', '')
+        .replace(/_/g, '_');
+
+      // Create a nice project name format: my_company.{template_name}
+      baseName = `my_company.${baseName}`;
+
+      // Fetch existing projects in the output directory
+      const response = await fetch(`/api/config/paths`);
+      const pathsData = await response.json();
+      const repoRoot = pathsData.repoRoot;
+
+      const fullPath = `${repoRoot}/${outputDirectory}`;
+      const listResponse = await fetch(`/api/filesystem/list?path=${encodeURIComponent(fullPath)}`);
+
+      let existingProjects: string[] = [];
+      if (listResponse.ok) {
+        const items = await listResponse.json();
+        existingProjects = items
+          .filter((item: any) => item.isDirectory)
+          .map((item: any) => item.name);
+      }
+
+      // Find a unique name
+      let projectName = baseName;
+      let counter = 1;
+      while (existingProjects.includes(projectName)) {
+        projectName = `${baseName}_${counter}`;
+        counter++;
+      }
+
+      // Generate display name
+      const nameParts = projectName.split('.').pop()?.replace(/_/g, ' ') || '';
+      const displayName = nameParts
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      return { projectName, displayName };
+    } catch (error) {
+      console.error('Failed to generate unique name:', error);
+      // Fallback to simple random suffix
+      const timestamp = Date.now() % 10000;
+      const baseName = `my_company.${templateName.replace(/[^a-z0-9]/gi, '_')}_${timestamp}`;
+      const displayName = templateName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      return { projectName: baseName, displayName };
+    }
+  };
+
+  // Reset form and generate unique names when template changes
   useEffect(() => {
-    if (template) {
-      setProjectName('');
-      setDisplayName('');
+    if (template && open) {
+      const defaultOutputDir = '_build/apps';
       setVersion('0.1.0');
-      setOutputDir('');
-      setUseCustomOutput(false);
+      setOutputDir(defaultOutputDir);
       setError(null);
       setValidationErrors({});
+
+      // Generate unique names asynchronously
+      generateUniqueProjectName(template.name, defaultOutputDir).then(({ projectName, displayName }) => {
+        setProjectName(projectName);
+        setDisplayName(displayName);
+      });
     }
-  }, [template]);
+  }, [template, open]);
 
   // Validation
   const validateForm = (): boolean => {
@@ -101,9 +157,9 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
       errors.version = 'Use semantic versioning format (e.g., 1.0.0)';
     }
 
-    // Validate output directory if custom
-    if (useCustomOutput && !outputDir) {
-      errors.outputDir = 'Output directory is required when using custom location';
+    // Validate output directory
+    if (!outputDir) {
+      errors.outputDir = 'Output directory is required';
     }
 
     setValidationErrors(errors);
@@ -127,9 +183,11 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
         name: projectName,
         displayName: displayName,
         version: version,
+        acceptLicense: true,  // Auto-accept license for UI usage
       };
 
-      if (useCustomOutput && outputDir) {
+      // Only include outputDir if it's not the default location
+      if (outputDir && outputDir !== '_build/apps') {
         payload.outputDir = outputDir;
       }
 
@@ -279,47 +337,37 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
 
           <Divider />
 
-          {/* Custom Output Directory (Optional) */}
+          {/* Output Directory */}
           <Box>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={useCustomOutput}
-                  onChange={(e) => setUseCustomOutput(e.target.checked)}
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>
+              Output Directory
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                fullWidth
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                error={!!validationErrors.outputDir}
+                helperText={validationErrors.outputDir || 'Directory path where the project will be created'}
+                placeholder="_build/apps"
+                disabled={loading}
+                InputProps={{
+                  startAdornment: <FolderIcon sx={{ mr: 1, color: 'action.active' }} />,
+                }}
+              />
+              <Tooltip title="Browse for directory">
+                <IconButton
                   disabled={loading}
-                />
-              }
-              label="Use custom output directory (create standalone project)"
-            />
-
-            {useCustomOutput && (
-              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                <TextField
-                  fullWidth
-                  label="Output Directory"
-                  value={outputDir}
-                  onChange={(e) => setOutputDir(e.target.value)}
-                  error={!!validationErrors.outputDir}
-                  helperText={validationErrors.outputDir || 'Absolute path to create standalone project'}
-                  placeholder="/path/to/my-project"
-                  disabled={loading}
-                  InputProps={{
-                    startAdornment: <FolderIcon sx={{ mr: 1, color: 'action.active' }} />,
-                  }}
-                />
-                <Tooltip title="Browse for directory">
-                  <IconButton
-                    disabled={loading}
-                    onClick={() => setDirBrowserOpen(true)}
-                  >
-                    <FolderIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            )}
-            {!useCustomOutput && (
-              <Typography variant="caption" color="text.secondary" sx={{ ml: 4, display: 'block', mt: 0.5 }}>
-                Project will be created in: <code>source/apps/{projectName}.kit</code>
+                  onClick={() => setDirBrowserOpen(true)}
+                  sx={{ height: 56 }}
+                >
+                  <FolderIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            {projectName && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Full path: <code>{outputDir}/{projectName}/</code>
               </Typography>
             )}
           </Box>
@@ -346,7 +394,7 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
               {'  '}--name={projectName} \{'\n'}
               {'  '}--display-name="{displayName}" \{'\n'}
               {'  '}--version={version}
-              {useCustomOutput && outputDir && `\n  --output-dir=${outputDir}`}
+              {outputDir !== '_build/apps' && `\n  --output-dir=${outputDir}`}
             </Typography>
           </Box>
         )}

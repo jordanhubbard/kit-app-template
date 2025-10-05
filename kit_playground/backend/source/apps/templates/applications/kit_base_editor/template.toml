@@ -1,0 +1,80 @@
+# Kit Base Editor Application Template
+# Minimal template for creating interactive 3D applications
+
+[metadata]
+name = "kit_base_editor"
+display_name = "Kit Base Editor"
+type = "application"
+category = "editor"
+description = "Minimal template application for loading, manipulating and rendering OpenUSD content from a graphical interface"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["editor", "usd", "3d", "minimal", "interactive"]
+
+[template]
+# Template class determines behavior in the template system
+class = "ApplicationTemplate"
+# Extend base application template
+extends = "base_application"
+# Path to the base kit file relative to this template.toml
+kit_file = "../../apps/kit_base_editor/kit_base_editor.kit"
+# Source template directory
+source_dir = "../../apps/kit_base_editor"
+
+[variables]
+# Default variable values - can be overridden by user input or config
+application_name = "my_company.my_editor"
+application_display_name = "My Editor"
+version = "0.1.0"
+
+[documentation]
+overview = """
+The Kit Base Editor provides a minimal starting point for developers aiming to create
+interactive 3D applications within the NVIDIA Omniverse ecosystem. This template
+simplifies the process of crafting applications capable of loading, manipulating,
+and rendering OpenUSD content via a graphical user interface.
+"""
+
+use_cases = [
+    "High fidelity OpenUSD editing applications and tools",
+    "Interactive 3D content manipulation",
+    "Custom USD scene editors"
+]
+
+key_features = [
+    "Scene loading capabilities",
+    "RTX Renderer integration",
+    "Basic UI for manipulating and exploring 3D scenes"
+]
+
+getting_started = """
+1. Run: ./repo.sh template new kit_base_editor --name my_company.my_app
+2. Build: ./repo.sh build
+3. Launch: ./repo.sh launch
+"""
+
+[dependencies]
+# Extensions this application requires
+required_extensions = []
+optional_extensions = ["omni.kit.widget.layers", "omni.kit.property.bundle"]
+
+[deployment]
+# Deployment options available for this template
+supports_packaging = true
+supports_containerization = true
+supports_streaming = true
+requires_display = true
+
+[build]
+# Build configuration
+requires_build = false  # Pure Python application
+supports_debug = true
+supports_release = true

@@ -125,7 +125,7 @@ Other common build options:
 The launch tool is used to start your application after it has been successfully built, allowing you to test it live.
 
 ### Usage
-Select and run a built .kit file from the `source/apps` directory:
+Select and run a built .kit file from the `_build/apps` directory:
 
 **Linux:**
 ```bash

@@ -751,7 +751,7 @@ class TemplateEngine:
         # Create standard directories
         directories = [
             "source",
-            "source/apps",
+            "_build/apps",
             "source/extensions",
             "tools",
             "tools/packman",
@@ -1174,7 +1174,7 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
         sys.exit(1)
 
     # Note: --output-dir can be used to create standalone projects
-    # By default (when output_dir is None), templates are created in source/apps/
+    # By default (when output_dir is None), templates are created in _build/apps/
 
     # Generate template
     playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)

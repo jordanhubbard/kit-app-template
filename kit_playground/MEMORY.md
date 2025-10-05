@@ -1307,7 +1307,7 @@ Backend:
 ### Related Components
 - `tools/repoman/` - Template system
 - `templates/` - Template definitions
-- `source/apps/` - Generated projects
+- `_build/apps/` - Generated projects
 
 ### External References
 - [Material-UI Documentation](https://mui.com/)

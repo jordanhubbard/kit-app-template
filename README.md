@@ -226,7 +226,7 @@ Follow the prompt instructions:
 - **? Enter application_display_name:** [set application display name]
 - **? Enter version:** [set application version]
 
-  Application [application name] created successfully in [path to project]/source/apps/[application name]
+  Application [application name] created successfully in [path to project]/_build/apps/[application name]
 
 - **? Do you want to add application layers?** No
 
@@ -469,7 +469,7 @@ On first launch, Kit Playground will:
 
 ## Working with Multiple Applications
 
-By default, `./repo.sh template new` creates application `.kit` files in `source/apps/`. You can create multiple applications:
+By default, `./repo.sh template new` creates application `.kit` files in `_build/apps/`. You can create multiple applications:
 
 ```bash
 # Create first application
@@ -479,9 +479,9 @@ By default, `./repo.sh template new` creates application `.kit` files in `source
 ./repo.sh template new kit_base_editor --name my_company.app_two --display-name "App Two" --version 1.0.0
 ```
 
-Both applications will be created in `source/apps/`:
-- `source/apps/my_company.app_one.kit`
-- `source/apps/my_company.app_two.kit`
+Both applications will be created in `_build/apps/`:
+- `_build/apps/my_company.app_one.kit`
+- `_build/apps/my_company.app_two.kit`
 
 To launch a specific application:
 ```bash

@@ -26,7 +26,7 @@ Error and crash logs : Allows us to improve performance & stability for troubles
 To turn off data collection, you must need to change a setting:
 
 
-1. After creating an application with the `template new` tooling, go to the `source/apps` directory
+1. After creating an application with the `template new` tooling, go to the `_build/apps` directory
 2. Locate the `.kit` file for the application you want to disable telemetry for.
 3. Find the following section in the `.kit` file:
 

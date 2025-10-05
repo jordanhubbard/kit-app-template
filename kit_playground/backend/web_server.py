@@ -405,9 +405,25 @@ Click "Build" to generate a project from this template.
                 category = request.args.get('category')
                 templates = self.template_api.list_templates(template_type, category)
 
+                repo_root = Path(__file__).parent.parent.parent
+
                 # Convert to dict for JSON serialization
                 result = []
                 for t in templates:
+                    # Check for icon file in template directory
+                    icon_url = None
+                    template_dir = None
+
+                    if t.type == 'application':
+                        template_dir = repo_root / 'templates' / 'apps' / t.name
+                    elif t.type == 'extension':
+                        template_dir = repo_root / 'templates' / 'extensions' / t.name
+
+                    if template_dir and template_dir.exists():
+                        icon_path = template_dir / 'assets' / 'icon.png'
+                        if icon_path.exists():
+                            icon_url = f'/api/v2/templates/{t.name}/icon'
+
                     result.append({
                         'id': t.name,
                         'name': t.name,
@@ -417,11 +433,33 @@ Click "Build" to generate a project from this template.
                         'description': t.description,
                         'version': t.version,
                         'tags': t.tags,
-                        'documentation': t.documentation
+                        'documentation': t.documentation,
+                        'icon': icon_url,
+                        'thumbnail': icon_url  # Use same icon for thumbnail for now
                     })
                 return jsonify(result)
             except Exception as e:
                 logger.error(f"Failed to list templates: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/v2/templates/<template_id>/icon', methods=['GET'])
+        def get_template_icon(template_id):
+            """Serve template icon."""
+            try:
+                repo_root = Path(__file__).parent.parent.parent
+
+                # Try application templates first
+                icon_path = repo_root / 'templates' / 'apps' / template_id / 'assets' / 'icon.png'
+                if not icon_path.exists():
+                    # Try extension templates
+                    icon_path = repo_root / 'templates' / 'extensions' / template_id / 'assets' / 'icon.png'
+
+                if icon_path.exists():
+                    return send_from_directory(icon_path.parent, icon_path.name)
+                else:
+                    return jsonify({'error': 'Icon not found'}), 404
+            except Exception as e:
+                logger.error(f"Failed to get template icon: {e}")
                 return jsonify({'error': str(e)}), 500
 
         @self.app.route('/api/v2/templates/<template_id>/docs', methods=['GET'])
@@ -469,11 +507,40 @@ Click "Build" to generate a project from this template.
                 result = self.template_api.generate_template(req)
 
                 if result.success:
+                    # Execute the playback file to actually create the project
+                    repo_root = Path(__file__).parent.parent.parent
+                    replay_cmd = [
+                        str(repo_root / 'repo.sh'),
+                        'template',
+                        'replay',
+                        result.playback_file
+                    ]
+
+                    try:
+                        replay_result = subprocess.run(
+                            replay_cmd,
+                            cwd=str(repo_root),
+                            capture_output=True,
+                            text=True,
+                            timeout=60
+                        )
+
+                        if replay_result.returncode != 0:
+                            error_msg = f"Template replay failed: {replay_result.stderr}"
+                            logger.error(error_msg)
+                            return jsonify({'success': False, 'error': error_msg}), 500
+                    except subprocess.TimeoutExpired:
+                        return jsonify({'success': False, 'error': 'Template generation timed out'}), 500
+                    except Exception as replay_error:
+                        error_msg = f"Failed to execute template replay: {str(replay_error)}"
+                        logger.error(error_msg)
+                        return jsonify({'success': False, 'error': error_msg}), 500
+
                     return jsonify({
                         'success': True,
                         'playbackFile': result.playback_file,
                         'message': result.message,
-                        'outputDir': req.output_dir or 'source/apps'
+                        'outputDir': req.output_dir or '_build/apps'
                     })
                 else:
                     return jsonify({'success': False, 'error': result.error}), 400
@@ -677,7 +744,7 @@ Click "Build" to generate a project from this template.
 
                 # Default paths relative to repo root
                 templates_path = str(repo_root / 'templates')
-                projects_path = str(repo_root / 'source' / 'apps')
+                projects_path = str(repo_root / '_build' / 'apps')
 
                 return jsonify({
                     'templatesPath': templates_path,
@@ -693,7 +760,7 @@ Click "Build" to generate a project from this template.
         def discover_projects():
             """Discover projects in a directory."""
             try:
-                projects_path = request.args.get('path', str(Path(__file__).parent.parent.parent / 'source' / 'apps'))
+                projects_path = request.args.get('path', str(Path(__file__).parent.parent.parent / '_build' / 'apps'))
                 projects_dir = Path(projects_path)
 
                 if not projects_dir.exists():

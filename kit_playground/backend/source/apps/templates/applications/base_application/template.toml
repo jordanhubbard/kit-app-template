@@ -1,0 +1,70 @@
+# Base Application Template
+# Foundation template for all Omniverse applications
+
+[metadata]
+name = "base_application"
+display_name = "Base Application"
+type = "application"
+category = "foundation"
+description = "Base template providing common application foundation and settings"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["foundation", "base", "common", "application"]
+
+[template]
+class = "ApplicationTemplate"
+# This is a base template, doesn't have its own kit file
+abstract = true
+
+[variables]
+application_name = "my_company.my_app"
+application_display_name = "My Application"
+version = "0.1.0"
+
+[documentation]
+overview = """
+Base Application Template provides common foundation settings and configuration
+for all Omniverse applications. This template should be extended by specific
+application templates rather than used directly.
+"""
+
+use_cases = [
+    "Foundation for other application templates",
+    "Common configuration inheritance",
+    "Shared variable definitions"
+]
+
+key_features = [
+    "Common application settings",
+    "Shared configuration patterns",
+    "Standard variable definitions",
+    "Platform compatibility settings"
+]
+
+[dependencies]
+required_extensions = []
+optional_extensions = []
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+requires_display = true
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+
+[settings]
+# Common application settings
+enable_telemetry = true
+enable_crash_reporter = true
+eco_mode = true
