@@ -225,17 +225,37 @@ const MainLayoutWorkflow: React.FC = () => {
       const project = projects.find(p => p.id === node.id);
       if (project) {
         setCurrentProjectPath(project.path);
+        emitConsoleLog('info', 'system', `Loading project: ${project.displayName}`);
+        emitConsoleLog('info', 'system', `Reading file: ${project.kitFile}`);
 
         // Try to load the .kit file
         fetch(`/api/filesystem/read?path=${encodeURIComponent(project.kitFile)}`)
-          .then(response => response.text())
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.text();
+          })
           .then(content => {
             setEditorContent(content);
             setOutputPathLocal(project.path);
+            emitConsoleLog('success', 'system', `Successfully loaded project: ${project.displayName}`);
           })
           .catch(error => {
             console.error('Failed to load project file:', error);
-            setEditorContent(`# ${project.displayName}\n# Failed to load project configuration file.`);
+            emitConsoleLog('error', 'system', `Failed to load project file: ${error.message}`);
+            setEditorContent(`# ${project.displayName}
+#
+# Failed to load project configuration file
+# File: ${project.kitFile}
+# Error: ${error.message}
+#
+# Troubleshooting:
+# 1. Verify the file exists at the path shown above
+# 2. Check file permissions
+# 3. Try refreshing the Projects list
+# 4. Check the console output for more details
+`);
           });
       }
 
@@ -371,12 +391,20 @@ const MainLayoutWorkflow: React.FC = () => {
 
     // Load the generated project's .kit configuration file (TOML)
     try {
-      // The generated project is in source/apps/{projectName}.kit
-      const projectPath = `${projectInfo.outputDir}/${projectInfo.projectName}.kit`;
+      // Get repo root path from backend
+      const configResponse = await fetch('/api/config/paths');
+      const configData = await configResponse.json();
+      const repoRoot = configData.repoRoot;
+
+      // The generated project is in source/apps/{projectName}/
+      // Construct absolute paths (no .kit extension on directory)
+      const projectPath = `${repoRoot}/${projectInfo.outputDir}/${projectInfo.projectName}`;
       const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
 
       // Store project path for build/run operations
       setCurrentProjectPath(projectPath);
+
+      emitConsoleLog('info', 'build', `Loading project file: ${kitFilePath}`);
 
       // Try to read the .kit configuration file
       const response = await fetch(`/api/filesystem/read?path=${encodeURIComponent(kitFilePath)}`);
@@ -386,37 +414,50 @@ const MainLayoutWorkflow: React.FC = () => {
         setEditorContent(content);
         setOutputPathLocal(projectPath);
         emitConsoleLog('success', 'build', `Project created successfully: ${projectInfo.displayName}`);
+        emitConsoleLog('info', 'build', `Project location: ${projectPath}`);
       } else {
-        emitConsoleLog('warning', 'build', `Project created but configuration file not found`);
+        const errorText = await response.text();
+        emitConsoleLog('warning', 'build', `Project created but configuration file not found: ${errorText}`);
 
         // Fallback: show a welcome message with project info
         setEditorContent(`# ${projectInfo.displayName}
 #
 # Project created successfully!
+# Template: ${projectInfo.templateName}
 # Location: ${projectPath}
 #
-# Your Kit application has been generated from the ${projectInfo.templateName} template.
+# Your Kit application has been generated and is ready to use.
 #
-# To view and edit the configuration:
-# Open: ${kitFilePath}
+# Main configuration file: ${kitFilePath}
 #
-# To build: Click the "Build" button in the toolbar
-# To run: Click the "Run" button in the toolbar
+# Next steps:
+# 1. Review the generated configuration below
+# 2. Click "Build" to compile your project
+# 3. Click "Run" to launch your application
+#
+# Note: If you don't see the file contents, try refreshing the Projects section
+# in the left sidebar and clicking on your project.
 `);
       }
     } catch (error: any) {
-      emitConsoleLog('error', 'build', `Failed to load project files: ${error.message || error}`);
-      setEditorContent(`# Project created: ${projectInfo.displayName}
+        emitConsoleLog('error', 'build', `Failed to load project files: ${error.message || error}`);
+        setEditorContent(`# Project: ${projectInfo.displayName}
 #
 # Error loading configuration file.
-# Location: ${projectInfo.outputDir}/${projectInfo.projectName}.kit
+# This may be because the project was created but the file path is incorrect.
 #
-# You can manually navigate to this directory to view your project.
+# Expected location: ${projectInfo.outputDir}/${projectInfo.projectName}/${projectInfo.projectName}.kit
+#
+# Please check the console output above for more details.
+# You can also try:
+# 1. Refresh the Projects section in the left sidebar
+# 2. Click on your project to reload it
+# 3. Or navigate to the project directory manually
 `);
     }
 
     // Reload projects list to show the new project
-    loadProjectsData();
+    await loadProjectsData();
   }, [loadProjectsData]);
 
   // Get current selection for breadcrumbs

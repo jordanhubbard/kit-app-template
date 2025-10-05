@@ -436,8 +436,9 @@ class TemplateTestSuite:
 
             # Find generated files
             if template_name in ["kit_base_editor", "omni_usd_composer", "omni_usd_explorer", "omni_usd_viewer", "kit_service"]:
-                # Application template
-                generated_file = self.repo_root / "source" / "apps" / f"{test_name}.kit"
+                # Application template - now a directory containing the .kit file
+                generated_dir = self.repo_root / "source" / "apps" / test_name
+                generated_file = generated_dir / f"{test_name}.kit"
             else:
                 # Extension template - it's a directory
                 generated_file = self.repo_root / "source" / "extensions" / test_name

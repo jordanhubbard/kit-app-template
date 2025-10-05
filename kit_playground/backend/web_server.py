@@ -701,29 +701,55 @@ Click "Build" to generate a project from this template.
 
                 projects = []
 
-                # Look for .kit directories (each project is a .kit directory)
+                # Look for project directories (each directory may contain a .kit file)
                 for item in projects_dir.iterdir():
-                    if item.is_dir() and item.suffix == '.kit':
-                        project_name = item.stem
-                        kit_file = item / f"{project_name}.kit"
+                    if not item.is_dir():
+                        continue
 
-                        # Check if .kit file exists
-                        if kit_file.exists():
-                            # Try to read project metadata from .kit file
-                            try:
-                                # Basic project info
-                                project_info = {
-                                    'id': project_name,
-                                    'name': project_name,
-                                    'displayName': project_name.replace('_', ' ').title(),
-                                    'path': str(item),
-                                    'kitFile': str(kit_file),
-                                    'status': 'ready',  # TODO: Detect if built/running
-                                    'lastModified': item.stat().st_mtime
-                                }
-                                projects.append(project_info)
-                            except Exception as e:
-                                logger.warning(f"Failed to read project {project_name}: {e}")
+                    # Skip directories starting with _ or .
+                    if item.name.startswith('_') or item.name.startswith('.'):
+                        continue
+
+                    # Look for .kit files in the directory
+                    kit_files = list(item.glob("*.kit"))
+
+                    if kit_files:
+                        # Found .kit file(s) - this is a project
+                        kit_file = kit_files[0]  # Use first .kit file found
+                        project_name = kit_file.stem
+
+                        # Try to read project metadata
+                        try:
+                            # Check for .project-meta.toml
+                            meta_file = item / ".project-meta.toml"
+                            display_name = project_name.replace('_', ' ').title()
+
+                            if meta_file.exists():
+                                # Read metadata if available
+                                try:
+                                    import tomllib
+                                    with open(meta_file, 'rb') as f:
+                                        meta = tomllib.load(f)
+                                except ImportError:
+                                    import toml
+                                    with open(meta_file, 'r') as f:
+                                        meta = toml.load(f)
+
+                                display_name = meta.get('project', {}).get('display_name', display_name)
+
+                            # Basic project info
+                            project_info = {
+                                'id': project_name,
+                                'name': project_name,
+                                'displayName': display_name,
+                                'path': str(item),
+                                'kitFile': str(kit_file),
+                                'status': 'ready',  # TODO: Detect if built/running
+                                'lastModified': item.stat().st_mtime
+                            }
+                            projects.append(project_info)
+                        except Exception as e:
+                            logger.warning(f"Failed to read project {project_name}: {e}")
 
                 # Sort by last modified (newest first)
                 projects.sort(key=lambda p: p['lastModified'], reverse=True)
