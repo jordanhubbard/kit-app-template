@@ -40,3 +40,4 @@ deps/**/user.toml
 # Kit Playground build artifacts
 kit_playground/ui/build
 kit_playground/ui/node_modules
+kit_playground/ui/src/setupProxy.js

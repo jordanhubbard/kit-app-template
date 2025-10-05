@@ -47,13 +47,26 @@ else
     DISPLAY_HOST="localhost"
 fi
 
+# Find available ports dynamically
+echo -e "${BLUE}Finding available ports...${NC}"
+PORTS=$(python3 "$SCRIPT_DIR/find_free_port.py" 2 8000)
+BACKEND_PORT=$(echo $PORTS | cut -d' ' -f1)
+FRONTEND_PORT=$(echo $PORTS | cut -d' ' -f2)
+
+if [ -z "$BACKEND_PORT" ] || [ -z "$FRONTEND_PORT" ]; then
+    echo -e "${RED}✗ Failed to find available ports${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Allocated ports: Backend=$BACKEND_PORT, Frontend=$FRONTEND_PORT${NC}"
+
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║  Kit Playground - Development Mode with Hot Reload        ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}Starting services:${NC}"
-echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:8200${NC}"
-echo -e "  • Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:3000${NC} ${YELLOW}(with hot-reload)${NC}"
+echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC}"
+echo -e "  • Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC} ${YELLOW}(with hot-reload)${NC}"
 if [ "$REMOTE" = "1" ]; then
     echo -e "  ${YELLOW}⚠ Remote mode: Listening on 0.0.0.0 (all interfaces)${NC}"
 fi
@@ -67,6 +80,8 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}Shutting down servers...${NC}"
     kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
+    # Clean up generated proxy config
+    rm -f "$UI_DIR/src/setupProxy.js"
     exit 0
 }
 trap cleanup EXIT INT TERM
@@ -74,7 +89,7 @@ trap cleanup EXIT INT TERM
 # Start backend in background
 echo -e "${BLUE}[1/2] Starting Backend API server...${NC}"
 cd "$BACKEND_DIR"
-python3 web_server.py --port 8200 --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
+python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
 BACKEND_PID=$!
 
 # Wait for backend to start
@@ -85,13 +100,29 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
 fi
 echo -e "${GREEN}✓ Backend running (PID: $BACKEND_PID)${NC}"
 
+# Create temporary setupProxy.js with dynamic backend port
+cat > "$UI_DIR/src/setupProxy.js" << EOF
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+module.exports = function(app) {
+  app.use(
+    '/api',
+    createProxyMiddleware({
+      target: 'http://localhost:${BACKEND_PORT}',
+      changeOrigin: true,
+      logLevel: 'warn',
+    })
+  );
+};
+EOF
+
 # Start frontend dev server
 echo -e "${BLUE}[2/2] Starting React dev server with hot-reload...${NC}"
 cd "$UI_DIR"
 if [ "$REMOTE" = "1" ]; then
-    BROWSER=none HOST="$FRONTEND_HOST" DANGEROUSLY_DISABLE_HOST_CHECK=true npm start &
+    BROWSER=none HOST="$FRONTEND_HOST" PORT="$FRONTEND_PORT" DANGEROUSLY_DISABLE_HOST_CHECK=true npm start &
 else
-    BROWSER=none npm start &
+    BROWSER=none PORT="$FRONTEND_PORT" npm start &
 fi
 FRONTEND_PID=$!
 
