@@ -62,9 +62,10 @@ all: check-deps
 	@echo "  make test              - Run test suite"
 	@echo ""
 	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
-	@echo "  make playground                    - Build and launch (localhost)"
-	@echo "  make playground REMOTE=1           - Build and launch with remote access (0.0.0.0)"
-	@echo "  make playground-dev (or make dev)  - Development mode with hot-reload ⚡ (localhost only)"
+	@echo "  make playground                    - Stop existing & start fresh (localhost)"
+	@echo "  make playground REMOTE=1           - Stop existing & start with remote access (0.0.0.0)"
+	@echo "  make playground-start              - Start playground processes"
+	@echo "  make playground-stop               - Stop all running playground processes"
 	@echo "  make playground-build              - Build UI only"
 	@echo "  make playground-clean              - Remove build artifacts"
 	@echo ""
@@ -344,17 +345,36 @@ build: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
-# Main playground target: Development mode with hot-reload (always dev mode)
-# Usage: make playground          - Local access only (localhost)
-#        make playground REMOTE=1 - Remote access (0.0.0.0)
-.PHONY: playground
-playground:
+# Stop playground processes
+.PHONY: playground-stop
+playground-stop:
+	@echo "$(BLUE)Stopping any running playground processes...$(NC)"
+	@# Kill web_server.py backend processes
+	@-pgrep -f "python.*web_server\.py" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "python.*web_server\.py" | xargs -r kill -9 2>/dev/null || true
+	@# Kill node/npm dev server processes (from kit_playground/ui)
+	@-pgrep -f "vite.*kit_playground" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "vite.*kit_playground" | xargs -r kill -9 2>/dev/null || true
+	@echo "$(GREEN)✓ Playground processes stopped$(NC)"
+
+# Start playground processes
+.PHONY: playground-start
+playground-start:
 	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
 		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
 		echo "  Run: make install-npm"; \
 		exit 1; \
 	fi
+	@echo "$(BLUE)Starting Kit Playground...$(NC)"
 	@$(KIT_PLAYGROUND_DIR)/dev.sh
+
+# Main playground target: Stop any existing instances, then start fresh
+# Usage: make playground          - Local access only (localhost)
+#        make playground REMOTE=1 - Remote access (0.0.0.0)
+.PHONY: playground
+playground: playground-stop playground-start
 
 # Build UI (production bundle)
 .PHONY: playground-build
