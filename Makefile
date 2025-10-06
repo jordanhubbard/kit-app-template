@@ -79,7 +79,6 @@ all: check-deps
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
 	@echo "  make clean             - Clean build artifacts"
-	@echo "  make check-icons       - Validate icon paths in apps/extensions"
 	@echo "  make help              - Show this help message"
 
 .PHONY: help
@@ -411,11 +410,6 @@ test: check-deps
 	@echo "$(BLUE)Running test suite...$(NC)"
 	@./repo.sh test
 
-# Validate icon paths in extensions and built apps
-.PHONY: check-icons
-check-icons:
-	@echo "$(BLUE)Validating icon paths...$(NC)"
-	@$(PYTHON) tools/validate_icons.py
 
 # Clean build artifacts
 .PHONY: clean

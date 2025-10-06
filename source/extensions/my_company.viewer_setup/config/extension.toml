@@ -50,7 +50,6 @@ pages = [
 
 [[test]]
 dependencies = [
-    "my_company.viewer",
     "omni.kit.ui_test",
 ]
 
