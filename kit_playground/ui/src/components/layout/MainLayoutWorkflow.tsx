@@ -406,11 +406,21 @@ const MainLayoutWorkflow: React.FC = () => {
 
       const repoRoot = configData.repoRoot;
 
-      // The generated project is in _build/apps/{projectName}/
-      // Construct absolute paths (no .kit extension on directory)
-      const outputDir = projectInfo.outputDir || '_build/apps';
-      const projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
-      const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
+      // When outputDir is not specified, projects are created as flat files in source/apps
+      // Format: source/apps/{projectName}.kit (not in a subdirectory)
+      const outputDir = projectInfo.outputDir || 'source/apps';
+      let kitFilePath: string;
+      let projectPath: string;
+      
+      if (outputDir === 'source/apps' || !projectInfo.outputDir) {
+        // Flat file structure: source/apps/project_name.kit
+        projectPath = `${repoRoot}/${outputDir}`;
+        kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
+      } else {
+        // Directory structure: outputDir/project_name/project_name.kit
+        projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
+        kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
+      }
 
       // Store project path for build/run operations
       setCurrentProjectPath(projectPath);

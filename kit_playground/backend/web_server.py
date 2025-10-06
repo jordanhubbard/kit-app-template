@@ -491,7 +491,7 @@ Click "Build" to generate a project from this template.
                     if test_path.exists():
                         icon_path = test_path
                         break
-                
+
                 # Try microservices
                 if not icon_path:
                     for name in possible_names:
@@ -499,7 +499,7 @@ Click "Build" to generate a project from this template.
                         if test_path.exists():
                             icon_path = test_path
                             break
-                
+
                 # Try extension templates if not found
                 if not icon_path:
                     for name in possible_names:
@@ -546,7 +546,7 @@ Click "Build" to generate a project from this template.
             try:
                 repo_root = Path(__file__).parent.parent.parent
                 templates_root = repo_root / 'templates'
-                
+
                 # Find template directory
                 template_dirs = [
                     templates_root / 'apps' / template_id,
@@ -554,19 +554,19 @@ Click "Build" to generate a project from this template.
                     templates_root / 'extensions' / template_id,
                     templates_root / 'microservices' / template_id,
                 ]
-                
+
                 template_dir = None
                 for dir_path in template_dirs:
                     if dir_path.exists():
                         template_dir = dir_path
                         break
-                
+
                 if not template_dir:
                     return jsonify({'error': 'Template directory not found'}), 404
-                
+
                 # Collect interesting files
                 files = []
-                
+
                 # Main template files
                 for pattern in ['*.kit', '*.toml', 'README.md']:
                     for file in template_dir.rglob(pattern):
@@ -577,7 +577,7 @@ Click "Build" to generate a project from this template.
                                 'name': file.name,
                                 'type': file.suffix[1:] if file.suffix else 'file'
                             })
-                
+
                 return jsonify({
                     'templateId': template_id,
                     'templateDir': str(template_dir),
@@ -641,7 +641,7 @@ Click "Build" to generate a project from this template.
                         'success': True,
                         'playbackFile': result.playback_file,
                         'message': result.message,
-                        'outputDir': req.output_dir or '_build/apps'
+                        'outputDir': req.output_dir or 'source/apps'
                     })
                 else:
                     return jsonify({'success': False, 'error': result.error}), 400
