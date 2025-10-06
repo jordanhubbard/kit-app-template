@@ -414,15 +414,41 @@ Click "Build" to generate a project from this template.
                     icon_url = None
                     template_dir = None
 
-                    if t.type == 'application':
-                        template_dir = repo_root / 'templates' / 'apps' / t.name
-                    elif t.type == 'extension':
-                        template_dir = repo_root / 'templates' / 'extensions' / t.name
+                    # Try multiple possible directory names - look for icon file, not just directory
+                    possible_names = [t.name]
+                    # Strip 'omni_' prefix if present (omni_usd_viewer -> usd_viewer)
+                    if t.name.startswith('omni_'):
+                        possible_names.append(t.name[5:])
+                    # Strip '_setup' or '_messaging' suffixes
+                    base_name = t.name.replace('_setup', '').replace('_messaging', '')
+                    if base_name not in possible_names:
+                        possible_names.append(base_name)
 
-                    if template_dir and template_dir.exists():
-                        icon_path = template_dir / 'assets' / 'icon.png'
-                        if icon_path.exists():
-                            icon_url = f'/api/v2/templates/{t.name}/icon'
+                    if t.type in ['application', 'microservice']:
+                        for name in possible_names:
+                            test_dir = repo_root / 'templates' / 'apps' / name
+                            icon_path = test_dir / 'assets' / 'icon.png'
+                            if icon_path.exists():
+                                template_dir = test_dir
+                                icon_url = f'/api/v2/templates/{t.name}/icon'
+                                break
+                        # Also try microservices directory
+                        if not icon_url:
+                            for name in possible_names:
+                                test_dir = repo_root / 'templates' / 'microservices' / name
+                                icon_path = test_dir / 'assets' / 'icon.png'
+                                if icon_path.exists():
+                                    template_dir = test_dir
+                                    icon_url = f'/api/v2/templates/{t.name}/icon'
+                                    break
+                    elif t.type == 'extension':
+                        for name in possible_names:
+                            test_dir = repo_root / 'templates' / 'extensions' / name
+                            icon_path = test_dir / 'template' / 'data' / 'icon.png'
+                            if icon_path.exists():
+                                template_dir = test_dir
+                                icon_url = f'/api/v2/templates/{t.name}/icon'
+                                break
 
                     result.append({
                         'id': t.name,
@@ -448,13 +474,41 @@ Click "Build" to generate a project from this template.
             try:
                 repo_root = Path(__file__).parent.parent.parent
 
-                # Try application templates first
-                icon_path = repo_root / 'templates' / 'apps' / template_id / 'assets' / 'icon.png'
-                if not icon_path.exists():
-                    # Try extension templates
-                    icon_path = repo_root / 'templates' / 'extensions' / template_id / 'assets' / 'icon.png'
+                # Try multiple possible directory names
+                possible_names = [template_id]
+                # Strip 'omni_' prefix if present (omni_usd_viewer -> usd_viewer)
+                if template_id.startswith('omni_'):
+                    possible_names.append(template_id[5:])
+                # Strip '_setup' or '_messaging' suffixes
+                base_name = template_id.replace('_setup', '').replace('_messaging', '')
+                if base_name not in possible_names:
+                    possible_names.append(base_name)
 
-                if icon_path.exists():
+                # Try application templates first
+                icon_path = None
+                for name in possible_names:
+                    test_path = repo_root / 'templates' / 'apps' / name / 'assets' / 'icon.png'
+                    if test_path.exists():
+                        icon_path = test_path
+                        break
+                
+                # Try microservices
+                if not icon_path:
+                    for name in possible_names:
+                        test_path = repo_root / 'templates' / 'microservices' / name / 'assets' / 'icon.png'
+                        if test_path.exists():
+                            icon_path = test_path
+                            break
+                
+                # Try extension templates if not found
+                if not icon_path:
+                    for name in possible_names:
+                        test_path = repo_root / 'templates' / 'extensions' / name / 'template' / 'data' / 'icon.png'
+                        if test_path.exists():
+                            icon_path = test_path
+                            break
+
+                if icon_path and icon_path.exists():
                     return send_from_directory(icon_path.parent, icon_path.name)
                 else:
                     return jsonify({'error': 'Icon not found'}), 404
@@ -484,6 +538,53 @@ Click "Build" to generate a project from this template.
                 })
             except Exception as e:
                 logger.error(f"Failed to get template docs: {e}")
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/v2/templates/<template_id>/files', methods=['GET'])
+        def get_template_files(template_id):
+            """Get list of template source files for editing."""
+            try:
+                repo_root = Path(__file__).parent.parent.parent
+                templates_root = repo_root / 'templates'
+                
+                # Find template directory
+                template_dirs = [
+                    templates_root / 'apps' / template_id,
+                    templates_root / 'applications' / template_id,
+                    templates_root / 'extensions' / template_id,
+                    templates_root / 'microservices' / template_id,
+                ]
+                
+                template_dir = None
+                for dir_path in template_dirs:
+                    if dir_path.exists():
+                        template_dir = dir_path
+                        break
+                
+                if not template_dir:
+                    return jsonify({'error': 'Template directory not found'}), 404
+                
+                # Collect interesting files
+                files = []
+                
+                # Main template files
+                for pattern in ['*.kit', '*.toml', 'README.md']:
+                    for file in template_dir.rglob(pattern):
+                        if file.is_file() and not any(p.startswith('.') for p in file.parts):
+                            files.append({
+                                'path': str(file),
+                                'relativePath': str(file.relative_to(template_dir)),
+                                'name': file.name,
+                                'type': file.suffix[1:] if file.suffix else 'file'
+                            })
+                
+                return jsonify({
+                    'templateId': template_id,
+                    'templateDir': str(template_dir),
+                    'files': files
+                })
+            except Exception as e:
+                logger.error(f"Failed to get template files: {e}")
                 return jsonify({'error': str(e)}), 500
 
         @self.app.route('/api/v2/templates/generate', methods=['POST'])
@@ -653,12 +754,13 @@ Click "Build" to generate a project from this template.
         # Filesystem routes
         @self.app.route('/api/filesystem/cwd', methods=['GET'])
         def get_current_directory():
-            """Get current working directory."""
+            """Get current working directory (project root)."""
             try:
-                cwd = os.getcwd()
+                # Return the project root, not backend directory
+                repo_root = Path(__file__).parent.parent.parent
                 return jsonify({
-                    'cwd': cwd,
-                    'realpath': str(Path(cwd).resolve())
+                    'cwd': str(repo_root),
+                    'realpath': str(repo_root.resolve())
                 })
             except Exception as e:
                 logger.error(f"Failed to get current directory: {e}")

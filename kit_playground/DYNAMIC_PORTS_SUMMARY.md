@@ -179,3 +179,4 @@ The implementation includes proper cleanup:
 - Generated `setupProxy.js` is removed on shutdown
 - Processes are killed cleanly with trap handlers
 - No leftover files or processes
+

@@ -87,7 +87,7 @@ ext_folders = [
 ]
 
 # Apps to run and precache
-apps = ["${root}/_build/apps/my_company.my_editor.kit", "${root}/source/apps/test.app.kit", "${root}/source/apps/test.app2.kit", "${root}/source/apps/my_company.my_editor.kit", "${root}/source/apps/test.composer.kit", "${root}/source/apps/curl.test.kit"]
+apps = ["${root}/_build/apps/my_company.my_editor.kit", "${root}/source/apps/test.app.kit", "${root}/source/apps/test.app2.kit", "${root}/source/apps/my_company.my_editor.kit", "${root}/source/apps/test.composer.kit", "${root}/source/apps/curl.test.kit", "${root}/source/apps/my_company.viewer.kit", "${root}/source/apps/my_company.base_editor.kit", "${root}/source/apps/my_company.kit_base_editor_4396.kit"]
 
 registries = [
     { name = "kit/default", url = "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/${kit_version_major}/shared" },

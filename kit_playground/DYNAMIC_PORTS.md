@@ -160,3 +160,4 @@ Possible improvements:
 - Add port range configuration via environment variables
 - Support for multiple concurrent playground instances
 - Automatic port allocation for Xpra sessions
+
