@@ -12,6 +12,7 @@ import subprocess
 import sys
 import webbrowser
 import time
+import toml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -25,6 +26,7 @@ import threading
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
 from tools.repoman.template_engine import TemplateEngine  # Legacy support
+from tools.repoman.repo_dispatcher import _fix_application_structure
 from kit_playground.core.playground_app import PlaygroundApp
 from kit_playground.backend.xpra_manager import XpraManager
 
@@ -630,6 +632,20 @@ Click "Build" to generate a project from this template.
                             error_msg = f"Template replay failed: {replay_result.stderr}"
                             logger.error(error_msg)
                             return jsonify({'success': False, 'error': error_msg}), 500
+                        
+                        # The replay creates files in source/apps as flat files
+                        # We need to move them to _build/apps with proper directory structure
+                        # This matches what repo.toml's applications_path expects
+                        try:
+                            playback_file = Path(result.playback_file)
+                            if playback_file.exists():
+                                playback_data = toml.load(playback_file)
+                                _fix_application_structure(repo_root, playback_data)
+                                logger.info(f"✓ Project restructured to _build/apps/")
+                        except Exception as fix_error:
+                            logger.warning(f"Could not restructure project: {fix_error}")
+                            # Not fatal, project was still created
+                        
                     except subprocess.TimeoutExpired:
                         return jsonify({'success': False, 'error': 'Template generation timed out'}), 500
                     except Exception as replay_error:
@@ -641,7 +657,7 @@ Click "Build" to generate a project from this template.
                         'success': True,
                         'playbackFile': result.playback_file,
                         'message': result.message,
-                        'outputDir': req.output_dir or 'source/apps'
+                        'outputDir': req.output_dir or '_build/apps'
                     })
                 else:
                     return jsonify({'success': False, 'error': result.error}), 400

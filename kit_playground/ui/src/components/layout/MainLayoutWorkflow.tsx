@@ -36,7 +36,7 @@ const MainLayoutWorkflow: React.FC = () => {
 
   // Path state
   const [templatesPath, setTemplatesPath] = useState<string>('templates');
-  const [projectsPath, setProjectsPath] = useState<string>('source/apps');
+  const [projectsPath, setProjectsPath] = useState<string>('_build/apps');
 
   // Editor state
   const [editorContent, setEditorContent] = useState<string>('');
@@ -406,21 +406,12 @@ const MainLayoutWorkflow: React.FC = () => {
 
       const repoRoot = configData.repoRoot;
 
-      // When outputDir is not specified, projects are created as flat files in source/apps
-      // Format: source/apps/{projectName}.kit (not in a subdirectory)
-      const outputDir = projectInfo.outputDir || 'source/apps';
-      let kitFilePath: string;
-      let projectPath: string;
-      
-      if (outputDir === 'source/apps' || !projectInfo.outputDir) {
-        // Flat file structure: source/apps/project_name.kit
-        projectPath = `${repoRoot}/${outputDir}`;
-        kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
-      } else {
-        // Directory structure: outputDir/project_name/project_name.kit
-        projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
-        kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
-      }
+      // Projects are created in _build/apps/{projectName}/ directory structure
+      // The backend automatically moves them from source/apps (where omni.repo.man creates them)
+      // to _build/apps with proper directory structure (as per repo.toml applications_path)
+      const outputDir = projectInfo.outputDir || '_build/apps';
+      const projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
+      const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
 
       // Store project path for build/run operations
       setCurrentProjectPath(projectPath);
