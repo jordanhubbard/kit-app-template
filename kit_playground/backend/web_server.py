@@ -616,10 +616,14 @@ Click "Build" to generate a project from this template.
                         str(repo_root / 'repo.sh'),
                         'template',
                         'replay',
+                        '--playback-file',
                         result.playback_file
                     ]
 
                     try:
+                        logger.info(f"Executing replay command: {' '.join(replay_cmd)}")
+                        logger.info(f"Playback file: {result.playback_file}, exists: {Path(result.playback_file).exists()}")
+                        
                         replay_result = subprocess.run(
                             replay_cmd,
                             cwd=str(repo_root),
@@ -628,11 +632,15 @@ Click "Build" to generate a project from this template.
                             timeout=60
                         )
 
+                        logger.info(f"Replay exit code: {replay_result.returncode}")
+                        logger.info(f"Replay stdout: {replay_result.stdout}")
+                        logger.info(f"Replay stderr: {replay_result.stderr}")
+
                         if replay_result.returncode != 0:
-                            error_msg = f"Template replay failed: {replay_result.stderr}"
+                            error_msg = f"Template replay failed (exit {replay_result.returncode}): {replay_result.stderr or replay_result.stdout}"
                             logger.error(error_msg)
                             return jsonify({'success': False, 'error': error_msg}), 500
-                        
+
                         # The replay creates files in source/apps as flat files
                         # We need to move them to _build/apps with proper directory structure
                         # This matches what repo.toml's applications_path expects
@@ -645,7 +653,7 @@ Click "Build" to generate a project from this template.
                         except Exception as fix_error:
                             logger.warning(f"Could not restructure project: {fix_error}")
                             # Not fatal, project was still created
-                        
+
                     except subprocess.TimeoutExpired:
                         return jsonify({'success': False, 'error': 'Template generation timed out'}), 500
                     except Exception as replay_error:
