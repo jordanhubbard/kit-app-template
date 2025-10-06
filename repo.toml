@@ -88,14 +88,10 @@ ext_folders = [
 
 # Apps to run and precache
 # Note: Built apps are placed in subdirectories under _build/apps/<app_name>/<app_name>.kit
+# This list is dynamically populated - only include apps that actually exist
 apps = [
     "${root}/_build/apps/my_company.my_editor/my_company.my_editor.kit",
-    "${root}/_build/apps/test.composer/test.composer.kit",
-    "${root}/source/apps/dork.whistle.kit",
-    "${root}/source/apps/test.docfix.kit",
-    "${root}/source/apps/test.unixflow.kit",
-    "${root}/source/apps/test.wrapper.kit",
-    "${root}/source/apps/test.quick_validation.kit",
+    "${root}/_build/apps/test_editor/test_editor.kit",
 ]
 
 registries = [

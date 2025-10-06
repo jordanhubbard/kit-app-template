@@ -689,9 +689,12 @@ class TemplateEngine:
 
         # Validate output directory
         if output_path.exists() and any(output_path.iterdir()):
-            response = input(f"Directory '{output_path}' is not empty. Continue? [y/N]: ")
-            if response.lower() != 'y':
-                raise ValueError("Aborted: output directory is not empty")
+            # Check if force_overwrite is enabled
+            force_overwrite = kwargs.get('force_overwrite', False)
+            if not force_overwrite:
+                response = input(f"Directory '{output_path}' is not empty. Continue? [y/N]: ")
+                if response.lower() != 'y':
+                    raise ValueError("Aborted: output directory is not empty")
 
         # Create output directory if it doesn't exist
         output_path.mkdir(parents=True, exist_ok=True)

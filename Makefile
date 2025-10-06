@@ -410,6 +410,28 @@ test: check-deps
 	@echo "$(BLUE)Running test suite...$(NC)"
 	@./repo.sh test
 
+# Run Kit Playground tests
+.PHONY: test-playground
+test-playground:
+	@echo "$(BLUE)Running Kit Playground test suite...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && ./tests/run_tests.sh
+
+# Run quick tests (excluding slow integration tests)
+.PHONY: test-quick
+test-quick:
+	@echo "$(BLUE)Running quick tests...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && ./tests/run_tests.sh --quick
+
+# Run tests with coverage
+.PHONY: test-coverage
+test-coverage:
+	@echo "$(BLUE)Running tests with coverage analysis...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && ./tests/run_tests.sh --coverage
+
+# Run all tests (repo + playground)
+.PHONY: test-all
+test-all: test test-playground
+
 
 # Clean build artifacts
 .PHONY: clean

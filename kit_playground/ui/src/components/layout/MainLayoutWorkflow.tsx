@@ -435,9 +435,20 @@ const MainLayoutWorkflow: React.FC = () => {
       const relativeProjectPath = `${outputDir}/${projectInfo.projectName}`;
       setCurrentProjectPath(relativeProjectPath);
 
-      // Use absolute path for file reading
-      const projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
-      const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
+      // Projects are created with flat structure: _build/apps/{name}/{name}.kit
+      // Use kitFile path from API response (already includes full relative path)
+      let kitFilePath: string;
+      if (projectInfo.kitFile) {
+        // API provides relative path like "_build/apps/name/name.kit"
+        if (projectInfo.kitFile.startsWith('/')) {
+          kitFilePath = projectInfo.kitFile;  // Already absolute
+        } else {
+          kitFilePath = `${repoRoot}/${projectInfo.kitFile}`;  // Make absolute
+        }
+      } else {
+        // Fallback: construct flat structure path
+        kitFilePath = `${repoRoot}/${relativeProjectPath}/${projectInfo.projectName}.kit`;
+      }
 
       emitConsoleLog('info', 'build', `Loading project file: ${kitFilePath}`);
 

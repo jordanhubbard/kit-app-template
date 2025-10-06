@@ -73,7 +73,7 @@ class PlaygroundWebServer:
         self._setup_websocket()
 
     def _is_safe_project_name(self, name: str) -> bool:
-        """Validate project name with basic safety checks.
+        """Validate project name to prevent command injection.
 
         Args:
             name: Project name to validate
@@ -81,18 +81,10 @@ class PlaygroundWebServer:
         Returns:
             True if the name is safe, False otherwise
         """
-        # Allow alphanumeric, dots, hyphens, underscores, and spaces
-        # Disallow dangerous shell metacharacters: ; & | $ ` ( ) < > \ " '
-        if not name or len(name) > 255:
-            return False
-
-        # Check for dangerous characters
-        dangerous_chars = [';', '&', '|', '$', '`', '(', ')', '<', '>', '\\', '"', "'", '\n', '\r', '\t']
-        for char in dangerous_chars:
-            if char in name:
-                return False
-
-        return True
+        # Allow only alphanumeric, dots, hyphens, and underscores
+        # Disallow shell metacharacters: ; & | $ ` ( ) < > \ " ' space newline
+        pattern = r'^[a-zA-Z0-9._-]+$'
+        return bool(re.match(pattern, name)) and len(name) <= 255
 
     def _validate_project_path(self, repo_root: Path, project_path: str) -> Optional[Path]:
         """Validate and normalize project path to prevent path traversal.
@@ -125,7 +117,7 @@ class PlaygroundWebServer:
             return None
 
     def _validate_filesystem_path(self, path: str, allow_creation: bool = False) -> Optional[Path]:
-        """Validate filesystem path with basic safety checks.
+        """Validate filesystem path to prevent path traversal.
 
         Args:
             path: User-provided file/directory path
@@ -137,10 +129,19 @@ class PlaygroundWebServer:
         try:
             path_obj = Path(path).resolve()
 
-            # Basic safety: prevent null bytes and other dangerous characters
+            # Define allowed root directories
+            repo_root = Path(__file__).parent.parent.parent.resolve()
+            home_dir = Path.home().resolve()
+
+            # Check if path is within allowed directories
             path_str = str(path_obj)
-            if '\x00' in path_str:
-                logger.warning(f"Filesystem access denied (null byte): {path}")
+            allowed = (
+                path_str.startswith(str(repo_root)) or
+                path_str.startswith(str(home_dir))
+            )
+
+            if not allowed:
+                logger.warning(f"Filesystem access denied (outside allowed paths): {path}")
                 return None
 
             # If not allowing creation, check that path exists

@@ -25,18 +25,18 @@ def create_project_routes(
 ):
     """
     Create and configure project routes.
-
+    
     Args:
         playground_app: PlaygroundApp instance
         socketio: SocketIO instance for real-time logging
         processes: Dictionary tracking running processes
         xpra_manager: XpraManager instance
         security_validator: Object with security validation methods
-
+    
     Returns:
         Flask Blueprint with project routes configured
     """
-
+    
     @project_bp.route('/build', methods=['POST'])
     def build_project():
         """Build a Kit project using repo.sh wrapper from the app directory."""
@@ -48,7 +48,7 @@ def create_project_routes(
             # SECURITY: Validate project_name to prevent command injection
             if project_name and not security_validator._is_safe_project_name(project_name):
                 return jsonify({
-                    'error': 'Invalid project name. Avoid special characters like ; & | $ ` ( ) < > \\ " \' and control characters.'
+                    'error': 'Invalid project name. Use only alphanumeric characters, dots, hyphens, and underscores.'
                 }), 400
 
             repo_root = Path(__file__).parent.parent.parent.parent
@@ -60,7 +60,7 @@ def create_project_routes(
                 app_dir = security_validator._validate_project_path(repo_root, project_path)
                 if not app_dir:
                     return jsonify({'error': 'Invalid project path'}), 400
-
+                
                 wrapper_script = app_dir / 'repo.sh'
 
                 if wrapper_script.exists():
@@ -141,7 +141,7 @@ def create_project_routes(
             # SECURITY: Validate project_name
             if not security_validator._is_safe_project_name(project_name):
                 return jsonify({
-                    'error': 'Invalid project name. Avoid special characters like ; & | $ ` ( ) < > \\ " \' and control characters.'
+                    'error': 'Invalid project name. Use only alphanumeric characters, dots, hyphens, and underscores.'
                 }), 400
 
             kit_file = f"{project_name}.kit"
@@ -209,7 +209,7 @@ def create_project_routes(
                     app_dir = security_validator._validate_project_path(repo_root, project_path)
                     if not app_dir:
                         return jsonify({'error': 'Invalid project path'}), 400
-
+                    
                     wrapper_script = app_dir / 'repo.sh'
 
                     if wrapper_script.exists():
@@ -243,7 +243,7 @@ def create_project_routes(
                     return jsonify({
                         'error': 'Too many running processes. Please stop some before starting new ones.'
                     }), 429
-
+                
                 processes[project_name] = process
 
                 socketio.emit('log', {
@@ -293,10 +293,10 @@ def create_project_routes(
             if not path:
                 return jsonify({'error': 'path parameter required'}), 400
 
-            # Basic path validation
+            # SECURITY: Validate path
             validated_path = security_validator._validate_filesystem_path(path)
             if not validated_path:
-                return jsonify({'error': 'Invalid or inaccessible path'}), 400
+                return jsonify({'error': 'Access denied or invalid path'}), 403
 
             # Find .kit files in the directory
             projects = []
@@ -304,7 +304,7 @@ def create_project_routes(
                 for kit_file in validated_path.glob('*/*.kit'):
                     project_name = kit_file.stem
                     project_dir = kit_file.parent
-
+                    
                     projects.append({
                         'name': project_name,
                         'path': str(project_dir.relative_to(validated_path)),
@@ -323,7 +323,7 @@ def create_project_routes(
         try:
             data = request.json
             project_name = data.get('projectName')
-
+            
             if not project_name:
                 return jsonify({'error': 'projectName required'}), 400
 
@@ -335,13 +335,13 @@ def create_project_routes(
                 except subprocess.TimeoutExpired:
                     process.kill()
                 del processes[project_name]
-
+                
                 socketio.emit('log', {
                     'level': 'info',
                     'source': 'runtime',
                     'message': f'Stopped project: {project_name}'
                 })
-
+                
                 return jsonify({'success': True})
             else:
                 return jsonify({'error': 'Project not running'}), 404
@@ -369,3 +369,4 @@ def create_project_routes(
             return jsonify({'error': str(e)}), 500
 
     return project_bp
+

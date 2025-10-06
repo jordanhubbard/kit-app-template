@@ -16,14 +16,14 @@ filesystem_bp = Blueprint('filesystem', __name__, url_prefix='/api/filesystem')
 def create_filesystem_routes(security_validator):
     """
     Create and configure filesystem routes.
-
+    
     Args:
         security_validator: Object with security validation methods
-
+    
     Returns:
         Flask Blueprint with filesystem routes configured
     """
-
+    
     @filesystem_bp.route('/cwd', methods=['GET'])
     def get_current_directory():
         """Get current working directory (repo root)."""
@@ -42,11 +42,11 @@ def create_filesystem_routes(security_validator):
         """List directory contents."""
         try:
             path = request.args.get('path', str(Path.home()))
-
-            # Basic path validation
+            
+            # SECURITY: Validate path to prevent path traversal
             path_obj = security_validator._validate_filesystem_path(path)
             if not path_obj:
-                return jsonify({'error': 'Invalid or inaccessible path'}), 400
+                return jsonify({'error': 'Access denied to this path'}), 403
 
             if not path_obj.exists():
                 return jsonify({'error': 'Path does not exist'}), 404
@@ -82,10 +82,10 @@ def create_filesystem_routes(security_validator):
             if not path:
                 return jsonify({'error': 'path required'}), 400
 
-            # Basic path validation
+            # SECURITY: Validate path to prevent path traversal
             path_obj = security_validator._validate_filesystem_path(path, allow_creation=True)
             if not path_obj:
-                return jsonify({'error': 'Invalid or inaccessible path'}), 400
+                return jsonify({'error': 'Access denied to this path'}), 403
 
             path_obj.mkdir(parents=True, exist_ok=True)
             return jsonify({'success': True})
@@ -102,10 +102,10 @@ def create_filesystem_routes(security_validator):
             if not path:
                 return jsonify({'error': 'path required'}), 400
 
-            # Basic path validation
+            # SECURITY: Validate path to prevent path traversal
             path_obj = security_validator._validate_filesystem_path(path)
             if not path_obj:
-                return jsonify({'error': 'Invalid or inaccessible path'}), 400
+                return jsonify({'error': 'Access denied to this path'}), 403
 
             if not path_obj.exists():
                 return jsonify({'error': 'File does not exist'}), 404
@@ -121,3 +121,4 @@ def create_filesystem_routes(security_validator):
             return jsonify({'error': str(e)}), 500
 
     return filesystem_bp
+

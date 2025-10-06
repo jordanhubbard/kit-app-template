@@ -32,6 +32,7 @@ class TemplateGenerationRequest:
     add_layers: bool = False
     layers: Optional[List[str]] = None
     accept_license: bool = False
+    force_overwrite: bool = False  # Skip directory overwrite confirmation
     # Additional arbitrary parameters
     extra_params: Optional[Dict[str, Any]] = None
 
@@ -236,6 +237,10 @@ class TemplateAPI:
                 kwargs['add_layers'] = 'Yes'
                 if request.layers:
                     kwargs['layers'] = request.layers
+
+            # Add force_overwrite if specified
+            if request.force_overwrite:
+                kwargs['force_overwrite'] = True
 
             # Add extra params
             if request.extra_params:
