@@ -110,7 +110,12 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 | Directory Item   | Purpose                                                    |
 |------------------|------------------------------------------------------------|
 | .vscode          | VS Code configuration details and helper tasks             |
+| _build/          | **Build output directory (generated)**                     |
+| ├─ apps/         | **Generated application projects (each in own directory)** |
+| │  └─ {app_name}/| **Application directory with .kit, README, metadata, and scripts** |
 | readme-assets/   | Images and additional repository documentation             |
+| source/          | Source extensions and custom code                          |
+| ├─ extensions/   | Your custom extensions source code                         |
 | templates/       | Enhanced data-driven template system with hierarchical organization |
 | ├─ applications/ | Standalone runnable application templates                   |
 | ├─ extensions/   | Reusable extension templates organized by language          |
@@ -123,12 +128,15 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 | .gitattributes   | Git configuration.                                         |
 | .gitignore       | Git configuration.                                         |
 | LICENSE          | License for the repo.                                      |
+| Makefile         | Build automation for common tasks                          |
 | README.md        | Project information.                                       |
 | premake5.lua     | Build configuration - such as what apps to build.          |
 | repo.bat         | Windows repo tool entry point.                             |
 | repo.sh          | Linux repo tool entry point.                               |
 | repo.toml        | Top level configuration of repo tools.                     |
 | repo_tools.toml  | Setup of local, repository specific tools                  |
+
+> **Important:** Generated applications are placed in `_build/apps/` with each project in its own directory. This separates build artifacts from source code and provides proper project organization. Each application directory is self-contained with wrapper scripts that allow running repository commands from within the project directory.
 
 ## Quick Start
 
@@ -226,9 +234,11 @@ Follow the prompt instructions:
 - **? Enter application_display_name:** [set application display name]
 - **? Enter version:** [set application version]
 
-  Application [application name] created successfully in [path to project]/_build/apps/[application name]
+  Application [application name] created successfully in [path to project]/_build/apps/[application name]/[application name].kit
 
 - **? Do you want to add application layers?** No
+
+> **Note:** Each application is created in its own directory under `_build/apps/`. For example, creating `my_company.my_editor` results in `_build/apps/my_company.my_editor/my_company.my_editor.kit`. The directory also includes a `README.md`, `.project-meta.toml` metadata file, and `repo.sh`/`repo.bat` wrapper scripts for running commands directly from the project directory.
 
 #### Explanation of Example Selections
 
@@ -469,7 +479,7 @@ On first launch, Kit Playground will:
 
 ## Working with Multiple Applications
 
-By default, `./repo.sh template new` creates application `.kit` files in `_build/apps/`. You can create multiple applications:
+By default, `./repo.sh template new` creates application projects in `_build/apps/` with each project in its own directory. You can create multiple applications:
 
 ```bash
 # Create first application
@@ -479,26 +489,68 @@ By default, `./repo.sh template new` creates application `.kit` files in `_build
 ./repo.sh template new kit_base_editor --name my_company.app_two --display-name "App Two" --version 1.0.0
 ```
 
-Both applications will be created in `_build/apps/`:
-- `_build/apps/my_company.app_one.kit`
-- `_build/apps/my_company.app_two.kit`
+Both applications will be created with the following structure:
+```
+_build/apps/
+├── my_company.app_one/
+│   ├── my_company.app_one.kit
+│   ├── README.md
+│   ├── .project-meta.toml
+│   ├── repo.sh
+│   └── repo.bat
+└── my_company.app_two/
+    ├── my_company.app_two.kit
+    ├── README.md
+    ├── .project-meta.toml
+    ├── repo.sh
+    └── repo.bat
+```
+
+Each project directory includes:
+- **`.kit` file**: The application configuration
+- **`README.md`**: Template documentation
+- **`.project-meta.toml`**: Project metadata (name, version, template source, etc.)
+- **`repo.sh`/`repo.bat`**: Wrapper scripts that allow you to run repository commands from within the project directory
 
 To launch a specific application:
 ```bash
 ./repo.sh launch --name my_company.app_one
 ```
 
-## Creating Standalone Projects (Experimental)
+You can also run commands directly from a project directory:
+```bash
+cd _build/apps/my_company.app_one
+./repo.sh launch
+```
 
-> **Note:** Standalone project generation with `--output-dir` is currently experimental and has known limitations.
+## Creating Standalone Projects
 
-For self-contained projects, you can use the `--output-dir` option, though this feature is still being refined:
+For self-contained projects outside the repository, you can use the `--output-dir` option to create a complete standalone project:
 
 ```bash
 ./repo.sh template new kit_service --name my_company.my_api --display-name "My API Service" --output-dir ./my-standalone-project
 ```
 
-This creates a project structure with build tooling, but full standalone functionality is under development.
+**Supported Template Types for Standalone Projects:**
+- **Applications**: `kit_base_editor`, `usd_viewer`, `usd_explorer`, `usd_composer`
+- **Microservices**: `kit_service`
+
+> **Note:** Extension templates (`basic_python`, `basic_cpp`, etc.) are not supported as standalone projects since they must be part of an application.
+
+Standalone projects include:
+- Complete source code and configuration files
+- All necessary build tools (repo.sh, repo.bat)
+- Independent build tooling and dependencies
+- Self-contained git repository structure
+- Project-specific documentation and metadata
+
+Once created, standalone projects can be built and run independently:
+
+```bash
+cd my-standalone-project
+./repo.sh build
+./repo.sh launch
+```
 
 ## Enhanced Template System
 

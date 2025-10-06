@@ -20,25 +20,67 @@ Each tool plays a specific role in the development workflow:
 **Command:** `./repo.sh template` or `.\repo.bat template`
 
 ### Purpose
-The template tool facilitates the initiation of new projects by generating scaffolds for applications or extensions based on predefined templates located in `/templates/templates.toml`.
+The template tool facilitates the initiation of new projects by generating scaffolds for applications or extensions based on predefined templates. Templates are organized in the `/templates/` directory with configuration defined in `templates/template_registry.toml`.
+
+### Project Output Location
+By default, applications and microservices are created in `_build/apps/` with each project in its own directory:
+```
+_build/apps/
+└── {project_name}/
+    ├── {project_name}.kit      # Main application configuration
+    ├── README.md               # Template documentation
+    ├── .project-meta.toml      # Project metadata
+    ├── repo.sh                 # Linux wrapper script
+    └── repo.bat                # Windows wrapper script
+```
+
+This structure separates build artifacts from source code and provides proper project organization. Each project directory includes wrapper scripts that allow running repository commands from within the project directory.
 
 ### Usage
-The template tool has three main commands: `list`, `new`, `replay`, `modify`.
+The template tool has four main commands: `list`, `docs`, `new`, `replay`, and `modify`.
 
 #### `list`
-Lists available templates without initiating the configuration wizard.
+Lists available templates without initiating the configuration wizard. You can optionally filter by template type.
 
 **Linux:**
 ```bash
+# List all templates
 ./repo.sh template list
+
+# List templates by type
+./repo.sh template list --type application
+./repo.sh template list --type extension
+./repo.sh template list --type microservice
 ```
 **Windows:**
 ```powershell
+# List all templates
 .\repo.bat template list
+
+# List templates by type
+.\repo.bat template list --type application
+.\repo.bat template list --type extension
+.\repo.bat template list --type microservice
+```
+
+#### `docs`
+Display comprehensive documentation for a specific template, including use cases, features, and getting started instructions.
+
+**Linux:**
+```bash
+./repo.sh template docs kit_base_editor
+./repo.sh template docs kit_service
+```
+**Windows:**
+```powershell
+.\repo.bat template docs kit_base_editor
+.\repo.bat template docs kit_service
 ```
 
 #### `new`
 Creates new applications or extensions from templates with interactive prompts guiding you through various configuration choices.
+
+**Interactive Mode:**
 
 **Linux:**
 ```bash
@@ -48,6 +90,34 @@ Creates new applications or extensions from templates with interactive prompts g
 ```powershell
 .\repo.bat template new
 ```
+
+**Non-Interactive Mode with Arguments:**
+
+You can provide all configuration via command-line arguments for automation:
+
+**Linux:**
+```bash
+./repo.sh template new kit_base_editor --name my_company.my_app --display-name "My Application" --version 1.0.0
+```
+**Windows:**
+```powershell
+.\repo.bat template new kit_base_editor --name my_company.my_app --display-name "My Application" --version 1.0.0
+```
+
+**Standalone Projects:**
+
+Use `--output-dir` to create a self-contained project outside the repository:
+
+**Linux:**
+```bash
+./repo.sh template new kit_service --name my_company.my_api --display-name "My API" --output-dir /path/to/project
+```
+**Windows:**
+```powershell
+.\repo.bat template new kit_service --name my_company.my_api --display-name "My API" --output-dir C:\path\to\project
+```
+
+**Note:** Only application and microservice templates support standalone project generation. Extension templates must be part of an application.
 
 #### `replay`
 In cases where automation is required for CI pipelines or other scripted workflows, it is possible to record and replay the `template new` configuration.
@@ -129,11 +199,28 @@ Select and run a built .kit file from the `_build/apps` directory:
 
 **Linux:**
 ```bash
+# Interactive: select from available applications
 ./repo.sh launch
+
+# Direct: launch a specific application
+./repo.sh launch --name my_company.my_app
 ```
 **Windows:**
 ```powershell
+# Interactive: select from available applications
 .\repo.bat launch
+
+# Direct: launch a specific application
+.\repo.bat launch --name my_company.my_app
+```
+
+**Launch from Project Directory:**
+
+You can also launch an application directly from its project directory using the wrapper scripts:
+
+```bash
+cd _build/apps/my_company.my_app
+./repo.sh launch
 ```
 
 Additional launch options:

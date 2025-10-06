@@ -4,10 +4,44 @@ This section provides high-level information and guidance related to using the K
 
 ## Usage Information
 
-### A Project per Repository
-The `build` and `package` tooling provided in this repository is designed to capture all code and assets contained within the `/source` directory. Each time the `template new` command is executed, a new application or extension is created within `/source`.
+### Project Organization and Structure
 
-For purposes of experimentation and initial development, housing all working assets within the `/source` directory is reasonable. However, as the project matures or requires deployment, it is recommended to segregate projects (typically a single `.kit` file and any required custom extensions) to minimize build times and reduce the size of the resultant package.
+The Kit App Template uses a structured approach to organize projects:
+
+#### Generated Applications
+Applications created with `./repo.sh template new` are placed in `_build/apps/` with each project in its own directory:
+
+```
+_build/apps/
+└── {project_name}/
+    ├── {project_name}.kit      # Main application configuration
+    ├── README.md               # Template documentation
+    ├── .project-meta.toml      # Project metadata
+    ├── repo.sh                 # Linux wrapper script
+    └── repo.bat                # Windows wrapper script
+```
+
+This structure:
+- **Separates build artifacts from source code** - keeping the repository clean
+- **Provides proper project organization** - each project is self-contained
+- **Enables independent operation** - wrapper scripts allow running commands from within project directories
+- **Simplifies version control** - projects can be easily managed and tracked
+
+#### Source Extensions
+Custom extensions you create are placed in `/source/extensions/`. The build system combines your source extensions with generated applications.
+
+#### Build and Package Behavior
+The `build` and `package` tooling:
+- Builds all applications in `_build/apps/`
+- Includes custom extensions from `/source/extensions/`
+- Outputs compiled artifacts to `_build/` directory
+
+### Project Separation Recommendations
+For purposes of experimentation and initial development, housing multiple projects within the repository is reasonable. However, as projects mature or require deployment, consider:
+
+1. **Using standalone projects** - Create self-contained projects with `--output-dir` flag
+2. **Separating concerns** - Keep each major application in its own repository
+3. **Minimizing dependencies** - Include only required extensions to reduce build times and package size
 
 ### Applications and Extensions
 From the perspective of the Omniverse Kit SDK, everything is considered an extension. The `.kit` files that define applications are simply a convenient method to assemble and configure a set of extensions for specific functionalities, while extensions (and combinations thereof) can act as modular components fulfilling particular tasks.
