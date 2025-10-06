@@ -226,7 +226,7 @@ After fixes are complete:
    /path/to/_build/apps/my_company.my_editor
 
    Main configuration: my_company.my_editor.kit
-   Build with: ./repo.sh build --path _build/apps/my_company.my_editor
+   Build with: ./repo.sh build
    ```
 
 3. **UI Behavior:**
@@ -237,7 +237,7 @@ After fixes are complete:
    - Status bar shows build progress
 
 4. **Build Integration:**
-   - `./repo.sh build --path _build/apps/my_company.my_editor` works
+   - `./repo.sh build` works (builds all apps in _build/apps/)
    - Build artifacts go to `_build/{platform}/`
    - Run button launches built application
 

@@ -71,7 +71,7 @@ Restructuring application: my_company.my_test_app
   /home/jkh/Src/kit-app-template/_build/apps/my_company.my_test_app
 
 Main configuration: my_company.my_test_app.kit
-Build with: ./repo.sh build --path _build/apps/my_company.my_test_app
+Build with: ./repo.sh build
 ```
 
 ### 2. Verify Directory Structure:

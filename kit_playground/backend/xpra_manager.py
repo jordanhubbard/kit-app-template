@@ -77,7 +77,11 @@ class XpraSession:
             return False
 
     def launch_app(self, app_command: str) -> bool:
-        """Launch an application on this Xpra display."""
+        """Launch an application on this Xpra display.
+
+        Args:
+            app_command: Path to executable script (must be validated by caller)
+        """
         if not self.started:
             logger.error("Xpra session not started")
             return False
@@ -87,9 +91,14 @@ class XpraSession:
             env['DISPLAY'] = f':{self.display_number}'
 
             logger.info(f"Launching app on :{self.display_number}: {app_command}")
+            # SECURITY: Use list form instead of shell=True to prevent injection
+            # Split on whitespace but preserve the script path as first arg
+            import shlex
+            cmd_list = shlex.split(app_command) if ' ' in app_command else [app_command]
+
             self.app_process = subprocess.Popen(
-                app_command,
-                shell=True,
+                cmd_list,
+                shell=False,  # More secure than shell=True
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -178,9 +187,16 @@ class XpraManager:
         for session_id in list(self.sessions.keys()):
             self.stop_session(session_id)
 
-    def get_session_url(self, session_id: str) -> Optional[str]:
-        """Get the HTML5 client URL for a session."""
+    def get_session_url(self, session_id: str, host: str = None) -> Optional[str]:
+        """Get the HTML5 client URL for a session.
+
+        Args:
+            session_id: ID of the session
+            host: Optional host to use instead of localhost (for remote access)
+        """
         session = self.sessions.get(session_id)
         if session and session.started:
-            return f"http://localhost:{session.port}"
+            # Use provided host or default to localhost
+            server_host = host if host else "localhost"
+            return f"http://{server_host}:{session.port}"
         return None

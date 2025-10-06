@@ -129,12 +129,87 @@ readme = "README.md"
         metadata_file = app_dir / ".project-meta.toml"
         metadata_file.write_text(metadata_content)
 
+        # Create wrapper script that finds repo root and calls main repo.sh
+        wrapper_script = app_dir / "repo.sh"
+        wrapper_content = """#!/bin/bash
+# Wrapper script to call repository root repo.sh from any app directory
+# Automatically finds the repository root by walking up the directory tree
+
+set -e
+
+# Find repository root by looking for repo.sh or repo.toml
+find_repo_root() {
+    local dir="$PWD"
+    while [ "$dir" != "/" ]; do
+        if [ -f "$dir/repo.sh" ] && [ -f "$dir/repo.toml" ]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    echo "Error: Could not find repository root (looking for repo.sh and repo.toml)" >&2
+    return 1
+}
+
+REPO_ROOT=$(find_repo_root)
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+# Call the main repo.sh with all arguments
+exec "$REPO_ROOT/repo.sh" "$@"
+"""
+        wrapper_script.write_text(wrapper_content)
+        import os
+        os.chmod(str(wrapper_script), 0o755)  # Make executable
+
+        # Create Windows batch wrapper
+        wrapper_bat = app_dir / "repo.bat"
+        wrapper_bat_content = """@echo off
+REM Wrapper script to call repository root repo.bat from any app directory
+REM Automatically finds the repository root by walking up the directory tree
+
+setlocal enabledelayedexpansion
+
+:find_repo_root
+set "current_dir=%CD%"
+
+:loop
+if exist "%current_dir%\\repo.bat" (
+    if exist "%current_dir%\\repo.toml" (
+        set "REPO_ROOT=%current_dir%"
+        goto found
+    )
+)
+
+REM Go up one directory
+for %%I in ("%current_dir%\\..") do set "current_dir=%%~fI"
+
+REM Check if we reached the root
+if "%current_dir%"=="%current_dir:~0,3%" (
+    echo Error: Could not find repository root (looking for repo.bat and repo.toml) 1>&2
+    exit /b 1
+)
+
+goto loop
+
+:found
+REM Call the main repo.bat with all arguments
+call "%REPO_ROOT%\\repo.bat" %*
+exit /b %ERRORLEVEL%
+"""
+        wrapper_bat.write_text(wrapper_bat_content)
+
         print(f"✓ Application '{app_name}' created successfully in")
         print(f"  {app_dir}")
         print("")
         print(f"Main configuration: {app_name}.kit")
-        build_path = str(app_dir.relative_to(repo_root))
-        print(f"Build with: ./repo.sh build --path {build_path}")
+        print("")
+        print(f"To build (from repository root):")
+        print(f"  cd {repo_root} && ./repo.sh build --config release")
+        print("")
+        print(f"Or build from app directory:")
+        print(f"  cd {app_dir} && ./repo.sh build --config release")
         print("")
 
 def handle_template_command(args: List[str]) -> int:

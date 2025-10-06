@@ -2,12 +2,15 @@
 """
 Kit Playground Web Server
 Flask-based REST API for template management, builds, and file operations
+
+REFACTORED: Routes extracted into separate modules for better organization.
 """
 
 import asyncio
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import webbrowser
@@ -30,6 +33,11 @@ from tools.repoman.repo_dispatcher import _fix_application_structure
 from kit_playground.core.playground_app import PlaygroundApp
 from kit_playground.backend.xpra_manager import XpraManager
 
+# Import route blueprints
+from kit_playground.backend.routes.template_routes import create_template_routes
+from kit_playground.backend.routes.project_routes import create_project_routes
+from kit_playground.backend.routes.filesystem_routes import create_filesystem_routes
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -40,13 +48,16 @@ class PlaygroundWebServer:
     def __init__(self, playground_app: PlaygroundApp, config):
         self.playground_app = playground_app
         self.config = config
-        # Disable Flask's default static folder to avoid conflicts with our custom routing
+        # Disable Flask's default static folder to avoid conflicts
         self.app = Flask(__name__, static_folder=None)
         CORS(self.app)  # Enable CORS for Electron renderer
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
 
         # Running processes
         self.processes: Dict[str, subprocess.Popen] = {}
+
+        # Initialize Xpra manager
+        self.xpra_manager = XpraManager()
 
         # Track client IPs to log initial connections
         self.connected_clients = set()
@@ -55,813 +66,126 @@ class PlaygroundWebServer:
         repo_root = Path(__file__).parent.parent.parent
         self.template_api = TemplateAPI(str(repo_root))
 
-        # Initialize Xpra Manager
-        self.xpra_manager = XpraManager()
-
-        # Setup routes
+        # Setup routes and websocket
         self._setup_routes()
         self._setup_websocket()
 
+    def _is_safe_project_name(self, name: str) -> bool:
+        """Validate project name to prevent command injection.
+        
+        Args:
+            name: Project name to validate
+            
+        Returns:
+            True if the name is safe, False otherwise
+        """
+        # Allow only alphanumeric, dots, hyphens, and underscores
+        # Disallow shell metacharacters: ; & | $ ` ( ) < > \ " ' space newline
+        pattern = r'^[a-zA-Z0-9._-]+$'
+        return bool(re.match(pattern, name)) and len(name) <= 255
+    
+    def _validate_project_path(self, repo_root: Path, project_path: str) -> Optional[Path]:
+        """Validate and normalize project path to prevent path traversal.
+        
+        Args:
+            repo_root: Repository root directory
+            project_path: User-provided project path (relative)
+            
+        Returns:
+            Validated absolute Path object or None if invalid
+        """
+        try:
+            # Construct absolute path
+            abs_path = (repo_root / project_path).resolve()
+            
+            # Ensure the path is within the repository
+            repo_root_resolved = repo_root.resolve()
+            if not str(abs_path).startswith(str(repo_root_resolved)):
+                logger.warning(f"Path traversal attempt blocked: {project_path}")
+                return None
+            
+            # Check path exists and is a directory
+            if not abs_path.exists() or not abs_path.is_dir():
+                logger.warning(f"Invalid project path (not a directory): {project_path}")
+                return None
+                
+            return abs_path
+        except Exception as e:
+            logger.error(f"Error validating project path: {e}")
+            return None
+    
+    def _validate_filesystem_path(self, path: str, allow_creation: bool = False) -> Optional[Path]:
+        """Validate filesystem path to prevent path traversal.
+        
+        Args:
+            path: User-provided file/directory path
+            allow_creation: If True, allow paths that don't exist yet
+            
+        Returns:
+            Validated Path object or None if invalid
+        """
+        try:
+            path_obj = Path(path).resolve()
+            
+            # Define allowed root directories
+            repo_root = Path(__file__).parent.parent.parent.resolve()
+            home_dir = Path.home().resolve()
+            
+            # Check if path is within allowed directories
+            path_str = str(path_obj)
+            allowed = (
+                path_str.startswith(str(repo_root)) or 
+                path_str.startswith(str(home_dir))
+            )
+            
+            if not allowed:
+                logger.warning(f"Filesystem access denied (outside allowed paths): {path}")
+                return None
+            
+            # If not allowing creation, check that path exists
+            if not allow_creation and not path_obj.exists():
+                return None
+                
+            return path_obj
+        except Exception as e:
+            logger.error(f"Error validating filesystem path: {e}")
+            return None
+
     def _setup_routes(self):
-        """Setup Flask routes."""
+        """Setup Flask routes by registering blueprints."""
 
         @self.app.before_request
         def log_connection():
             """Log incoming connections with timestamp and IP address."""
             # Get client IP address
-            client_ip = request.remote_addr
-            if request.headers.get('X-Forwarded-For'):
-                client_ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
-
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-            # Log initial connection from new clients
+            client_ip = request.remote_addr or 'unknown'
+            
+            # Log first connection from each IP
             if client_ip not in self.connected_clients:
                 self.connected_clients.add(client_ip)
-                logger.info(f"[{timestamp}] Browser connected from {client_ip}")
-
-            # Log all requests, but use different levels for API vs static files
-            if request.path.startswith('/api/'):
-                logger.info(f"[{timestamp}] Connection from {client_ip} - {request.method} {request.path}")
-            else:
-                # Log static file requests at debug level to reduce noise
-                logger.debug(f"[{timestamp}] Connection from {client_ip} - {request.method} {request.path}")
-
-        @self.app.route('/api/health', methods=['GET'])
-        def health_check():
-            return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()})
-
-        # Template routes
-        @self.app.route('/api/templates', methods=['GET'])
-        def get_templates():
-            """Get all available templates."""
-            try:
-                templates = self.playground_app.get_all_templates()
-                return jsonify(templates)
-            except Exception as e:
-                logger.error(f"Failed to get templates: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/templates/<template_id>/code', methods=['GET'])
-        def get_template_code(template_id):
-            """Get template information and description."""
-            try:
-                # Get template metadata
-                templates = self.playground_app.get_all_templates()
-                template = templates.get(template_id)
-
-                if not template:
-                    return jsonify({'error': 'Template not found'}), 404
-
-                # Return template description as "code" for now
-                # In a real implementation, this would generate sample code from the template
-                description = f"""# {template.get('display_name', template_id)}
-
-## Description
-{template.get('description', 'No description available')}
-
-## Type
-{template.get('type', 'unknown')}
-
-## Category
-{template.get('category', 'unknown')}
-
-## Usage
-This is a template that can be used to generate new projects.
-Click "Build" to generate a project from this template.
-
-## Connectors
-{chr(10).join(f"- {conn.get('name')}: {conn.get('type')} ({conn.get('direction')})" for conn in template.get('connectors', []))}
-"""
-                return description, 200, {'Content-Type': 'text/plain'}
-            except Exception as e:
-                logger.error(f"Failed to get template info: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/templates/<template_id>/update', methods=['POST'])
-        def update_template_code(template_id):
-            """Update template code."""
-            try:
-                data = request.json
-                code = data.get('code', '')
-                success = self.playground_app.update_template_code(template_id, code)
-
-                if success:
-                    return jsonify({'success': True})
-                else:
-                    return jsonify({'error': 'Failed to update code'}), 500
-            except Exception as e:
-                logger.error(f"Failed to update template code: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/templates/<template_id>/build', methods=['POST'])
-        def build_template(template_id):
-            """Build a template."""
-            try:
-                # Emit build status
-                self.socketio.emit('log', {
-                    'level': 'info',
-                    'source': 'build',
-                    'message': f'Building template: {template_id}'
-                })
-
-                # Run build in background thread
-                def run_build():
-                    asyncio.run(self._build_template_async(template_id))
-
-                thread = threading.Thread(target=run_build)
-                thread.start()
-
-                return jsonify({'success': True, 'status': 'building'})
-            except Exception as e:
-                logger.error(f"Failed to start build: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/templates/<template_id>/run', methods=['POST'])
-        def run_template(template_id):
-            """Run a template."""
-            try:
-                asyncio.run(self._run_template_async(template_id))
-                return jsonify({'success': True, 'previewUrl': f'http://localhost:8080/preview/{template_id}'})
-            except Exception as e:
-                logger.error(f"Failed to run template: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/templates/<template_id>/stop', methods=['POST'])
-        def stop_template(template_id):
-            """Stop a running template."""
-            try:
-                if template_id in self.processes:
-                    self.processes[template_id].terminate()
-                    del self.processes[template_id]
-                    self.socketio.emit('log', {
-                        'level': 'info',
-                        'source': 'runtime',
-                        'message': f'Stopped template: {template_id}'
-                    })
-                return jsonify({'success': True})
-            except Exception as e:
-                logger.error(f"Failed to stop template: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/templates/<template_id>/deploy', methods=['POST'])
-        def deploy_template(template_id):
-            """Deploy a template as standalone project."""
-            try:
-                data = request.json
-                output_dir = data.get('outputPath')
-
-                if not output_dir:
-                    return jsonify({'error': 'outputPath required'}), 400
-
-                # Generate standalone project
-                playbook = self.playground_app.template_engine.generate_template(
-                    template_name=template_id,
-                    output_dir=output_dir
-                )
-
-                return jsonify({
-                    'success': True,
-                    'outputPath': output_dir,
-                    'playbook': playbook
-                })
-            except Exception as e:
-                logger.error(f"Failed to deploy template: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        # Project routes
-        @self.app.route('/api/projects', methods=['POST'])
-        def create_project():
-            """Create a new project."""
-            try:
-                data = request.json
-                name = data.get('name', 'Untitled Project')
-                output_path = data.get('outputPath', '')
-
-                project = asyncio.run(self.playground_app.new_project(name))
-
-                return jsonify({
-                    'success': True,
-                    'project': {
-                        'id': project.id,
-                        'name': project.name,
-                        'outputPath': output_path
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Failed to create project: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/projects/build', methods=['POST'])
-        def build_project():
-            """Build a Kit project using repo.sh."""
-            try:
-                data = request.json
-                project_path = data.get('projectPath')
-                project_name = data.get('projectName')
-
-                if not project_path:
-                    return jsonify({'error': 'projectPath required'}), 400
-
-                # Run repo.sh build command
-                repo_root = Path(__file__).parent.parent.parent
-                result = subprocess.run(
-                    [f'{repo_root}/repo.sh', 'build', '--path', project_path],
-                    capture_output=True,
-                    text=True,
-                    timeout=300,
-                    cwd=str(repo_root)
-                )
-
-                # Emit build logs
-                if result.stdout:
-                    self.socketio.emit('log', {
-                        'level': 'info',
-                        'source': 'build',
-                        'message': result.stdout
-                    })
-
-                if result.stderr:
-                    self.socketio.emit('log', {
-                        'level': 'error',
-                        'source': 'build',
-                        'message': result.stderr
-                    })
-
-                success = result.returncode == 0
-                return jsonify({
-                    'success': success,
-                    'output': result.stdout,
-                    'error': result.stderr if not success else None
-                })
-            except subprocess.TimeoutExpired:
-                return jsonify({'error': 'Build timeout'}), 500
-            except Exception as e:
-                logger.error(f"Failed to build project: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/projects/run', methods=['POST'])
-        def run_project():
-            """Run a Kit project using repo.sh launch."""
-            try:
-                data = request.json
-                project_path = data.get('projectPath')
-                project_name = data.get('projectName')
-
-                if not project_path:
-                    return jsonify({'error': 'projectPath required'}), 400
-
-                # Run repo.sh launch command in background
-                repo_root = Path(__file__).parent.parent.parent
-                process = subprocess.Popen(
-                    [f'{repo_root}/repo.sh', 'launch', '--path', project_path],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    cwd=str(repo_root)
-                )
-
-                # Store process for later stop
-                self.processes[project_name] = process
-
-                self.socketio.emit('log', {
-                    'level': 'info',
-                    'source': 'runtime',
-                    'message': f'Launched {project_name}'
-                })
-
-                return jsonify({
-                    'success': True,
-                    'message': 'Application launched',
-                    'previewUrl': None  # TODO: Integrate with Xpra if available
-                })
-            except Exception as e:
-                logger.error(f"Failed to run project: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/projects/stop', methods=['POST'])
-        def stop_project():
-            """Stop a running Kit project."""
-            try:
-                data = request.json
-                project_name = data.get('projectName')
-
-                if project_name in self.processes:
-                    process = self.processes[project_name]
-                    process.terminate()
-                    del self.processes[project_name]
-
-                    self.socketio.emit('log', {
-                        'level': 'info',
-                        'source': 'runtime',
-                        'message': f'Stopped {project_name}'
-                    })
-
-                return jsonify({'success': True})
-            except Exception as e:
-                logger.error(f"Failed to stop project: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        # ============= Unified Template API Routes =============
-        # These routes use the shared template_api module for consistency between CLI and GUI
-
-        @self.app.route('/api/v2/license/status', methods=['GET'])
-        def get_license_status():
-            """Get license acceptance status."""
-            try:
-                status = self.template_api.check_license()
-                return jsonify({
-                    'accepted': status.accepted,
-                    'timestamp': status.timestamp,
-                    'version': status.version
-                })
-            except Exception as e:
-                logger.error(f"Failed to check license: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/license/text', methods=['GET'])
-        def get_license_text():
-            """Get license text."""
-            try:
-                text = self.template_api.get_license_text()
-                return jsonify({'text': text})
-            except Exception as e:
-                logger.error(f"Failed to get license text: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/license/accept', methods=['POST'])
-        def accept_license():
-            """Accept license terms."""
-            try:
-                success = self.template_api.accept_license()
-                return jsonify({'success': success})
-            except Exception as e:
-                logger.error(f"Failed to accept license: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/templates', methods=['GET'])
-        def list_templates_v2():
-            """List templates using unified API."""
-            try:
-                template_type = request.args.get('type')
-                category = request.args.get('category')
-                templates = self.template_api.list_templates(template_type, category)
-
-                repo_root = Path(__file__).parent.parent.parent
-
-                # Convert to dict for JSON serialization
-                result = []
-                for t in templates:
-                    # Check for icon file in template directory
-                    icon_url = None
-                    template_dir = None
-
-                    # Try multiple possible directory names - look for icon file, not just directory
-                    possible_names = [t.name]
-                    # Strip 'omni_' prefix if present (omni_usd_viewer -> usd_viewer)
-                    if t.name.startswith('omni_'):
-                        possible_names.append(t.name[5:])
-                    # Strip '_setup' or '_messaging' suffixes
-                    base_name = t.name.replace('_setup', '').replace('_messaging', '')
-                    if base_name not in possible_names:
-                        possible_names.append(base_name)
-
-                    if t.type in ['application', 'microservice']:
-                        for name in possible_names:
-                            test_dir = repo_root / 'templates' / 'apps' / name
-                            icon_path = test_dir / 'assets' / 'icon.png'
-                            if icon_path.exists():
-                                template_dir = test_dir
-                                icon_url = f'/api/v2/templates/{t.name}/icon'
-                                break
-                        # Also try microservices directory
-                        if not icon_url:
-                            for name in possible_names:
-                                test_dir = repo_root / 'templates' / 'microservices' / name
-                                icon_path = test_dir / 'assets' / 'icon.png'
-                                if icon_path.exists():
-                                    template_dir = test_dir
-                                    icon_url = f'/api/v2/templates/{t.name}/icon'
-                                    break
-                    elif t.type == 'extension':
-                        for name in possible_names:
-                            test_dir = repo_root / 'templates' / 'extensions' / name
-                            icon_path = test_dir / 'template' / 'data' / 'icon.png'
-                            if icon_path.exists():
-                                template_dir = test_dir
-                                icon_url = f'/api/v2/templates/{t.name}/icon'
-                                break
-
-                    result.append({
-                        'id': t.name,
-                        'name': t.name,
-                        'displayName': t.display_name,
-                        'type': t.type,
-                        'category': t.category,
-                        'description': t.description,
-                        'version': t.version,
-                        'tags': t.tags,
-                        'documentation': t.documentation,
-                        'icon': icon_url,
-                        'thumbnail': icon_url  # Use same icon for thumbnail for now
-                    })
-                return jsonify(result)
-            except Exception as e:
-                logger.error(f"Failed to list templates: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/templates/<template_id>/icon', methods=['GET'])
-        def get_template_icon(template_id):
-            """Serve template icon."""
-            try:
-                repo_root = Path(__file__).parent.parent.parent
-
-                # Try multiple possible directory names
-                possible_names = [template_id]
-                # Strip 'omni_' prefix if present (omni_usd_viewer -> usd_viewer)
-                if template_id.startswith('omni_'):
-                    possible_names.append(template_id[5:])
-                # Strip '_setup' or '_messaging' suffixes
-                base_name = template_id.replace('_setup', '').replace('_messaging', '')
-                if base_name not in possible_names:
-                    possible_names.append(base_name)
-
-                # Try application templates first
-                icon_path = None
-                for name in possible_names:
-                    test_path = repo_root / 'templates' / 'apps' / name / 'assets' / 'icon.png'
-                    if test_path.exists():
-                        icon_path = test_path
-                        break
-
-                # Try microservices
-                if not icon_path:
-                    for name in possible_names:
-                        test_path = repo_root / 'templates' / 'microservices' / name / 'assets' / 'icon.png'
-                        if test_path.exists():
-                            icon_path = test_path
-                            break
-
-                # Try extension templates if not found
-                if not icon_path:
-                    for name in possible_names:
-                        test_path = repo_root / 'templates' / 'extensions' / name / 'template' / 'data' / 'icon.png'
-                        if test_path.exists():
-                            icon_path = test_path
-                            break
-
-                if icon_path and icon_path.exists():
-                    return send_from_directory(icon_path.parent, icon_path.name)
-                else:
-                    return jsonify({'error': 'Icon not found'}), 404
-            except Exception as e:
-                logger.error(f"Failed to get template icon: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/templates/<template_id>/docs', methods=['GET'])
-        def get_template_docs(template_id):
-            """Get template documentation."""
-            try:
-                templates = self.template_api.list_templates()
-                template = next((t for t in templates if t.name == template_id), None)
-
-                if not template:
-                    return jsonify({'error': 'Template not found'}), 404
-
-                return jsonify({
-                    'name': template.name,
-                    'displayName': template.display_name,
-                    'type': template.type,
-                    'category': template.category,
-                    'description': template.description,
-                    'version': template.version,
-                    'documentation': template.documentation or f"# {template.display_name}\n\n{template.description}",
-                    'tags': template.tags
-                })
-            except Exception as e:
-                logger.error(f"Failed to get template docs: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/templates/<template_id>/files', methods=['GET'])
-        def get_template_files(template_id):
-            """Get list of template source files for editing."""
-            try:
-                repo_root = Path(__file__).parent.parent.parent
-                templates_root = repo_root / 'templates'
-
-                # Find template directory
-                template_dirs = [
-                    templates_root / 'apps' / template_id,
-                    templates_root / 'applications' / template_id,
-                    templates_root / 'extensions' / template_id,
-                    templates_root / 'microservices' / template_id,
-                ]
-
-                template_dir = None
-                for dir_path in template_dirs:
-                    if dir_path.exists():
-                        template_dir = dir_path
-                        break
-
-                if not template_dir:
-                    return jsonify({'error': 'Template directory not found'}), 404
-
-                # Collect interesting files
-                files = []
-
-                # Main template files
-                for pattern in ['*.kit', '*.toml', 'README.md']:
-                    for file in template_dir.rglob(pattern):
-                        if file.is_file() and not any(p.startswith('.') for p in file.parts):
-                            files.append({
-                                'path': str(file),
-                                'relativePath': str(file.relative_to(template_dir)),
-                                'name': file.name,
-                                'type': file.suffix[1:] if file.suffix else 'file'
-                            })
-
-                return jsonify({
-                    'templateId': template_id,
-                    'templateDir': str(template_dir),
-                    'files': files
-                })
-            except Exception as e:
-                logger.error(f"Failed to get template files: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/v2/templates/generate', methods=['POST'])
-        def generate_template_v2():
-            """Generate a template using unified API."""
-            try:
-                data = request.json
-                req = TemplateGenerationRequest(
-                    template_name=data.get('templateName'),
-                    name=data.get('name'),
-                    display_name=data.get('displayName'),
-                    version=data.get('version', '0.1.0'),
-                    config_file=data.get('configFile'),
-                    output_dir=data.get('outputDir'),
-                    add_layers=data.get('addLayers', False),
-                    layers=data.get('layers'),
-                    accept_license=data.get('acceptLicense', False),
-                    extra_params=data.get('extraParams')
-                )
-
-                result = self.template_api.generate_template(req)
-
-                if result.success:
-                    # Execute the playback file to actually create the project
-                    repo_root = Path(__file__).parent.parent.parent
-                    replay_cmd = [
-                        str(repo_root / 'repo.sh'),
-                        'template',
-                        'replay',
-                        '--playback-file',
-                        result.playback_file
-                    ]
-
-                    try:
-                        logger.info(f"Executing replay command: {' '.join(replay_cmd)}")
-                        logger.info(f"Playback file: {result.playback_file}, exists: {Path(result.playback_file).exists()}")
-                        
-                        replay_result = subprocess.run(
-                            replay_cmd,
-                            cwd=str(repo_root),
-                            capture_output=True,
-                            text=True,
-                            timeout=60
-                        )
-
-                        logger.info(f"Replay exit code: {replay_result.returncode}")
-                        logger.info(f"Replay stdout: {replay_result.stdout}")
-                        logger.info(f"Replay stderr: {replay_result.stderr}")
-
-                        if replay_result.returncode != 0:
-                            error_msg = f"Template replay failed (exit {replay_result.returncode}): {replay_result.stderr or replay_result.stdout}"
-                            logger.error(error_msg)
-                            return jsonify({'success': False, 'error': error_msg}), 500
-
-                        # The replay creates files in source/apps as flat files
-                        # We need to move them to _build/apps with proper directory structure
-                        # This matches what repo.toml's applications_path expects
-                        try:
-                            playback_file = Path(result.playback_file)
-                            if playback_file.exists():
-                                playback_data = toml.load(playback_file)
-                                _fix_application_structure(repo_root, playback_data)
-                                logger.info(f"✓ Project restructured to _build/apps/")
-                        except Exception as fix_error:
-                            logger.warning(f"Could not restructure project: {fix_error}")
-                            # Not fatal, project was still created
-
-                    except subprocess.TimeoutExpired:
-                        return jsonify({'success': False, 'error': 'Template generation timed out'}), 500
-                    except Exception as replay_error:
-                        error_msg = f"Failed to execute template replay: {str(replay_error)}"
-                        logger.error(error_msg)
-                        return jsonify({'success': False, 'error': error_msg}), 500
-
-                    return jsonify({
-                        'success': True,
-                        'playbackFile': result.playback_file,
-                        'message': result.message,
-                        'outputDir': req.output_dir or '_build/apps'
-                    })
-                else:
-                    return jsonify({'success': False, 'error': result.error}), 400
-
-            except Exception as e:
-                logger.error(f"Failed to generate template: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        # Xpra routes
-        @self.app.route('/api/xpra/sessions', methods=['POST'])
-        def create_xpra_session():
-            """Create a new Xpra session."""
-            try:
-                data = request.json
-                session_id = data.get('sessionId', f'session_{int(time.time())}')
-
-                session = self.xpra_manager.create_session(session_id)
-                if session:
-                    return jsonify({
-                        'success': True,
-                        'sessionId': session_id,
-                        'displayNumber': session.display_number,
-                        'port': session.port,
-                        'url': self.xpra_manager.get_session_url(session_id)
-                    })
-                else:
-                    return jsonify({'error': 'Failed to create Xpra session'}), 500
-            except Exception as e:
-                logger.error(f"Failed to create Xpra session: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/xpra/sessions/<session_id>', methods=['GET'])
-        def get_xpra_session(session_id):
-            """Get Xpra session info."""
-            try:
-                session = self.xpra_manager.get_session(session_id)
-                if session:
-                    return jsonify({
-                        'sessionId': session_id,
-                        'displayNumber': session.display_number,
-                        'port': session.port,
-                        'url': self.xpra_manager.get_session_url(session_id),
-                        'running': session.started
-                    })
-                else:
-                    return jsonify({'error': 'Session not found'}), 404
-            except Exception as e:
-                logger.error(f"Failed to get Xpra session: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/xpra/sessions/<session_id>/launch', methods=['POST'])
-        def launch_app_in_xpra(session_id):
-            """Launch an application in an Xpra session."""
-            try:
-                data = request.json
-                app_command = data.get('command')
-
-                if not app_command:
-                    return jsonify({'error': 'command required'}), 400
-
-                session = self.xpra_manager.get_session(session_id)
-                if not session:
-                    return jsonify({'error': 'Session not found'}), 404
-
-                success = session.launch_app(app_command)
-                if success:
-                    return jsonify({
-                        'success': True,
-                        'url': self.xpra_manager.get_session_url(session_id)
-                    })
-                else:
-                    return jsonify({'error': 'Failed to launch app'}), 500
-            except Exception as e:
-                logger.error(f"Failed to launch app: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/xpra/sessions/<session_id>', methods=['DELETE'])
-        def stop_xpra_session(session_id):
-            """Stop an Xpra session."""
-            try:
-                self.xpra_manager.stop_session(session_id)
-                return jsonify({'success': True})
-            except Exception as e:
-                logger.error(f"Failed to stop Xpra session: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/xpra/check', methods=['GET'])
-        def check_xpra_installed():
-            """Check if Xpra is installed."""
-            try:
-                result = subprocess.run(['which', 'xpra'], capture_output=True)
-                installed = result.returncode == 0
-
-                version = None
-                if installed:
-                    version_result = subprocess.run(['xpra', '--version'],
-                                                  capture_output=True, text=True)
-                    if version_result.returncode == 0:
-                        version = version_result.stdout.split()[1] if version_result.stdout else 'unknown'
-
-                return jsonify({
-                    'installed': installed,
-                    'version': version,
-                    'installCommand': 'make install-xpra'
-                })
-            except Exception as e:
-                logger.error(f"Failed to check Xpra: {e}")
-                return jsonify({'installed': False, 'error': str(e)})
-
-        # Filesystem routes
-        @self.app.route('/api/filesystem/cwd', methods=['GET'])
-        def get_current_directory():
-            """Get current working directory (project root)."""
-            try:
-                # Return the project root, not backend directory
-                repo_root = Path(__file__).parent.parent.parent
-                return jsonify({
-                    'cwd': str(repo_root),
-                    'realpath': str(repo_root.resolve())
-                })
-            except Exception as e:
-                logger.error(f"Failed to get current directory: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/filesystem/list', methods=['GET'])
-        def list_directory():
-            """List directory contents."""
-            try:
-                path = request.args.get('path', str(Path.home()))
-                path_obj = Path(path)
-
-                if not path_obj.exists():
-                    return jsonify({'error': 'Path does not exist'}), 404
-
-                if not path_obj.is_dir():
-                    return jsonify({'error': 'Path is not a directory'}), 400
-
-                items = []
-                for item in path_obj.iterdir():
-                    try:
-                        items.append({
-                            'name': item.name,
-                            'path': str(item),
-                            'isDirectory': item.is_dir(),
-                            'size': item.stat().st_size if item.is_file() else 0,
-                            'modified': datetime.fromtimestamp(item.stat().st_mtime).isoformat()
-                        })
-                    except (OSError, PermissionError):
-                        continue  # Skip items we can't access
-
-                return jsonify(items)
-            except Exception as e:
-                logger.error(f"Failed to list directory: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/filesystem/mkdir', methods=['POST'])
-        def create_directory():
-            """Create a new directory."""
-            try:
-                data = request.json
-                path = data.get('path')
-
-                if not path:
-                    return jsonify({'error': 'path required'}), 400
-
-                Path(path).mkdir(parents=True, exist_ok=True)
-                return jsonify({'success': True})
-            except Exception as e:
-                logger.error(f"Failed to create directory: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        @self.app.route('/api/filesystem/read', methods=['GET'])
-        def read_file():
-            """Read file contents."""
-            try:
-                path = request.args.get('path')
-
-                if not path:
-                    return jsonify({'error': 'path required'}), 400
-
-                path_obj = Path(path)
-
-                if not path_obj.exists():
-                    return jsonify({'error': 'File does not exist'}), 404
-
-                if not path_obj.is_file():
-                    return jsonify({'error': 'Path is not a file'}), 400
-
-                # Read file content
-                content = path_obj.read_text(encoding='utf-8')
-                return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-            except Exception as e:
-                logger.error(f"Failed to read file: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        # Configuration routes
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                logger.info(f"New client connected from {client_ip} at {timestamp}")
+                logger.info(f"Request: {request.method} {request.path}")
+
+        # Register template routes
+        template_bp = create_template_routes(self.playground_app, self.template_api)
+        self.app.register_blueprint(template_bp)
+
+        # Register project routes
+        project_bp = create_project_routes(
+            self.playground_app,
+            self.socketio,
+            self.processes,
+            self.xpra_manager,
+            self  # Pass self for security validators
+        )
+        self.app.register_blueprint(project_bp)
+
+        # Register filesystem routes
+        filesystem_bp = create_filesystem_routes(self)  # Pass self for security validators
+        self.app.register_blueprint(filesystem_bp)
+
+        # Configuration routes (keep in main file as they're simple)
         @self.app.route('/api/config/paths', methods=['GET'])
         def get_default_paths():
             """Get default paths for templates and projects."""
@@ -881,263 +205,85 @@ Click "Build" to generate a project from this template.
                 logger.error(f"Failed to get default paths: {e}")
                 return jsonify({'error': str(e)}), 500
 
-        # Project discovery routes
-        @self.app.route('/api/projects/discover', methods=['GET'])
-        def discover_projects():
-            """Discover projects in a directory."""
-            try:
-                projects_path = request.args.get('path', str(Path(__file__).parent.parent.parent / '_build' / 'apps'))
-                projects_dir = Path(projects_path)
-
-                if not projects_dir.exists():
-                    return jsonify({'projects': []})
-
-                projects = []
-
-                # Look for project directories (each directory may contain a .kit file)
-                for item in projects_dir.iterdir():
-                    if not item.is_dir():
-                        continue
-
-                    # Skip directories starting with _ or .
-                    if item.name.startswith('_') or item.name.startswith('.'):
-                        continue
-
-                    # Look for .kit files in the directory
-                    kit_files = list(item.glob("*.kit"))
-
-                    if kit_files:
-                        # Found .kit file(s) - this is a project
-                        kit_file = kit_files[0]  # Use first .kit file found
-                        project_name = kit_file.stem
-
-                        # Try to read project metadata
-                        try:
-                            # Check for .project-meta.toml
-                            meta_file = item / ".project-meta.toml"
-                            display_name = project_name.replace('_', ' ').title()
-
-                            if meta_file.exists():
-                                # Read metadata if available
-                                try:
-                                    import tomllib
-                                    with open(meta_file, 'rb') as f:
-                                        meta = tomllib.load(f)
-                                except ImportError:
-                                    import toml
-                                    with open(meta_file, 'r') as f:
-                                        meta = toml.load(f)
-
-                                display_name = meta.get('project', {}).get('display_name', display_name)
-
-                            # Basic project info
-                            project_info = {
-                                'id': project_name,
-                                'name': project_name,
-                                'displayName': display_name,
-                                'path': str(item),
-                                'kitFile': str(kit_file),
-                                'status': 'ready',  # TODO: Detect if built/running
-                                'lastModified': item.stat().st_mtime
-                            }
-                            projects.append(project_info)
-                        except Exception as e:
-                            logger.warning(f"Failed to read project {project_name}: {e}")
-
-                # Sort by last modified (newest first)
-                projects.sort(key=lambda p: p['lastModified'], reverse=True)
-
-                return jsonify({'projects': projects})
-            except Exception as e:
-                logger.error(f"Failed to discover projects: {e}")
-                return jsonify({'error': str(e)}), 500
-
-        # Serve static React build files (catch-all, must be last)
+        # Static file serving for UI
         @self.app.route('/', defaults={'path': ''})
         @self.app.route('/<path:path>')
-        def serve_static(path):
-            """Serve static files from React build directory."""
-            static_dir = Path(__file__).parent.parent / 'ui' / 'build'
-
-            # API routes are handled above, so this won't interfere
-            if path.startswith('api/'):
-                return jsonify({'error': 'API endpoint not found'}), 404
-
-            if path and (static_dir / path).exists():
-                # Use absolute path to ensure correct file serving
-                return send_from_directory(str(static_dir), path)
+        def serve_ui(path):
+            """Serve the React UI from the build directory."""
+            ui_dir = Path(__file__).parent.parent / 'ui' / 'build'
+            
+            if path and (ui_dir / path).exists():
+                return send_from_directory(str(ui_dir), path)
             else:
-                # For React Router - serve index.html for all routes
-                return send_from_directory(str(static_dir), 'index.html')
+                return send_from_directory(str(ui_dir), 'index.html')
 
     def _setup_websocket(self):
-        """Setup WebSocket handlers for streaming logs."""
-
+        """Setup WebSocket event handlers."""
+        
         @self.socketio.on('connect')
         def handle_connect():
-            logger.info('Client connected to WebSocket')
-            emit('connected', {'status': 'ok'})
+            """Handle client WebSocket connection."""
+            client_id = request.sid
+            logger.info(f"WebSocket client connected: {client_id}")
+            emit('connection_response', {'data': 'Connected to Kit Playground'})
 
         @self.socketio.on('disconnect')
         def handle_disconnect():
-            logger.info('Client disconnected from WebSocket')
+            """Handle client WebSocket disconnection."""
+            client_id = request.sid
+            logger.info(f"WebSocket client disconnected: {client_id}")
 
-    async def _build_template_async(self, template_id: str):
-        """Build template asynchronously."""
-        try:
-            self.socketio.emit('log', {
-                'level': 'info',
-                'source': 'build',
-                'message': f'Starting build for {template_id}...'
-            })
+        @self.socketio.on('log')
+        def handle_log(data):
+            """Handle log messages from clients."""
+            logger.info(f"Client log: {data}")
 
-            # Use playground app to build
-            if not self.playground_app.current_project:
-                await self.playground_app.new_project(f'temp_{template_id}')
-                await self.playground_app.add_template_to_project(template_id)
+    def run(self, host: str = 'localhost', port: int = 8200, debug: bool = False):
+        """
+        Start the Flask web server.
+        
+        Args:
+            host: Host address to bind to
+            port: Port to listen on
+            debug: Enable debug mode
+        """
+        logger.info(f"Starting Kit Playground web server on {host}:{port}")
+        logger.info(f"Debug mode: {debug}")
+        
+        # Use socketio.run instead of app.run for WebSocket support
+        self.socketio.run(
+            self.app,
+            host=host,
+            port=port,
+            debug=debug,
+            use_reloader=False,  # Disable reloader to prevent duplicate processes
+            log_output=True
+        )
 
-            success = await self.playground_app.build_project()
 
-            if success:
-                self.socketio.emit('log', {
-                    'level': 'success',
-                    'source': 'build',
-                    'message': f'Build completed successfully!'
-                })
-            else:
-                self.socketio.emit('log', {
-                    'level': 'error',
-                    'source': 'build',
-                    'message': f'Build failed!'
-                })
-
-        except Exception as e:
-            logger.error(f"Build error: {e}")
-            self.socketio.emit('log', {
-                'level': 'error',
-                'source': 'build',
-                'message': f'Build error: {str(e)}'
-            })
-
-    async def _run_template_async(self, template_id: str):
-        """Run template asynchronously."""
-        try:
-            self.socketio.emit('log', {
-                'level': 'info',
-                'source': 'runtime',
-                'message': f'Starting {template_id}...'
-            })
-
-            success = await self.playground_app.run_project()
-
-            if success:
-                self.socketio.emit('log', {
-                    'level': 'success',
-                    'source': 'runtime',
-                    'message': f'Template running!'
-                })
-        except Exception as e:
-            logger.error(f"Run error: {e}")
-            self.socketio.emit('log', {
-                'level': 'error',
-                'source': 'runtime',
-                'message': f'Run error: {str(e)}'
-            })
-
-    def start(self, host: str = 'localhost', port: int = 8200, open_browser: bool = False):
-        """Start the web server."""
-        # Try to find an available port if the specified port is in use
-        original_port = port
-        max_attempts = 10
-
-        for attempt in range(max_attempts):
-            try:
-                # Test if port is available
-                import socket
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.bind((host, port))
-                sock.close()
-
-                # Port is available
-                if port != original_port:
-                    logger.warning(f"Port {original_port} is in use, using port {port} instead")
-
-                logger.info(f"Starting Kit Playground Web Server on {host}:{port}")
-
-                # Open browser after server starts
-                if open_browser:
-                    def open_browser_delayed():
-                        time.sleep(1.5)  # Wait for server to start
-                        url = f"http://{host}:{port}"
-                        logger.info(f"Opening browser at {url}")
-                        webbrowser.open(url)
-
-                    threading.Thread(target=open_browser_delayed, daemon=True).start()
-
-                self.socketio.run(self.app, host=host, port=port, debug=False, allow_unsafe_werkzeug=True)
-                return
-
-            except OSError as e:
-                if attempt < max_attempts - 1:
-                    port += 1
-                    continue
-                else:
-                    logger.error(f"Failed to find an available port after {max_attempts} attempts")
-                    raise
-
-    def stop(self):
-        """Stop the web server."""
-        # Cleanup running processes
-        for process in self.processes.values():
-            try:
-                process.terminate()
-            except:
-                pass
-
-        # Stop all Xpra sessions
-        self.xpra_manager.stop_all()
-
-        logger.info("Kit Playground Web Server stopped")
+def main():
+    """Main entry point for standalone server."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Kit Playground Web Server')
+    parser.add_argument('--host', default='localhost', help='Host to bind to')
+    parser.add_argument('--port', type=int, default=8200, help='Port to listen on')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    
+    args = parser.parse_args()
+    
+    # Create configuration
+    from kit_playground.core.config import PlaygroundConfig
+    config = PlaygroundConfig()
+    
+    # Create playground app
+    app = PlaygroundApp(config)
+    
+    # Create and run web server
+    server = PlaygroundWebServer(app, config)
+    server.run(host=args.host, port=args.port, debug=args.debug)
 
 
 if __name__ == '__main__':
-    # Standalone mode
-    import argparse
-    parser = argparse.ArgumentParser(description='Kit Playground Web Server')
-    parser.add_argument('--port', type=int, default=8200, help='Server port (default: 8200)')
-    parser.add_argument('--host', default='localhost', help='Server host (use 0.0.0.0 for remote access)')
-    parser.add_argument('--open-browser', action='store_true', help='Automatically open browser')
-    args = parser.parse_args()
+    main()
 
-    # Check for X server on Linux
-    if sys.platform.startswith('linux'):
-        if not os.environ.get('DISPLAY'):
-            logger.warning("DISPLAY environment variable not set!")
-            logger.warning("Kit applications may not be able to display windows.")
-            logger.warning("If using SSH, connect with: ssh -X user@host")
-
-    # Check if React build exists
-    build_dir = Path(__file__).parent.parent / 'ui' / 'build'
-    if not build_dir.exists():
-        logger.error("React build not found!")
-        logger.error(f"Expected build directory: {build_dir}")
-        logger.error("Please run: cd kit_playground/ui && npm install && npm run build")
-        sys.exit(1)
-
-    # Create playground app
-    class Config:
-        def get(self, key, default=None):
-            return default
-
-    config = Config()
-    repo_root = Path(__file__).parent.parent.parent
-    template_engine = TemplateEngine(str(repo_root))
-
-    from kit_playground.core.playground_app import PlaygroundApp
-    app = PlaygroundApp(config)
-
-    # Create and start server (blocking call)
-    server = PlaygroundWebServer(app, config)
-    logger.info(f"Kit Playground UI available at: http://{args.host}:{args.port}")
-    server.start(args.host, args.port, open_browser=args.open_browser)

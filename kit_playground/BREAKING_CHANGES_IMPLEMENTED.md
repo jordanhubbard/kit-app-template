@@ -148,7 +148,7 @@ Restructuring application: my_company.my_editor
   /path/to/_build/apps/my_company.my_editor
 
 Main configuration: my_company.my_editor.kit
-Build with: ./repo.sh build --path _build/apps/my_company.my_editor
+Build with: ./repo.sh build
 ```
 
 ---

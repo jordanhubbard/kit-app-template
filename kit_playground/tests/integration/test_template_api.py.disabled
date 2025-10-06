@@ -1,0 +1,178 @@
+"""
+Integration tests for Template API functionality.
+
+Tests that templates can be listed, read, and have expected structure.
+"""
+import sys
+from pathlib import Path
+
+import pytest
+
+# Add paths for imports
+repo_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(repo_root))
+sys.path.insert(0, str(repo_root / "kit_playground"))
+
+from tools.repoman.template_api import TemplateAPI
+
+
+@pytest.fixture(scope="module")
+def template_api():
+    """Create a TemplateAPI instance for testing."""
+    repo_root_path = Path(__file__).parent.parent.parent.parent
+    return TemplateAPI(str(repo_root_path))
+
+
+class TestTemplateList:
+    """Test template listing functionality."""
+    
+    def test_list_templates_returns_list(self, template_api):
+        """Test that list_templates returns a list."""
+        templates = template_api.list_templates()
+        assert isinstance(templates, list), "list_templates should return a list"
+    
+    def test_list_templates_not_empty(self, template_api):
+        """Test that there are templates available."""
+        templates = template_api.list_templates()
+        assert len(templates) > 0, "Should have at least one template"
+    
+    def test_all_templates_have_required_fields(self, template_api):
+        """Test that all templates have required fields."""
+        templates = template_api.list_templates()
+        required_fields = ['name', 'display_name', 'description']
+        
+        for template in templates:
+            for field in required_fields:
+                assert field in template, \
+                    f"Template {template.get('name', 'unknown')} missing field: {field}"
+    
+    def test_expected_base_templates_exist(self, template_api):
+        """Test that expected base templates are present."""
+        templates = template_api.list_templates()
+        template_names = [t['name'] for t in templates]
+        
+        # Core templates that should always exist
+        expected_templates = [
+            'kit_base_editor',
+            'kit_service',
+        ]
+        
+        for expected in expected_templates:
+            assert expected in template_names, \
+                f"Expected template '{expected}' not found. Available: {template_names}"
+    
+    def test_template_names_valid_format(self, template_api):
+        """Test that template names follow expected format."""
+        templates = template_api.list_templates()
+        import re
+        # Template names should be alphanumeric with underscores
+        pattern = r'^[a-z0-9_]+$'
+        
+        for template in templates:
+            name = template['name']
+            assert re.match(pattern, name), \
+                f"Template name '{name}' doesn't match expected format {pattern}"
+
+
+class TestTemplateGet:
+    """Test getting individual template details."""
+    
+    def test_get_existing_template(self, template_api):
+        """Test getting a template that exists."""
+        # First get list to find a valid template
+        templates = template_api.list_templates()
+        assert len(templates) > 0, "Need at least one template for this test"
+        
+        first_template_name = templates[0]['name']
+        template = template_api.get_template(first_template_name)
+        
+        assert template is not None, f"Should be able to get template {first_template_name}"
+        assert 'name' in template
+        assert template['name'] == first_template_name
+    
+    def test_get_nonexistent_template(self, template_api):
+        """Test getting a template that doesn't exist."""
+        template = template_api.get_template('nonexistent_template_xyz')
+        assert template is None, "Getting non-existent template should return None"
+    
+    def test_get_kit_base_editor_template(self, template_api):
+        """Test getting the kit_base_editor template specifically."""
+        template = template_api.get_template('kit_base_editor')
+        
+        assert template is not None, "kit_base_editor template should exist"
+        assert template['name'] == 'kit_base_editor'
+        assert 'display_name' in template
+        assert 'description' in template
+        assert len(template['description']) > 0, "Template should have a description"
+    
+    def test_template_has_files(self, template_api):
+        """Test that templates have associated files."""
+        templates = template_api.list_templates()
+        assert len(templates) > 0
+        
+        # Get first template
+        first_template_name = templates[0]['name']
+        template = template_api.get_template(first_template_name)
+        
+        # Check template has some metadata
+        assert 'name' in template
+        assert 'display_name' in template
+
+
+class TestTemplateIntegrity:
+    """Test template data integrity."""
+    
+    def test_list_matches_individual_gets(self, template_api):
+        """Test that listed templates can all be individually retrieved."""
+        templates = template_api.list_templates()
+        
+        for template_summary in templates:
+            name = template_summary['name']
+            detailed = template_api.get_template(name)
+            
+            assert detailed is not None, \
+                f"Template '{name}' in list but cannot be retrieved individually"
+            assert detailed['name'] == name, \
+                f"Retrieved template name mismatch: expected {name}, got {detailed['name']}"
+    
+    def test_no_duplicate_template_names(self, template_api):
+        """Test that there are no duplicate template names."""
+        templates = template_api.list_templates()
+        names = [t['name'] for t in templates]
+        
+        assert len(names) == len(set(names)), \
+            f"Duplicate template names found: {[n for n in names if names.count(n) > 1]}"
+    
+    def test_all_templates_have_non_empty_display_names(self, template_api):
+        """Test that all templates have meaningful display names."""
+        templates = template_api.list_templates()
+        
+        for template in templates:
+            display_name = template.get('display_name', '')
+            assert len(display_name) > 0, \
+                f"Template '{template['name']}' has empty display_name"
+            assert display_name != template['name'], \
+                f"Template '{template['name']}' display_name is same as name (should be more descriptive)"
+
+
+class TestTemplateAPI:
+    """Test the Template API routes via Flask."""
+    
+    def test_api_returns_expected_count(self, template_api):
+        """Test that API returns expected number of templates."""
+        templates = template_api.list_templates()
+        count = len(templates)
+        
+        # Should have at least 5 templates
+        assert count >= 5, \
+            f"Expected at least 5 templates, got {count}. Available: {[t['name'] for t in templates]}"
+        
+        # Print for debugging
+        print(f"\nFound {count} templates:")
+        for t in templates:
+            print(f"  - {t['name']}: {t['display_name']}")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-s"])
+

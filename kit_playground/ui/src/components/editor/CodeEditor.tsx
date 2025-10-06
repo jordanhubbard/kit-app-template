@@ -136,21 +136,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     validateContent();
   };
 
-  // Debounced validation function
-  const validateContent = useCallback(() => {
-    if (validationTimerRef.current) {
-      clearTimeout(validationTimerRef.current);
-    }
-
-    validationTimerRef.current = setTimeout(() => {
-      if (monacoRef.current && editorRef.current) {
-        setupErrorMarkers(monacoRef.current);
-      }
-    }, 500); // 500ms debounce
-  }, [editorLanguage]);
-
   // Setup error markers for syntax checking
-  const setupErrorMarkers = (monaco: Monaco) => {
+  const setupErrorMarkers = useCallback((monaco: Monaco) => {
     if (!editorRef.current) return;
 
     const model = editorRef.current.getModel();
@@ -231,7 +218,20 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     } catch (err) {
       console.error('Error setting markers:', err);
     }
-  };
+  }, [editorLanguage]);
+
+  // Debounced validation function
+  const validateContent = useCallback(() => {
+    if (validationTimerRef.current) {
+      clearTimeout(validationTimerRef.current);
+    }
+
+    validationTimerRef.current = setTimeout(() => {
+      if (monacoRef.current && editorRef.current) {
+        setupErrorMarkers(monacoRef.current);
+      }
+    }, 500); // 500ms debounce
+  }, [setupErrorMarkers]);
 
   // Handle save
   const handleSave = useCallback(async () => {

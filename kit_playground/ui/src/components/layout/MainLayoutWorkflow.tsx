@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Box, Toolbar, IconButton, Tooltip, Typography, Divider } from '@mui/material';
+import { Box, Toolbar, IconButton, Tooltip, Typography, Divider, Checkbox, FormControlLabel } from '@mui/material';
 import {
   Build as BuildIcon,
   PlayArrow as RunIcon,
@@ -19,6 +19,7 @@ import CodeEditor from '../editor/CodeEditor';
 import Console from '../console/Console';
 import StatusBar from './StatusBar';
 import FileExplorer from '../controls/FileExplorer';
+import PreviewPane from '../preview/PreviewPane';
 import { WorkflowStep, WorkflowNode } from '../../types/workflow';
 import { useAppDispatch } from '../../hooks/redux';
 import { setOutputPath } from '../../store/slices/projectSlice';
@@ -44,6 +45,8 @@ const MainLayoutWorkflow: React.FC = () => {
   const [isBuilding, setIsBuilding] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>('');
+  const [useXpra, setUseXpra] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   // Templates and projects state
   const [templates, setTemplates] = useState<any[]>([]);
@@ -265,6 +268,7 @@ const MainLayoutWorkflow: React.FC = () => {
   }, [navigateToStep, projects]);
 
   // Template/Project operations
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const loadTemplate = useCallback(async (templateId: string) => {
     try {
       const response = await fetch(`/api/templates/${templateId}/code`);
@@ -308,10 +312,19 @@ const MainLayoutWorkflow: React.FC = () => {
       });
 
       const result = await response.json();
+
+      // Check if response itself failed
+      if (!response.ok) {
+        emitConsoleLog('error', 'build', `Build request failed: ${result.error || response.statusText}`);
+        return;
+      }
+
       if (result.success) {
         emitConsoleLog('success', 'build', `Build completed successfully for ${selectedProject}`);
       } else {
         emitConsoleLog('error', 'build', `Build failed: ${result.error || 'Unknown error'}`);
+        // Log the full result for debugging
+        console.error('Build result:', result);
       }
     } catch (error: any) {
       emitConsoleLog('error', 'build', `Build error: ${error.message || error}`);
@@ -325,6 +338,9 @@ const MainLayoutWorkflow: React.FC = () => {
 
     setIsRunning(true);
     emitConsoleLog('info', 'runtime', `Launching ${selectedProject}...`);
+    if (useXpra) {
+      emitConsoleLog('info', 'runtime', 'Using Xpra for browser preview...');
+    }
 
     try {
       // Build first, then run
@@ -337,6 +353,7 @@ const MainLayoutWorkflow: React.FC = () => {
         body: JSON.stringify({
           projectPath: currentProjectPath,
           projectName: selectedProject,
+          useXpra: useXpra,  // Pass Xpra flag
         }),
       });
 
@@ -345,8 +362,11 @@ const MainLayoutWorkflow: React.FC = () => {
         emitConsoleLog('success', 'runtime', `Application launched: ${selectedProject}`);
         // Navigate to preview if Xpra session available
         if (result.previewUrl) {
+          setPreviewUrl(result.previewUrl);
           navigateToStep('preview');
           emitConsoleLog('info', 'runtime', `Preview available at: ${result.previewUrl}`);
+        } else if (useXpra) {
+          emitConsoleLog('warning', 'runtime', `Xpra preview not available. Check if Xpra is installed (see XPRA_SETUP.md)`);
         }
       } else {
         emitConsoleLog('error', 'runtime', `Launch failed: ${result.error || 'Unknown error'}`);
@@ -356,7 +376,7 @@ const MainLayoutWorkflow: React.FC = () => {
       emitConsoleLog('error', 'runtime', `Run error: ${error.message || error}`);
       setIsRunning(false);
     }
-  }, [selectedProject, currentProjectPath, handleBuild, navigateToStep]);
+  }, [selectedProject, currentProjectPath, handleBuild, navigateToStep, useXpra]);
 
   const handleStop = useCallback(async () => {
     if (!selectedProject) return;
@@ -410,11 +430,14 @@ const MainLayoutWorkflow: React.FC = () => {
       // The backend automatically moves them from source/apps (where omni.repo.man creates them)
       // to _build/apps with proper directory structure (as per repo.toml applications_path)
       const outputDir = projectInfo.outputDir || '_build/apps';
+
+      // Use relative path for currentProjectPath (for build/run operations)
+      const relativeProjectPath = `${outputDir}/${projectInfo.projectName}`;
+      setCurrentProjectPath(relativeProjectPath);
+
+      // Use absolute path for file reading
       const projectPath = `${repoRoot}/${outputDir}/${projectInfo.projectName}`;
       const kitFilePath = `${projectPath}/${projectInfo.projectName}.kit`;
-
-      // Store project path for build/run operations
-      setCurrentProjectPath(projectPath);
 
       emitConsoleLog('info', 'build', `Loading project file: ${kitFilePath}`);
 
@@ -424,9 +447,9 @@ const MainLayoutWorkflow: React.FC = () => {
       if (response.ok) {
         const content = await response.text();
         setEditorContent(content);
-        setOutputPathLocal(projectPath);
+        setOutputPathLocal(relativeProjectPath);
         emitConsoleLog('success', 'build', `Project created successfully: ${projectInfo.displayName}`);
-        emitConsoleLog('info', 'build', `Project location: ${projectPath}`);
+        emitConsoleLog('info', 'build', `Project location: ${relativeProjectPath}`);
 
         // Refresh projects list so the new project appears in the sidebar
         loadProjectsData();
@@ -435,39 +458,44 @@ const MainLayoutWorkflow: React.FC = () => {
         emitConsoleLog('warning', 'build', `Project created but configuration file not found: ${errorText}`);
 
         // Fallback: show a welcome message with project info
+        emitConsoleLog('info', 'build', `File not found, showing welcome message`);
+        emitConsoleLog('info', 'build', `Attempted to read: ${kitFilePath}`);
         setEditorContent(`# ${projectInfo.displayName}
 #
 # Project created successfully!
 # Template: ${projectInfo.templateName}
-# Location: ${projectPath}
+# Location: ${relativeProjectPath}
 #
 # Your Kit application has been generated and is ready to use.
 #
-# Main configuration file: ${kitFilePath}
+# Main configuration file: ${projectInfo.projectName}.kit
 #
 # Next steps:
-# 1. Review the generated configuration below
+# 1. Click on the project in the left sidebar to load the configuration
 # 2. Click "Build" to compile your project
 # 3. Click "Run" to launch your application
 #
-# Note: If you don't see the file contents, try refreshing the Projects section
-# in the left sidebar and clicking on your project.
+# Note: The project files are located in ${relativeProjectPath}/
 `);
       }
     } catch (error: any) {
         emitConsoleLog('error', 'build', `Failed to load project files: ${error.message || error}`);
+
+        const outputDir = projectInfo.outputDir || '_build/apps';
+        const relPath = `${outputDir}/${projectInfo.projectName}`;
+
         setEditorContent(`# Project: ${projectInfo.displayName}
 #
 # Error loading configuration file.
 # This may be because the project was created but the file path is incorrect.
 #
-# Expected location: ${projectInfo.outputDir}/${projectInfo.projectName}/${projectInfo.projectName}.kit
+# Expected location: ${relPath}/${projectInfo.projectName}.kit
 #
 # Please check the console output above for more details.
 # You can also try:
 # 1. Refresh the Projects section in the left sidebar
 # 2. Click on your project to reload it
-# 3. Or navigate to the project directory manually
+# 3. Run: cd ${relPath} && ls -la
 `);
     }
 
@@ -575,6 +603,31 @@ const MainLayoutWorkflow: React.FC = () => {
           </Tooltip>
         )}
 
+        <Divider orientation="vertical" flexItem sx={{ mx: 1, backgroundColor: '#3e3e42' }} />
+
+        <Tooltip title="Launch in browser using Xpra (requires Xpra to be installed)">
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={useXpra}
+                onChange={(e) => setUseXpra(e.target.checked)}
+                disabled={isBuilding || isRunning}
+                size="small"
+                sx={{
+                  color: '#858585',
+                  '&.Mui-checked': { color: '#4ec9b0' },
+                }}
+              />
+            }
+            label={
+              <Typography variant="caption" sx={{ color: '#cccccc', userSelect: 'none' }}>
+                Browser Preview
+              </Typography>
+            }
+            sx={{ mr: 1 }}
+          />
+        </Tooltip>
+
         <Typography
           variant="caption"
           sx={{
@@ -595,7 +648,7 @@ const MainLayoutWorkflow: React.FC = () => {
           value={editorContent}
           onChange={handleCodeChange}
           language="toml"
-          templateId={selectedTemplate}
+          templateId={selectedProject || selectedTemplate}
           readOnly={false}
         />
       </Box>
@@ -622,20 +675,39 @@ const MainLayoutWorkflow: React.FC = () => {
     </Box>
   );
 
-  const renderPreviewPanel = () => (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        width: '100%',
-        color: 'text.secondary',
-      }}
-    >
-      Preview functionality coming soon
-    </Box>
-  );
+  const renderPreviewPanel = () => {
+    if (!previewUrl) {
+      return (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            width: '100%',
+            color: 'text.secondary',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6">No Preview Available</Typography>
+          <Typography variant="body2">
+            Run a project with Xpra enabled to see the preview
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ height: '100%', width: '100%' }}>
+        <PreviewPane
+          url={previewUrl}
+          templateId={selectedProject}
+          mode="xpra"
+        />
+      </Box>
+    );
+  };
 
   return (
     <Box

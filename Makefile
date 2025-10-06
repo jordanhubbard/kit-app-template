@@ -79,6 +79,7 @@ all: check-deps
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
 	@echo "  make clean             - Clean build artifacts"
+	@echo "  make check-icons       - Validate icon paths in apps/extensions"
 	@echo "  make help              - Show this help message"
 
 .PHONY: help
@@ -275,25 +276,26 @@ ifeq ($(OS),linux)
 		. /etc/os-release; \
 		echo "Distribution: $$NAME $$VERSION_ID"; \
 		case "$$ID" in \
-			ubuntu|debian) \
-				echo "$(BLUE)Installing Xpra on Ubuntu/Debian...$(NC)"; \
-				echo "Adding Xpra repository..."; \
-				sudo wget -q -O "/usr/share/keyrings/xpra.asc" https://xpra.org/xpra.asc || { \
-					echo "$(RED)Failed to download Xpra key$(NC)"; \
-					exit 1; \
-				}; \
-				sudo wget -q -O "/etc/apt/sources.list.d/xpra.sources" https://xpra.org/repos/jammy/xpra.sources || { \
-					echo "$(RED)Failed to download Xpra sources list$(NC)"; \
-					exit 1; \
-				}; \
-				echo "Updating package list..."; \
-				sudo apt-get update -qq; \
-				echo "Installing xpra and xpra-html5..."; \
-				sudo apt-get install -y xpra xpra-html5 || { \
-					echo "$(RED)Failed to install Xpra$(NC)"; \
-					exit 1; \
-				}; \
-				;; \
+		ubuntu|debian) \
+			echo "$(BLUE)Installing Xpra on Ubuntu/Debian...$(NC)"; \
+			echo "Adding Xpra repository GPG key..."; \
+			wget -q https://xpra.org/gpg.asc -O- | sudo apt-key add - || { \
+				echo "$(RED)Failed to add Xpra GPG key$(NC)"; \
+				exit 1; \
+			}; \
+			echo "Adding Xpra repository to sources..."; \
+			echo "deb https://xpra.org/ $$VERSION_CODENAME main" | sudo tee /etc/apt/sources.list.d/xpra.list || { \
+				echo "$(RED)Failed to add Xpra repository$(NC)"; \
+				exit 1; \
+			}; \
+			echo "Updating package list..."; \
+			sudo apt-get update -qq; \
+			echo "Installing xpra and xpra-html5..."; \
+			sudo apt-get install -y xpra xpra-html5 || { \
+				echo "$(RED)Failed to install Xpra$(NC)"; \
+				exit 1; \
+			}; \
+			;; \
 			fedora|rhel|centos) \
 				echo "$(BLUE)Installing Xpra on Fedora/RHEL/CentOS...$(NC)"; \
 				sudo dnf install -y xpra xpra-html5 || { \
@@ -408,6 +410,12 @@ template-new: check-deps
 test: check-deps
 	@echo "$(BLUE)Running test suite...$(NC)"
 	@./repo.sh test
+
+# Validate icon paths in extensions and built apps
+.PHONY: check-icons
+check-icons:
+	@echo "$(BLUE)Validating icon paths...$(NC)"
+	@$(PYTHON) tools/validate_icons.py
 
 # Clean build artifacts
 .PHONY: clean
