@@ -329,6 +329,29 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                         # Call the restructuring function
                         _fix_application_structure(repo_root, playback_data)
                         logger.info("✓ Application structure fixed")
+
+                        # Fix repo.toml: The template system adds entries to the static apps list,
+                        # but we use dynamic discovery via app_discovery_paths instead.
+                        # Clear the static apps list to prevent build errors.
+                        try:
+                            import toml
+                            repo_toml_path = repo_root / "repo.toml"
+                            if repo_toml_path.exists():
+                                with open(repo_toml_path, 'r') as f:
+                                    repo_config = toml.load(f)
+
+                                # Clear the static apps list (line 113 in repo.toml)
+                                if 'apps' in repo_config:
+                                    repo_config['apps'] = []
+
+                                    with open(repo_toml_path, 'w') as f:
+                                        toml.dump(repo_config, f)
+
+                                    logger.info("✓ Cleared static apps list in repo.toml (using dynamic discovery)")
+                        except Exception as e:
+                            logger.warning(f"Failed to fix repo.toml after project creation: {e}")
+                            # Continue anyway - this is not critical
+
                         if socketio:
                             socketio.emit('log', {
                                 'level': 'success',
