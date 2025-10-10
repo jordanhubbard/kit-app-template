@@ -91,6 +91,7 @@ ext_folders = [
 apps = [
     "${root}/_build/apps/my_company.my_editor/my_company.my_editor.kit",
     "${root}/_build/apps/test_editor/test_editor.kit",
+    "${root}/_build/apps/my_company.explorer/my_company.explorer.kit",
 ]
 
 registries = [
