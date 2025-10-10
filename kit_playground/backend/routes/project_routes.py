@@ -4,6 +4,7 @@ Project build and run routes for Kit Playground.
 import logging
 import subprocess
 import threading
+import shutil
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -369,6 +370,78 @@ def create_project_routes(
                 return jsonify({'error': 'Project not running'}), 404
         except Exception as e:
             logger.error(f"Failed to stop project: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @project_bp.route('/delete', methods=['POST'])
+    def delete_project():
+        """Delete a project directory and all its contents."""
+        try:
+            data = request.json
+            project_id = data.get('projectId')
+            projects_path = data.get('projectsPath', '_build/apps')
+
+            if not project_id:
+                return jsonify({'error': 'projectId required'}), 400
+
+            # SECURITY: Validate project_id to prevent path traversal
+            if not security_validator._is_safe_project_name(project_id):
+                return jsonify({
+                    'error': 'Invalid project ID. Avoid special characters and path traversal attempts.'
+                }), 400
+
+            # Get repo root
+            repo_root = Path(__file__).parent.parent.parent.parent
+
+            # Validate projects path
+            validated_projects_path = security_validator._validate_filesystem_path(projects_path)
+            if not validated_projects_path:
+                return jsonify({'error': 'Invalid projects path'}), 400
+
+            # Construct project directory path
+            project_dir = validated_projects_path / project_id
+
+            # Security check: Ensure project_dir is within the validated projects path
+            try:
+                project_dir = project_dir.resolve()
+                validated_projects_path = validated_projects_path.resolve()
+                if not str(project_dir).startswith(str(validated_projects_path)):
+                    return jsonify({'error': 'Invalid project path - outside projects directory'}), 403
+            except Exception as e:
+                logger.error(f"Path resolution error: {e}")
+                return jsonify({'error': 'Invalid project path'}), 400
+
+            # Check if project directory exists
+            if not project_dir.exists():
+                return jsonify({'error': 'Project not found'}), 404
+
+            if not project_dir.is_dir():
+                return jsonify({'error': 'Project path is not a directory'}), 400
+
+            # Stop the project if it's running
+            if project_id in processes:
+                logger.info(f"Stopping running project before deletion: {project_id}")
+                process = processes[project_id]
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                del processes[project_id]
+
+            # Delete the project directory
+            logger.info(f"Deleting project directory: {project_dir}")
+            shutil.rmtree(project_dir)
+
+            socketio.emit('log', {
+                'level': 'info',
+                'source': 'system',
+                'message': f'Project deleted: {project_id}'
+            })
+
+            return jsonify({'success': True})
+
+        except Exception as e:
+            logger.error(f"Failed to delete project: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
     return project_bp

@@ -403,6 +403,42 @@ const MainLayoutWorkflow: React.FC = () => {
     }
   }, [selectedProject]);
 
+  const handleDeleteProject = useCallback(async (projectId: string) => {
+    emitConsoleLog('info', 'system', `Deleting project: ${projectId}`);
+
+    try {
+      const response = await fetch('/api/projects/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: projectId,
+          projectsPath: projectsPath,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        emitConsoleLog('success', 'system', `Project deleted successfully: ${projectId}`);
+
+        // Clear selection if deleted project was selected
+        if (selectedProject === projectId) {
+          setSelectedProject(null);
+          setEditorContent('');
+          setCurrentProjectPath('');
+          navigateToStep('browse');
+        }
+
+        // Refresh projects list
+        await loadProjectsData();
+      } else {
+        emitConsoleLog('error', 'system', `Failed to delete project: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      emitConsoleLog('error', 'system', `Delete error: ${error.message || error}`);
+    }
+  }, [projectsPath, selectedProject, loadProjectsData, navigateToStep]);
+
   const handleCreateProject = useCallback(async (projectInfo: any) => {
     emitConsoleLog('info', 'build', `Creating project: ${projectInfo.displayName}`);
 
@@ -764,6 +800,7 @@ const MainLayoutWorkflow: React.FC = () => {
           }}
           onRefreshTemplates={loadTemplatesData}
           onRefreshProjects={loadProjectsData}
+          onDeleteProject={handleDeleteProject}
         />
 
         {/* Sliding panels */}

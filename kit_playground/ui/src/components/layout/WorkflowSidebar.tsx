@@ -33,6 +33,7 @@ import {
   Refresh as RefreshIcon,
   KeyboardArrowDown as CollapseIcon,
   KeyboardArrowRight as ExpandIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { WorkflowNode } from '../../types/workflow';
 import DirectoryBrowserDialog from '../dialogs/DirectoryBrowserDialog';
@@ -48,6 +49,7 @@ interface WorkflowSidebarProps {
   onProjectsPathChange: (path: string) => void;
   onRefreshTemplates: () => void;
   onRefreshProjects: () => void;
+  onDeleteProject?: (projectId: string) => void;
 }
 
 const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
@@ -61,6 +63,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
   onProjectsPathChange,
   onRefreshTemplates,
   onRefreshProjects,
+  onDeleteProject,
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [templatesCollapsed, setTemplatesCollapsed] = useState(false);
@@ -96,14 +99,40 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
     return <TemplateIcon />;
   };
 
-  const renderNode = (node: WorkflowNode, depth: number = 0) => {
+  const renderNode = (node: WorkflowNode, depth: number = 0, isProject: boolean = false) => {
     const isExpanded = expandedNodes.has(node.id);
     const isSelected = selectedId === node.id;
     const hasChildren = node.children && node.children.length > 0;
 
     return (
       <React.Fragment key={node.id}>
-        <ListItem disablePadding>
+        <ListItem
+          disablePadding
+          secondaryAction={
+            isProject && onDeleteProject ? (
+              <Tooltip title="Delete project">
+                <IconButton
+                  edge="end"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Are you sure you want to delete "${node.label}"?`)) {
+                      onDeleteProject(node.id);
+                    }
+                  }}
+                  sx={{
+                    color: 'text.secondary',
+                    '&:hover': {
+                      color: 'error.main',
+                    },
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : null
+          }
+        >
           <ListItemButton
             selected={isSelected}
             onClick={() => {
@@ -141,7 +170,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
         {hasChildren && (
           <Collapse in={isExpanded} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
-              {node.children!.map(child => renderNode(child, depth + 1))}
+              {node.children!.map(child => renderNode(child, depth + 1, isProject))}
             </List>
           </Collapse>
         )}
@@ -400,7 +429,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
               </Box>
             ) : (
               <List dense>
-                {projects.map(node => renderNode(node))}
+                {projects.map(node => renderNode(node, 0, true))}
               </List>
             )}
           </Box>
