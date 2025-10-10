@@ -55,7 +55,7 @@ def create_project_routes(
             repo_root = Path(__file__).parent.parent.parent.parent
             logger.info("Building project: %s", project_name)
 
-            # Use the project-specific repo.sh wrapper
+            # Determine which repo.sh to use
             if project_path:
                 # SECURITY: Validate and normalize project_path
                 app_dir = security_validator._validate_project_path(repo_root, project_path)
@@ -66,60 +66,109 @@ def create_project_routes(
 
                 if wrapper_script.exists():
                     logger.info("Using wrapper from: %s", app_dir)
-                    result = subprocess.run(
-                        ['./repo.sh', 'build', '--config', 'release'],
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                        cwd=str(app_dir)
-                    )
+                    cmd = ['./repo.sh', 'build', '--config', 'release']
+                    cwd = str(app_dir)
                 else:
                     logger.info("Wrapper not found, using repo root")
-                    result = subprocess.run(
-                        [str(repo_root / 'repo.sh'), 'build', '--config', 'release'],
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                        cwd=str(repo_root)
-                    )
+                    cmd = [str(repo_root / 'repo.sh'), 'build', '--config', 'release']
+                    cwd = str(repo_root)
             else:
-                result = subprocess.run(
-                    [str(repo_root / 'repo.sh'), 'build', '--config', 'release'],
-                    capture_output=True,
-                    text=True,
-                    timeout=300,
-                    cwd=str(repo_root)
-                )
+                cmd = [str(repo_root / 'repo.sh'), 'build', '--config', 'release']
+                cwd = str(repo_root)
 
-            # Log build output (full output, not truncated)
-            logger.info("Build stdout: %s", result.stdout if result.stdout else 'none')
-            if result.stderr:
-                logger.info("Build stderr: %s", result.stderr)
+            # Use Popen for real-time output streaming
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=cwd,
+                bufsize=1,  # Line buffered
+                universal_newlines=True
+            )
 
-            # Emit build logs line by line to console
-            if result.stdout:
-                for line in result.stdout.strip().split('\n'):
-                    if line:
-                        socketio.emit('log', {
-                            'level': 'info',
-                            'source': 'build',
-                            'message': line
-                        })
+            # Emit initial build start message
+            socketio.emit('log', {
+                'level': 'info',
+                'source': 'build',
+                'message': f'Building {project_name}...'
+            })
 
-            if result.stderr:
-                for line in result.stderr.strip().split('\n'):
-                    if line:
-                        socketio.emit('log', {
-                            'level': 'error',
-                            'source': 'build',
-                            'message': line
-                        })
+            # Stream stdout in real-time
+            stdout_lines = []
+            stderr_lines = []
 
-            success = result.returncode == 0
+            import select
+            import time
+
+            # Non-blocking read with timeout
+            while True:
+                # Check if process is still running
+                if process.poll() is not None:
+                    # Process finished, read any remaining output
+                    remaining_stdout = process.stdout.read()
+                    remaining_stderr = process.stderr.read()
+
+                    if remaining_stdout:
+                        for line in remaining_stdout.strip().split('\n'):
+                            if line:
+                                stdout_lines.append(line)
+                                socketio.emit('log', {
+                                    'level': 'info',
+                                    'source': 'build',
+                                    'message': line
+                                })
+
+                    if remaining_stderr:
+                        for line in remaining_stderr.strip().split('\n'):
+                            if line:
+                                stderr_lines.append(line)
+                                socketio.emit('log', {
+                                    'level': 'error',
+                                    'source': 'build',
+                                    'message': line
+                                })
+                    break
+
+                # Read a line from stdout
+                line = process.stdout.readline()
+                if line:
+                    line = line.rstrip()
+                    stdout_lines.append(line)
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'build',
+                        'message': line
+                    })
+
+                # Read a line from stderr
+                err_line = process.stderr.readline()
+                if err_line:
+                    err_line = err_line.rstrip()
+                    stderr_lines.append(err_line)
+                    socketio.emit('log', {
+                        'level': 'error',
+                        'source': 'build',
+                        'message': err_line
+                    })
+
+                # Small sleep to prevent busy waiting
+                if not line and not err_line:
+                    time.sleep(0.1)
+
+            returncode = process.returncode
+
+            # Log full output to backend logs
+            if stdout_lines:
+                logger.info("Build stdout: %s", '\n'.join(stdout_lines))
+            if stderr_lines:
+                logger.info("Build stderr: %s", '\n'.join(stderr_lines))
+
+            success = returncode == 0
             return jsonify({
                 'success': success,
-                'output': result.stdout,
-                'error': result.stderr if not success else None
+                'output': '\n'.join(stdout_lines),
+                'error': '\n'.join(stderr_lines) if not success else None
             })
         except subprocess.TimeoutExpired:
             return jsonify({'error': 'Build timeout (300s)'}), 500
