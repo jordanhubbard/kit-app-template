@@ -333,21 +333,28 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                         # Fix repo.toml: The template system adds entries to the static apps list,
                         # but we use dynamic discovery via app_discovery_paths instead.
                         # Clear the static apps list to prevent build errors.
+                        # We use regex replacement to preserve formatting and comments.
                         try:
-                            import toml
+                            import re
                             repo_toml_path = repo_root / "repo.toml"
                             if repo_toml_path.exists():
                                 with open(repo_toml_path, 'r') as f:
-                                    repo_config = toml.load(f)
+                                    content = f.read()
 
-                                # Clear the static apps list (line 113 in repo.toml)
-                                if 'apps' in repo_config:
-                                    repo_config['apps'] = []
+                                # Find and replace the apps = [...] line with apps = []
+                                # This regex matches: apps = ["anything"] or apps = ['anything']
+                                # and replaces it with apps = []
+                                pattern = r'^apps\s*=\s*\[.*?\]'
+                                replacement = 'apps = []'
 
+                                new_content, count = re.subn(pattern, replacement, content, flags=re.MULTILINE)
+
+                                if count > 0:
                                     with open(repo_toml_path, 'w') as f:
-                                        toml.dump(repo_config, f)
-
-                                    logger.info("✓ Cleared static apps list in repo.toml (using dynamic discovery)")
+                                        f.write(new_content)
+                                    logger.info(f"✓ Cleared static apps list in repo.toml ({count} replacements)")
+                                else:
+                                    logger.info("✓ No apps list to clear in repo.toml")
                         except Exception as e:
                             logger.warning(f"Failed to fix repo.toml after project creation: {e}")
                             # Continue anyway - this is not critical
