@@ -85,14 +85,18 @@ ext_folders = [
   "${root}/source/extensions",
 ]
 
-# Apps to run and precache
-# Note: Built apps are placed in subdirectories under _build/apps/<app_name>/<app_name>.kit
-# This list is dynamically populated - only include apps that actually exist
-apps = [
-    "${root}/_build/apps/my_company.my_editor/my_company.my_editor.kit",
-    "${root}/_build/apps/test_editor/test_editor.kit",
-    "${root}/_build/apps/my_company.explorer/my_company.explorer.kit",
+# Dynamic app discovery paths
+# Apps are automatically discovered by scanning these directories for .kit files
+# This allows for flexible app creation without manually updating this list
+app_discovery_paths = [
+    "${root}/_build/apps",
 ]
+
+# Legacy static apps list (kept for reference, but app_discovery_paths takes precedence)
+# apps = [
+#     "${root}/_build/apps/my_company.my_editor/my_company.my_editor.kit",
+#     "${root}/_build/apps/test_editor/test_editor.kit",
+# ]
 
 registries = [
     { name = "kit/default", url = "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/${kit_version_major}/shared" },
