@@ -22,3 +22,6 @@ define_app("my_company.my_editor.kit")
 define_app("test_editor.kit")
 
 define_app("my_company.explorer.kit")
+define_app("test.explorer.kit")
+define_app("my_company.base_editor.kit")
+define_app("foobar.base_editor.kit")
