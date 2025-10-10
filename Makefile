@@ -82,6 +82,7 @@ all: check-deps
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
 	@echo "  make clean             - Clean build artifacts"
+	@echo "  make clean-project PROJECT=<name> - Remove a specific project completely"
 	@echo "  make help              - Show this help message"
 
 .PHONY: help
@@ -462,6 +463,25 @@ clean:
 .PHONY: clean-all
 clean-all: clean playground-clean
 	@echo "$(GREEN)Deep clean complete!$(NC)"
+
+# Clean a specific project
+# Usage: make clean-project PROJECT=my_company.explorer
+.PHONY: clean-project
+clean-project:
+ifndef PROJECT
+	@echo "$(RED)Error: PROJECT variable required$(NC)"
+	@echo ""
+	@echo "Usage: make clean-project PROJECT=<project_name>"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make clean-project PROJECT=my_company.explorer"
+	@echo "  make clean-project PROJECT=my_app"
+	@echo ""
+	@echo "This removes all traces of the project from source/ and _build/"
+	@exit 1
+endif
+	@echo "$(BLUE)Cleaning project: $(PROJECT)$(NC)"
+	@./cleanup-project.sh $(PROJECT)
 
 # Platform-specific repo commands
 .PHONY: repo-build
