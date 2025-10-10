@@ -2,6 +2,13 @@
 /**
  * Wrapper script for react-scripts start with proper error handling
  * Handles ECONNRESET and other socket errors gracefully without crashing
+ *
+ * This script is automatically invoked by:
+ * - `make playground` (via dev.sh/dev.bat → npm start)
+ * - `npm start` in the kit_playground/ui directory
+ *
+ * It prevents the development server from crashing when clients disconnect
+ * abruptly (browser tab closes, network issues, etc.)
  */
 
 // Install global error handlers before starting the server
