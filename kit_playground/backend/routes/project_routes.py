@@ -351,6 +351,9 @@ def create_project_routes(
             # Find .kit files in the directory
             projects = []
             if validated_path.exists() and validated_path.is_dir():
+                # Get repo root for calculating full relative paths
+                repo_root = get_repo_root()
+
                 for kit_file in validated_path.glob('*/*.kit'):
                     project_name = kit_file.stem
                     project_dir = kit_file.parent
@@ -359,9 +362,9 @@ def create_project_routes(
                         'id': project_name,
                         'name': project_name,
                         'displayName': project_name,
-                        'path': str(project_dir.relative_to(validated_path)),
+                        'path': str(project_dir.relative_to(repo_root)),  # Full path from repo root
                         'kitFile': str(kit_file),
-                        'relativePath': str(project_dir.relative_to(validated_path)),
+                        'relativePath': str(project_dir.relative_to(repo_root)),  # Full path from repo root
                         'status': 'ready'
                     })
 

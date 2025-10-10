@@ -79,6 +79,29 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             result = template_api.generate_template(gen_request)
 
             if result.success:
+                # Fix repo.toml: The template system adds entries to the static apps list,
+                # but we use dynamic discovery via app_discovery_paths instead.
+                # Clear the static apps list to prevent build errors.
+                try:
+                    import toml
+                    from pathlib import Path
+                    repo_toml_path = Path(template_api.repo_root) / "repo.toml"
+                    if repo_toml_path.exists():
+                        with open(repo_toml_path, 'r') as f:
+                            repo_config = toml.load(f)
+
+                        # Clear the static apps list (line 113 in repo.toml)
+                        if 'apps' in repo_config:
+                            repo_config['apps'] = []
+
+                            with open(repo_toml_path, 'w') as f:
+                                toml.dump(repo_config, f)
+
+                            logger.info("Cleared static apps list in repo.toml (using dynamic discovery)")
+                except Exception as e:
+                    logger.warning(f"Failed to fix repo.toml after project creation: {e}")
+                    # Continue anyway - this is not critical
+
                 return jsonify({
                     'success': True,
                     'projectInfo': {
