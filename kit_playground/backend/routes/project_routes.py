@@ -428,14 +428,55 @@ def create_project_routes(
                     process.kill()
                 del processes[project_id]
 
-            # Delete the project directory
+            # Delete the project directory from _build/apps
             logger.info(f"Deleting project directory: {project_dir}")
             shutil.rmtree(project_dir)
+
+            # Also delete associated setup extension and source files
+            setup_ext_name = f"{project_id}_setup"
+
+            # Remove from source/extensions/
+            source_ext_dir = repo_root / "source" / "extensions" / setup_ext_name
+            if source_ext_dir.exists():
+                logger.info(f"Removing setup extension: {source_ext_dir}")
+                shutil.rmtree(source_ext_dir)
+
+            # Remove from source/apps/ (if it exists there)
+            source_app_dir = repo_root / "source" / "apps" / project_id
+            if source_app_dir.exists():
+                logger.info(f"Removing source app: {source_app_dir}")
+                shutil.rmtree(source_app_dir)
+
+            # Remove from build directories (all platforms)
+            build_dir = repo_root / "_build"
+            if build_dir.exists():
+                for platform_dir in build_dir.iterdir():
+                    if not platform_dir.is_dir():
+                        continue
+                    for config_dir in platform_dir.iterdir():
+                        if not config_dir.is_dir():
+                            continue
+
+                        # Remove .kit files and scripts
+                        for pattern in [f"{project_id}.kit*", f"tests-{project_id}*"]:
+                            for file in config_dir.glob(pattern):
+                                if file.is_file():
+                                    logger.info(f"Removing build artifact: {file}")
+                                    file.unlink()
+
+                        # Remove extensions
+                        exts_dir = config_dir / "exts"
+                        if exts_dir.exists():
+                            for ext_name in [setup_ext_name, project_id]:
+                                ext_path = exts_dir / ext_name
+                                if ext_path.exists():
+                                    logger.info(f"Removing built extension: {ext_path}")
+                                    shutil.rmtree(ext_path)
 
             socketio.emit('log', {
                 'level': 'info',
                 'source': 'system',
-                'message': f'Project deleted: {project_id}'
+                'message': f'Project and all associated files deleted: {project_id}'
             })
 
             return jsonify({'success': True})
