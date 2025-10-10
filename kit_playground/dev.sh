@@ -60,19 +60,32 @@ fi
 
 echo -e "${GREEN}✓ Allocated ports: Backend=$BACKEND_PORT, Frontend=$FRONTEND_PORT${NC}"
 
-echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  Kit Playground - Development Mode with Hot Reload        ║${NC}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+# Determine mode
+if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
+    MODE="Production"
+    MODE_COLOR="${RED}"
+else
+    MODE="Development"
+    MODE_COLOR="${GREEN}"
+fi
+
+echo -e "${MODE_COLOR}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${MODE_COLOR}║  Kit Playground - ${MODE} Mode                             ║${NC}"
+echo -e "${MODE_COLOR}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${BLUE}Starting services:${NC}"
-echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC} ${YELLOW}(with hot-reload)${NC}"
-echo -e "  • Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC} ${YELLOW}(with hot-reload)${NC}"
+echo -e "${BLUE}Services:${NC}"
+echo -e "  ${GREEN}✓${NC} Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC}"
+echo -e "  ${GREEN}✓${NC} Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC}"
 if [ "$REMOTE" = "1" ]; then
-    echo -e "  ${YELLOW}⚠ Remote mode: Listening on 0.0.0.0 (all interfaces)${NC}"
+    echo -e "  ${YELLOW}⚠${NC} Remote mode: Listening on 0.0.0.0 (all interfaces)"
 fi
 echo ""
-echo -e "${YELLOW}Both frontend and backend will hot-reload on code changes!${NC}"
-echo -e "${YELLOW}Press Ctrl+C to stop both servers${NC}"
+if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
+    echo -e "${BLUE}Production build - optimized for performance${NC}"
+else
+    echo -e "${YELLOW}Development mode - hot-reload enabled${NC}"
+fi
+echo -e "${BLUE}Press Ctrl+C to stop servers${NC}"
 echo ""
 
 # Function to cleanup on exit
@@ -86,10 +99,14 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Start backend in background with hot-reload enabled
-echo -e "${BLUE}[1/2] Starting Backend API server with hot-reload...${NC}"
+# Start backend in background
+echo -e "${BLUE}Starting backend...${NC}"
 cd "$BACKEND_DIR"
-python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" --debug > /tmp/playground-backend.log 2>&1 &
+if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
+    python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
+else
+    python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" --debug > /tmp/playground-backend.log 2>&1 &
+fi
 BACKEND_PID=$!
 
 # Wait for backend to start
@@ -98,7 +115,6 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
     echo -e "${RED}✗ Backend failed to start. Check /tmp/playground-backend.log${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓ Backend running (PID: $BACKEND_PID)${NC}"
 
 # Create temporary setupProxy.js with dynamic backend port
 cat > "$UI_DIR/src/setupProxy.js" << EOF
@@ -117,21 +133,32 @@ module.exports = function(app) {
 EOF
 
 # Start frontend dev server
-echo -e "${BLUE}[2/2] Starting React dev server with hot-reload...${NC}"
+echo -e "${BLUE}Starting frontend...${NC}"
 cd "$UI_DIR"
+
+# Redirect npm output to log file to avoid verbose messages
 if [ "$REMOTE" = "1" ]; then
-    BROWSER=none HOST="$FRONTEND_HOST" PORT="$FRONTEND_PORT" DANGEROUSLY_DISABLE_HOST_CHECK=true npm start &
+    BROWSER=none HOST="$FRONTEND_HOST" PORT="$FRONTEND_PORT" DANGEROUSLY_DISABLE_HOST_CHECK=true npm start > /tmp/playground-frontend.log 2>&1 &
 else
-    BROWSER=none PORT="$FRONTEND_PORT" npm start &
+    BROWSER=none PORT="$FRONTEND_PORT" npm start > /tmp/playground-frontend.log 2>&1 &
 fi
 FRONTEND_PID=$!
 
-echo ""
-echo -e "${GREEN}✓ Development servers are running!${NC}"
-echo ""
-echo -e "${BLUE}Useful commands:${NC}"
-echo -e "  • View backend logs:  tail -f /tmp/playground-backend.log"
-echo -e "  • Rebuild UI:         cd kit_playground/ui && npm run build"
+# Wait for frontend to start (it takes a bit longer than backend)
+echo -e "${BLUE}Waiting for services to be ready...${NC}"
+sleep 5
+
+# Check if frontend is responding
+MAX_RETRIES=10
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if curl -s "http://${FRONTEND_HOST}:${FRONTEND_PORT}" > /dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
 echo ""
 
 # Wait for both processes

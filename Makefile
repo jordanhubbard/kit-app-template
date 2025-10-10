@@ -63,12 +63,14 @@ all: check-deps
 	@echo "  make test              - Run test suite"
 	@echo ""
 	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
-	@echo "  make playground                    - Stop existing & start fresh (localhost)"
-	@echo "  make playground REMOTE=1           - Stop existing & start with remote access (0.0.0.0)"
-	@echo "  make playground-start              - Start playground processes"
-	@echo "  make playground-stop               - Stop all running playground processes"
-	@echo "  make playground-build              - Build UI only"
-	@echo "  make playground-clean              - Remove build artifacts"
+	@echo "  make playground                      - Development mode (localhost, hot-reload)"
+	@echo "  make playground REMOTE=1             - Development mode with remote access (0.0.0.0)"
+	@echo "  make playground PRODUCTION=1         - Production mode (optimized build)"
+	@echo "  make playground REMOTE=1 PRODUCTION=1 - Production mode with remote access"
+	@echo "  make playground-start                - Start playground processes"
+	@echo "  make playground-stop                 - Stop all running playground processes"
+	@echo "  make playground-build                - Build UI only"
+	@echo "  make playground-clean                - Remove build artifacts"
 	@echo ""
 	@echo "$(BLUE)Dependencies:$(NC)"
 	@echo "  make deps                  - Check all dependencies"
@@ -377,11 +379,13 @@ playground-start:
 		exit 1; \
 	fi
 	@echo "$(BLUE)Starting Kit Playground...$(NC)"
-	@$(KIT_PLAYGROUND_DIR)/dev.sh
+	@REMOTE=$(REMOTE) PRODUCTION=$(PRODUCTION) $(KIT_PLAYGROUND_DIR)/dev.sh
 
 # Main playground target: Stop any existing instances, then start fresh
-# Usage: make playground          - Local access only (localhost)
-#        make playground REMOTE=1 - Remote access (0.0.0.0)
+# Usage: make playground                       - Development mode (localhost)
+#        make playground REMOTE=1              - Development mode with remote access
+#        make playground PRODUCTION=1          - Production mode (optimized)
+#        make playground REMOTE=1 PRODUCTION=1 - Production mode with remote access
 .PHONY: playground
 playground: playground-stop playground-start
 
