@@ -306,10 +306,13 @@ def create_project_routes(
                     project_dir = kit_file.parent
 
                     projects.append({
+                        'id': project_name,
                         'name': project_name,
+                        'displayName': project_name,
                         'path': str(project_dir.relative_to(validated_path)),
                         'kitFile': str(kit_file),
-                        'relativePath': str(project_dir.relative_to(validated_path))
+                        'relativePath': str(project_dir.relative_to(validated_path)),
+                        'status': 'ready'
                     })
 
             return jsonify({'projects': projects})
