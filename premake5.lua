@@ -20,3 +20,5 @@ repo_build.prebuild_copy {
 -- Only define apps that actually exist in _build/apps
 define_app("my_company.my_editor.kit")
 define_app("test_editor.kit")
+
+define_app("my_company.explorer.kit")

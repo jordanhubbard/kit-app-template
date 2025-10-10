@@ -1,0 +1,126 @@
+INFO:kit_playground.core.playground_app:Loaded template: kit_base_editor
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_viewer
+INFO:kit_playground.core.playground_app:Loaded template: base_application
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_composer
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_explorer
+INFO:kit_playground.core.playground_app:Loaded template: basic_python_extension
+INFO:kit_playground.core.playground_app:Loaded template: basic_python_ui_extension
+INFO:kit_playground.core.playground_app:Loaded template: basic_python_binding
+INFO:kit_playground.core.playground_app:Loaded template: basic_cpp_extension
+INFO:kit_playground.core.playground_app:Loaded template: kit_service
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_composer_setup
+INFO:kit_playground.core.playground_app:Loaded template: kit_service_setup
+INFO:kit_playground.core.playground_app:Loaded template: omni_default_streaming
+INFO:__main__:Starting Kit Playground web server on localhost:8000
+INFO:__main__:Debug mode: False
+(3600238) wsgi starting up on http://127.0.0.1:8000
+(3600238) accepted ('127.0.0.1', 35204)
+INFO:__main__:New client connected from 127.0.0.1 at 2025-10-08 05:43:13
+INFO:__main__:Request: GET /api/templates
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/templates HTTP/1.1" 200 13717 0.064490
+(3600238) accepted ('127.0.0.1', 35214)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates HTTP/1.1" 200 14852 0.002651
+(3600238) accepted ('127.0.0.1', 35230)
+(3600238) accepted ('127.0.0.1', 35232)
+(3600238) accepted ('127.0.0.1', 35238)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/filesystem/cwd HTTP/1.1" 200 244 0.002038
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/projects/discover?path=_build%2Fapps HTTP/1.1" 400 209 0.002693
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/config/paths HTTP/1.1" 200 325 0.001356
+(3600238) accepted ('127.0.0.1', 35250)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/templates HTTP/1.1" 200 13717 0.004801
+(3600238) accepted ('127.0.0.1', 35260)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates HTTP/1.1" 200 14852 0.004297
+(3600238) accepted ('127.0.0.1', 35270)
+(3600238) accepted ('127.0.0.1', 35280)
+(3600238) accepted ('127.0.0.1', 35292)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/filesystem/cwd HTTP/1.1" 200 244 0.001674
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/filesystem/list?path=%2Fhome%2Fjkh%2FSrc%2Fkit-app-template HTTP/1.1" 200 5110 0.003764
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/projects/discover?path=_build%2Fapps HTTP/1.1" 400 209 0.001462
+(3600238) accepted ('127.0.0.1', 35306)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/config/paths HTTP/1.1" 200 325 0.001845
+(3600238) accepted ('127.0.0.1', 35314)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/projects/discover?path=%2Fhome%2Fjkh%2FSrc%2Fkit-app-template%2F_build%2Fapps HTTP/1.1" 200 532 0.004152
+(3600238) accepted ('127.0.0.1', 35318)
+(3600238) accepted ('127.0.0.1', 35332)
+(3600238) accepted ('127.0.0.1', 35336)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates/omni_usd_composer/icon HTTP/1.1" 304 232 0.008600
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates/basic_python_binding/icon HTTP/1.1" 304 234 0.001876
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates/omni_usd_viewer/icon HTTP/1.1" 304 234 0.001639
+(3600238) accepted ('127.0.0.1', 35342)
+(3600238) accepted ('127.0.0.1', 35346)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates/omni_usd_explorer/icon HTTP/1.1" 304 233 0.002480
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates/kit_base_editor/icon HTTP/1.1" 304 234 0.001771
+(3600238) accepted ('127.0.0.1', 35350)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates HTTP/1.1" 200 14852 0.004498
+(3600238) accepted ('127.0.0.1', 35366)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates/kit_service/icon HTTP/1.1" 304 234 0.003272
+(3600238) accepted ('127.0.0.1', 35382)
+127.0.0.1 - - [08/Oct/2025 05:43:13] "GET /api/v2/templates HTTP/1.1" 200 14852 0.004532
+(3600238) accepted ('127.0.0.1', 35394)
+127.0.0.1 - - [08/Oct/2025 05:43:14] "GET /api/v2/templates HTTP/1.1" 200 14852 0.004389
+(3600238) accepted ('127.0.0.1', 52172)
+127.0.0.1 - - [08/Oct/2025 05:44:17] "GET /api/projects/discover?path=_build/apps HTTP/1.1" 400 190 0.005335
+(3600238) accepted ('127.0.0.1', 60494)
+127.0.0.1 - - [08/Oct/2025 05:44:26] "GET /api/projects/discover?path=/home/jkh/Src/kit-app-template/_build/apps HTTP/1.1" 200 513 0.002942
+INFO:kit_playground.core.playground_app:Loaded template: kit_base_editor
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_viewer
+INFO:kit_playground.core.playground_app:Loaded template: base_application
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_composer
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_explorer
+INFO:kit_playground.core.playground_app:Loaded template: basic_python_extension
+INFO:kit_playground.core.playground_app:Loaded template: basic_python_ui_extension
+INFO:kit_playground.core.playground_app:Loaded template: basic_python_binding
+INFO:kit_playground.core.playground_app:Loaded template: basic_cpp_extension
+INFO:kit_playground.core.playground_app:Loaded template: kit_service
+INFO:kit_playground.core.playground_app:Loaded template: omni_usd_composer_setup
+INFO:kit_playground.core.playground_app:Loaded template: kit_service_setup
+INFO:kit_playground.core.playground_app:Loaded template: omni_default_streaming
+INFO:__main__:Starting Kit Playground web server on localhost:8000
+INFO:__main__:Debug mode: False
+(3607646) wsgi starting up on http://127.0.0.1:8000
+(3607646) accepted ('127.0.0.1', 55620)
+INFO:__main__:New client connected from 127.0.0.1 at 2025-10-08 05:45:12
+INFO:__main__:Request: GET /api/projects/discover
+127.0.0.1 - - [08/Oct/2025 05:45:12] "GET /api/projects/discover?path=_build/apps HTTP/1.1" 200 513 0.005294
+(3607646) accepted ('127.0.0.1', 44636)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/templates HTTP/1.1" 200 13717 0.075490
+(3607646) accepted ('127.0.0.1', 44644)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates HTTP/1.1" 200 14852 0.001750
+(3607646) accepted ('127.0.0.1', 44646)
+(3607646) accepted ('127.0.0.1', 44656)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/projects/discover?path=_build%2Fapps HTTP/1.1" 200 532 0.004358
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/filesystem/cwd HTTP/1.1" 200 244 0.002102
+(3607646) accepted ('127.0.0.1', 44662)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/config/paths HTTP/1.1" 200 325 0.001282
+(3607646) accepted ('127.0.0.1', 44664)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/templates HTTP/1.1" 200 13717 0.004839
+(3607646) accepted ('127.0.0.1', 44676)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates HTTP/1.1" 200 14852 0.003975
+(3607646) accepted ('127.0.0.1', 44690)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/projects/discover?path=_build%2Fapps HTTP/1.1" 200 532 0.002387
+(3607646) accepted ('127.0.0.1', 44692)
+(3607646) accepted ('127.0.0.1', 44708)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/config/paths HTTP/1.1" 200 325 0.001757
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/filesystem/cwd HTTP/1.1" 200 244 0.001742
+(3607646) accepted ('127.0.0.1', 44714)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/filesystem/list?path=%2Fhome%2Fjkh%2FSrc%2Fkit-app-template HTTP/1.1" 200 5110 0.004880
+(3607646) accepted ('127.0.0.1', 44716)
+(3607646) accepted ('127.0.0.1', 44718)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates/omni_usd_explorer/icon HTTP/1.1" 304 233 0.016149
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates/basic_python_binding/icon HTTP/1.1" 304 234 0.002577
+(3607646) accepted ('127.0.0.1', 44734)
+(3607646) accepted ('127.0.0.1', 44738)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/projects/discover?path=%2Fhome%2Fjkh%2FSrc%2Fkit-app-template%2F_build%2Fapps HTTP/1.1" 200 532 0.002422
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates/omni_usd_viewer/icon HTTP/1.1" 304 234 0.002714
+(3607646) accepted ('127.0.0.1', 44754)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates/kit_base_editor/icon HTTP/1.1" 304 234 0.002835
+(3607646) accepted ('127.0.0.1', 44766)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates/omni_usd_composer/icon HTTP/1.1" 304 232 0.002817
+(3607646) accepted ('127.0.0.1', 44774)
+(3607646) accepted ('127.0.0.1', 44786)
+127.0.0.1 - - [08/Oct/2025 05:55:13] "GET /api/v2/templates/kit_service/icon HTTP/1.1" 304 234 0.002943
+127.0.0.1 - - [08/Oct/2025 05:55:14] "GET /api/v2/templates HTTP/1.1" 200 14852 0.003819
+(3607646) accepted ('127.0.0.1', 44796)
+127.0.0.1 - - [08/Oct/2025 05:55:14] "GET /api/v2/templates HTTP/1.1" 200 14852 0.003911
+(3607646) accepted ('127.0.0.1', 44804)
+127.0.0.1 - - [08/Oct/2025 05:55:14] "GET /api/v2/templates HTTP/1.1" 200 14852 0.004499

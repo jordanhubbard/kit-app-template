@@ -128,19 +128,33 @@ class PlaygroundWebServer:
         """Validate filesystem path with basic safety checks.
 
         Args:
-            path: User-provided file/directory path
+            path: User-provided file/directory path (can be relative or absolute)
             allow_creation: If True, allow paths that don't exist yet
 
         Returns:
             Validated Path object or None if invalid
         """
         try:
-            path_obj = Path(path).resolve()
+            # Convert relative paths to absolute by resolving from repo root
+            path_obj = Path(path)
+            if not path_obj.is_absolute():
+                repo_root = Path(__file__).parent.parent.parent
+                path_obj = (repo_root / path).resolve()
+            else:
+                path_obj = path_obj.resolve()
 
             # Basic safety: prevent null bytes and other dangerous characters
             path_str = str(path_obj)
             if '\x00' in path_str:
                 logger.warning(f"Filesystem access denied (null byte): {path}")
+                return None
+
+            # Ensure path is within repo root for security
+            repo_root = Path(__file__).parent.parent.parent.resolve()
+            try:
+                path_obj.relative_to(repo_root)
+            except ValueError:
+                logger.warning(f"Filesystem access denied (outside repo): {path}")
                 return None
 
             # If not allowing creation, check that path exists
@@ -173,7 +187,11 @@ class PlaygroundWebServer:
         self.app.register_blueprint(template_bp)
 
         # Register v2 template routes with icon support
-        v2_template_bp = create_v2_template_routes(self.playground_app, self.template_api)
+        v2_template_bp = create_v2_template_routes(
+            self.playground_app,
+            self.template_api,
+            self.socketio  # Pass socketio for UI log emission
+        )
         self.app.register_blueprint(v2_template_bp)
 
         # Register project routes

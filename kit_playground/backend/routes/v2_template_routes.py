@@ -3,10 +3,12 @@ V2 Template API routes for Kit Playground.
 These routes provide template management with icon support for the frontend.
 """
 import logging
+import subprocess
 from pathlib import Path
 from flask import Blueprint, jsonify, request, send_from_directory
 
 from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
+from tools.repoman.repo_dispatcher import _fix_application_structure
 
 logger = logging.getLogger(__name__)
 
@@ -14,18 +16,19 @@ logger = logging.getLogger(__name__)
 v2_template_bp = Blueprint('v2_templates', __name__, url_prefix='/api/v2/templates')
 
 
-def create_v2_template_routes(playground_app, template_api: TemplateAPI):
+def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketio=None):
     """
     Create and configure v2 template routes with icon support.
-    
+
     Args:
         playground_app: PlaygroundApp instance
         template_api: TemplateAPI instance for template operations
-    
+        socketio: SocketIO instance for emitting logs to UI
+
     Returns:
         Flask Blueprint with v2 template routes configured
     """
-    
+
     @v2_template_bp.route('', methods=['GET'])
     def list_templates_v2():
         """List all templates with icon URLs."""
@@ -41,7 +44,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI):
             for t in templates:
                 # Check for icon file in template directory
                 icon_url = None
-                
+
                 # Try multiple possible directory names - look for icon file, not just directory
                 possible_names = [t.name]
                 # Strip 'omni_' prefix if present (omni_usd_viewer -> usd_viewer)
@@ -187,7 +190,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI):
         """Generate a template using unified API."""
         try:
             data = request.json
-            
+
             # Extract request parameters
             template_name = data.get('templateName')
             name = data.get('name')
@@ -202,7 +205,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI):
             # Don't pass output_dir - this creates the app normally in the current repo
             # The template system will create in source/apps then automatically restructure
             # and move to _build/apps/{name}/{name}.kit (flat structure, same as CLI)
-            
+
             # Prepare generation request
             req = TemplateGenerationRequest(
                 template_name=template_name,
@@ -215,15 +218,181 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI):
                 extra_params=data.get('options', {})
             )
 
-            # Generate project
+            # Generate project (creates playback file)
             result = template_api.generate_template(req)
 
             if result.success:
+                # Execute the playback file to actually create the project files
+                repo_root = Path(__file__).parent.parent.parent.parent
+                replay_cmd = [
+                    str(repo_root / 'repo.sh'),
+                    'template',
+                    'replay',
+                    result.playback_file  # Positional argument, not --playback-file
+                ]
+
+                logger.info("=" * 80)
+                logger.info(f"TEMPLATE CREATION: {display_name} (template: {template_name})")
+                logger.info(f"Executing replay command: {' '.join(replay_cmd)}")
+                logger.info(f"Playback file: {result.playback_file}")
+                logger.info(f"Playback file exists: {Path(result.playback_file).exists()}")
+                logger.info(f"Working directory: {repo_root}")
+                logger.info("=" * 80)
+
+                try:
+                    # Emit log to UI
+                    if socketio:
+                        socketio.emit('log', {
+                            'level': 'info',
+                            'source': 'build',
+                            'message': f'Creating project: {display_name}'
+                        })
+                        socketio.emit('log', {
+                            'level': 'info',
+                            'source': 'build',
+                            'message': f'Template: {template_name}'
+                        })
+
+                    replay_result = subprocess.run(
+                        replay_cmd,
+                        cwd=str(repo_root),
+                        capture_output=True,
+                        text=True,
+                        timeout=120  # 2 minutes timeout for template replay
+                    )
+
+                    logger.info(f"Replay command exit code: {replay_result.returncode}")
+
+                    # Emit replay output to UI
+                    if replay_result.stdout:
+                        logger.info(f"Replay stdout:\n{replay_result.stdout}")
+                        if socketio:
+                            for line in replay_result.stdout.strip().split('\n'):
+                                if line:
+                                    socketio.emit('log', {
+                                        'level': 'info',
+                                        'source': 'build',
+                                        'message': line
+                                    })
+
+                    if replay_result.stderr:
+                        logger.info(f"Replay stderr:\n{replay_result.stderr}")
+                        if socketio:
+                            for line in replay_result.stderr.strip().split('\n'):
+                                if line:
+                                    socketio.emit('log', {
+                                        'level': 'warning',
+                                        'source': 'build',
+                                        'message': line
+                                    })
+
+                    logger.info("=" * 80)
+
+                    if replay_result.returncode != 0:
+                        error_msg = f"Template replay failed with exit code {replay_result.returncode}"
+                        if replay_result.stderr:
+                            error_msg += f": {replay_result.stderr}"
+                        elif replay_result.stdout:
+                            error_msg += f": {replay_result.stdout}"
+
+                        logger.error(error_msg)
+                        return jsonify({
+                            'success': False,
+                            'error': error_msg,
+                            'stdout': replay_result.stdout,
+                            'stderr': replay_result.stderr,
+                            'exitCode': replay_result.returncode
+                        }), 500
+
+                    # Post-process: Move files from source/apps to _build/apps
+                    # The replay creates files in source/apps but they need to be
+                    # restructured in _build/apps/{name}/{name}.kit format
+                    try:
+                        logger.info("Post-processing: Moving files from source/apps to _build/apps")
+                        if socketio:
+                            socketio.emit('log', {
+                                'level': 'info',
+                                'source': 'build',
+                                'message': 'Finalizing project structure...'
+                            })
+
+                        # Read the playback file to get configuration
+                        try:
+                            import tomllib
+                            with open(result.playback_file, 'rb') as f:
+                                playback_data = tomllib.load(f)
+                        except ImportError:
+                            import toml
+                            with open(result.playback_file, 'r') as f:
+                                playback_data = toml.load(f)
+
+                        # Call the restructuring function
+                        _fix_application_structure(repo_root, playback_data)
+                        logger.info("✓ Application structure fixed")
+                        if socketio:
+                            socketio.emit('log', {
+                                'level': 'success',
+                                'source': 'build',
+                                'message': f'Project created successfully: {display_name}'
+                            })
+
+                    except Exception as e:
+                        error_msg = f"Failed to restructure application: {str(e)}"
+                        logger.error(error_msg, exc_info=True)
+                        return jsonify({
+                            'success': False,
+                            'error': error_msg,
+                            'replayStdout': replay_result.stdout
+                        }), 500
+
+                except subprocess.TimeoutExpired:
+                    error_msg = "Template replay timed out after 120 seconds"
+                    logger.error(error_msg)
+                    return jsonify({
+                        'success': False,
+                        'error': error_msg
+                    }), 500
+                except Exception as e:
+                    error_msg = f"Failed to execute replay command: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    return jsonify({
+                        'success': False,
+                        'error': error_msg
+                    }), 500
+
                 # Apps are created in source/apps then automatically moved to _build/apps
                 # Final location: _build/apps/{name}/{name}.kit (flat structure)
                 output_dir = '_build/apps'
                 kit_file_path = f"{output_dir}/{name}/{name}.kit"
-                
+
+                # Verify the project files were actually created
+                project_dir = repo_root / output_dir / name
+                kit_file = repo_root / kit_file_path
+
+                if not project_dir.exists():
+                    error_msg = f"Project directory was not created: {project_dir}"
+                    logger.error(error_msg)
+                    return jsonify({
+                        'success': False,
+                        'error': error_msg,
+                        'replayStdout': replay_result.stdout,
+                        'replayStderr': replay_result.stderr
+                    }), 500
+
+                if not kit_file.exists():
+                    error_msg = f"Kit configuration file was not created: {kit_file}"
+                    logger.error(error_msg)
+                    return jsonify({
+                        'success': False,
+                        'error': error_msg,
+                        'replayStdout': replay_result.stdout,
+                        'replayStderr': replay_result.stderr
+                    }), 500
+
+                logger.info(f"✓ Project created successfully: {project_dir}")
+                logger.info(f"✓ Kit file exists: {kit_file}")
+                logger.info("=" * 80)
+
                 return jsonify({
                     'success': True,
                     'outputDir': output_dir,
@@ -234,8 +403,9 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI):
                         'kitFile': kit_file_path,  # Relative path: _build/apps/name/name.kit
                         'kitFileName': f"{name}.kit"
                     },
-                    'message': result.message,
-                    'playbackFile': result.playback_file
+                    'message': f"Project '{display_name}' created successfully",
+                    'playbackFile': result.playback_file,
+                    'replayOutput': replay_result.stdout
                 })
             else:
                 return jsonify({
@@ -248,4 +418,3 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI):
             return jsonify({'error': str(e)}), 500
 
     return v2_template_bp
-

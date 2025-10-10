@@ -56,7 +56,8 @@ all: check-deps
 	@echo "$(GREEN)Kit App Template - Available Commands:$(NC)"
 	@echo ""
 	@echo "$(BLUE)Core Commands:$(NC)"
-	@echo "  make build              - Build Kit applications"
+	@echo "  make build              - Prepare build environment (fetch dependencies, licensing)"
+	@echo "  make build-apps         - Build Kit applications (via repo.sh)"
 	@echo "  make playground         - Build and launch Kit Playground (Docker)"
 	@echo "  make template-new       - Create new template (CLI)"
 	@echo "  make test              - Run test suite"
@@ -340,9 +341,16 @@ ifeq ($(OS),windows)
 endif
 
 
-# Build Kit applications
+# Prepare environment (install dependencies and handle licensing)
 .PHONY: build
 build: check-deps
+	@echo "$(BLUE)Preparing build environment...$(NC)"
+	@./repo.sh build --fetch-only --licensing
+	@echo "$(GREEN)✓ Build environment ready$(NC)"
+
+# Build Kit applications (full build)
+.PHONY: build-apps
+build-apps: check-deps
 	@echo "$(BLUE)Building Kit applications...$(NC)"
 	@./repo.sh build
 
