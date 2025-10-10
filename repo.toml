@@ -108,6 +108,9 @@ registries = [
 ########################################################################################################################
 # Packaging
 ########################################################################################################################
+# Note: Apps are now auto-discovered from _build/apps via app_discovery_paths above (line 91-93)
+# This legacy static list is only used for packaging and should match discovered apps
+apps = []
 
 [repo_package.packages.fat_package]
 root = "_build/$${platform}/$${config}"
