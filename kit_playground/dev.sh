@@ -151,14 +151,21 @@ sleep 5
 # Check if frontend is responding
 MAX_RETRIES=10
 RETRY_COUNT=0
+FRONTEND_READY=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     if curl -s "http://${FRONTEND_HOST}:${FRONTEND_PORT}" > /dev/null 2>&1; then
+        FRONTEND_READY=1
         break
     fi
     sleep 1
     RETRY_COUNT=$((RETRY_COUNT + 1))
 done
 
+if [ $FRONTEND_READY -eq 1 ]; then
+    echo -e "${GREEN}✓ All services ready${NC}"
+else
+    echo -e "${YELLOW}⚠ Frontend may still be starting (check http://localhost:${FRONTEND_PORT})${NC}"
+fi
 echo ""
 
 # Wait for both processes
