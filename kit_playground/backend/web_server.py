@@ -272,10 +272,13 @@ class PlaygroundWebServer:
         Args:
             host: Host address to bind to
             port: Port to listen on
-            debug: Enable debug mode
+            debug: Enable debug mode (with hot-reload)
         """
         logger.info(f"Starting Kit Playground web server on {host}:{port}")
         logger.info(f"Debug mode: {debug}")
+
+        if debug:
+            logger.info("Hot-reload enabled: Backend will auto-reload on code changes")
 
         # Use socketio.run instead of app.run for WebSocket support
         self.socketio.run(
@@ -283,7 +286,7 @@ class PlaygroundWebServer:
             host=host,
             port=port,
             debug=debug,
-            use_reloader=False,  # Disable reloader to prevent duplicate processes
+            use_reloader=debug,  # Enable reloader in debug mode for hot-reload
             log_output=True
         )
 

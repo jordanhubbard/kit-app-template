@@ -65,13 +65,13 @@ echo -e "${GREEN}║  Kit Playground - Development Mode with Hot Reload        �
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}Starting services:${NC}"
-echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC}"
+echo -e "  • Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC} ${YELLOW}(with hot-reload)${NC}"
 echo -e "  • Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC} ${YELLOW}(with hot-reload)${NC}"
 if [ "$REMOTE" = "1" ]; then
     echo -e "  ${YELLOW}⚠ Remote mode: Listening on 0.0.0.0 (all interfaces)${NC}"
 fi
 echo ""
-echo -e "${YELLOW}Changes to React/TypeScript files will hot-reload automatically!${NC}"
+echo -e "${YELLOW}Both frontend and backend will hot-reload on code changes!${NC}"
 echo -e "${YELLOW}Press Ctrl+C to stop both servers${NC}"
 echo ""
 
@@ -86,10 +86,10 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Start backend in background
-echo -e "${BLUE}[1/2] Starting Backend API server...${NC}"
+# Start backend in background with hot-reload enabled
+echo -e "${BLUE}[1/2] Starting Backend API server with hot-reload...${NC}"
 cd "$BACKEND_DIR"
-python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
+python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" --debug > /tmp/playground-backend.log 2>&1 &
 BACKEND_PID=$!
 
 # Wait for backend to start
