@@ -48,8 +48,17 @@ These resources empower developers at all experience levels to fully utilize the
 ## Table of Contents
 - [Overview](#overview)
 - [Prerequisites and Environment Setup](#prerequisites-and-environment-setup)
+- [🚀 Quick Start](#-quick-start)
+    - [Choose Your Development Style](#choose-your-development-style)
+    - [Option A: Visual Development with Kit Playground](#-option-a-visual-development-with-kit-playground-recommended)
+    - [Option B: Command Line Development](#️-option-b-command-line-development)
+    - [Creating Different Types of Projects](#-creating-different-types-of-projects)
+    - [What Gets Created](#-what-gets-created)
+    - [Common Workflows](#-common-workflows)
+    - [Troubleshooting](#-troubleshooting)
 - [Repository Structure](#repository-structure)
-- [Quick Start](#quick-start)
+    - [Directories Created by Templates](#directories-created-by-templates)
+- [Detailed CLI Workflow](#detailed-cli-workflow)
 - [Kit Playground - Visual Development Environment](#kit-playground---visual-development-environment)
     - [Getting Started with Kit Playground](#getting-started-with-kit-playground)
     - [Features](#kit-playground-features)
@@ -65,7 +74,7 @@ These resources empower developers at all experience levels to fully utilize the
     - [Microservices](#microservices)
     - [Components](#components)
 - [Tools](#tools)
-- [License](#license)
+- [Governing Terms](#governing-terms)
 - [Additional Resources](#additional-resources)
 - [Contributing](#contributing)
 
@@ -104,18 +113,347 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 
 - [**VSCode**](https://code.visualstudio.com/download) (or your preferred IDE): For code editing and development
 
+## 🚀 Quick Start
+
+Get up and running in minutes! This quick start guide shows you the fastest path to creating your first Omniverse Kit application.
+
+### Choose Your Development Style
+
+You can use either:
+- **🎨 Kit Playground** (Visual GUI) - Recommended for beginners
+- **⌨️ Command Line** (CLI) - Traditional developer workflow
+
+Both methods produce identical results and can be used interchangeably.
+
+---
+
+### 🎨 Option A: Visual Development with Kit Playground (Recommended)
+
+The fastest way to get started with a visual, browser-based interface:
+
+**1. Clone and Setup:**
+```bash
+git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
+cd kit-app-template
+make install-deps  # Installs Python packages + Node.js for GUI
+```
+
+**2. Launch Kit Playground:**
+```bash
+make playground
+```
+This opens a visual development environment in your browser at `http://localhost:8200`
+
+**3. Create Your First Application:**
+- Click **"New Project"** button
+- Select a template (e.g., **Kit Base Editor**)
+- Fill in project details:
+  - **Name:** `my_company.my_first_app` (lowercase, dot-separated)
+  - **Display Name:** `My First App` (user-friendly name)
+  - **Version:** `1.0.0`
+- Click **"Create"** ✨
+
+**4. Build and Run:**
+- Click the **Build** button (🔨) in the toolbar
+- Wait for build to complete (~2-3 minutes first time)
+- Click **Run** (▶️) to launch your application
+
+**5. Start Developing:**
+- Edit code in the left pane
+- See live preview on the right
+- Test on different device sizes
+- Console output shows build status
+
+✅ **You now have a working Omniverse Kit application!**
+
+---
+
+### ⌨️ Option B: Command Line Development
+
+For developers who prefer terminal workflows:
+
+**1. Clone and Setup:**
+```bash
+git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
+cd kit-app-template
+```
+
+**2. Create an Application:**
+
+**Linux:**
+```bash
+./repo.sh template new kit_base_editor \
+  --name my_company.my_first_app \
+  --display-name "My First App" \
+  --version 1.0.0
+```
+
+**Windows:**
+```powershell
+.\repo.bat template new kit_base_editor --name my_company.my_first_app --display-name "My First App" --version 1.0.0
+```
+
+> **Note:** First run prompts you to accept Omniverse License Terms.
+
+**3. Build:**
+```bash
+./repo.sh build      # Linux
+.\repo.bat build     # Windows
+```
+
+**4. Launch:**
+```bash
+./repo.sh launch     # Linux
+.\repo.bat launch    # Windows
+```
+
+✅ **Your application is now running!**
+
+---
+
+### 📦 Creating Different Types of Projects
+
+#### Application Templates
+
+| Template | Command | Use Case |
+|----------|---------|----------|
+| **Kit Base Editor** | `template new kit_base_editor` | Minimal OpenUSD editor |
+| **USD Viewer** | `template new omni_usd_viewer` | Viewport-only for streaming |
+| **USD Explorer** | `template new omni_usd_explorer` | Large scene exploration |
+| **USD Composer** | `template new omni_usd_composer` | Complex scene authoring |
+
+**Example - Create USD Viewer:**
+```bash
+./repo.sh template new omni_usd_viewer --name my_company.viewer --display-name "My Viewer" --version 1.0.0
+```
+
+#### Extension Templates
+
+| Template | Command | Use Case |
+|----------|---------|----------|
+| **Python Extension** | `template new basic_python_extension` | Python functionality |
+| **Python UI Extension** | `template new basic_python_ui_extension` | Python with custom UI |
+| **C++ Extension** | `template new basic_cpp_extension` | High-performance C++ |
+| **C++ with Python** | `template new basic_python_binding` | C++ with Python bindings |
+
+**Example - Create Python Extension:**
+```bash
+./repo.sh template new basic_python_ui_extension \
+  --name my_company.my_tool \
+  --display-name "My Tool" \
+  --version 1.0.0
+```
+
+#### Microservice Templates
+
+| Template | Command | Use Case |
+|----------|---------|----------|
+| **Kit Service** | `template new kit_service` | Headless REST API service |
+
+**Example - Create Microservice:**
+```bash
+./repo.sh template new kit_service --name my_company.my_api --display-name "My API" --version 1.0.0
+```
+
+---
+
+### 🎯 What Gets Created?
+
+When you create a project, the template system automatically generates:
+
+**For Applications:**
+```
+source/apps/my_company.my_first_app/
+├── my_company.my_first_app.kit    # Main configuration
+├── README.md                       # Documentation
+├── .project-meta.toml             # Project metadata
+├── repo.sh / repo.bat             # Wrapper scripts
+```
+
+**For Extensions:**
+```
+source/extensions/my_company.my_tool/
+├── config/extension.toml          # Extension config
+├── my_company/my_tool/
+│   ├── __init__.py                # Entry point
+│   └── extension.py               # Main code
+├── docs/                          # Documentation
+└── data/                          # Assets
+```
+
+**Build Artifacts (auto-generated on first build):**
+```
+_build/
+├── linux-x86_64/release/
+│   ├── apps/          → symlink to source/apps/
+│   ├── exts/          → built extensions
+│   └── kit/           → Kit SDK runtime
+```
+
+---
+
+### 🔍 Exploring Templates
+
+**List all available templates:**
+```bash
+./repo.sh template list
+```
+
+**Filter by type:**
+```bash
+./repo.sh template list --type application
+./repo.sh template list --type extension
+./repo.sh template list --type microservice
+```
+
+**View detailed documentation:**
+```bash
+./repo.sh template docs kit_base_editor
+./repo.sh template docs basic_python_ui_extension
+```
+
+---
+
+### 💡 Common Workflows
+
+**Working with Multiple Applications:**
+```bash
+# Create multiple apps
+./repo.sh template new kit_base_editor --name my_company.app_one --display-name "App One"
+./repo.sh template new omni_usd_viewer --name my_company.app_two --display-name "App Two"
+
+# Build all
+./repo.sh build
+
+# Launch specific app
+./repo.sh launch --name my_company.app_one
+```
+
+**Adding Extensions to Applications:**
+```bash
+# Create extension
+./repo.sh template new basic_python_ui_extension --name my_company.my_tool
+
+# Extension is automatically available to all apps
+./repo.sh build
+./repo.sh launch
+```
+
+**Creating Standalone Projects:**
+```bash
+# Create self-contained project in any directory
+./repo.sh template new kit_base_editor \
+  --name my_company.standalone \
+  --display-name "Standalone App" \
+  --output-dir ~/my-projects/standalone-app
+
+# Build and run independently
+cd ~/my-projects/standalone-app
+./repo.sh build
+./repo.sh launch
+```
+
+---
+
+### 🎨 Using Kit Playground Features
+
+Once Kit Playground is running (`make playground`), you can:
+
+**Visual Template Gallery:**
+- Browse templates with previews
+- Search and filter by category
+- View capabilities and connectors
+- One-click creation
+
+**Side-by-Side Development:**
+- Code editor (left) with syntax highlighting
+- Live preview (right) with device modes
+- Hot reload - changes appear instantly
+- Console output at bottom
+
+**Build & Deploy:**
+- One-click build (🔨)
+- Run/Stop controls (▶️ ⏹️)
+- Export standalone projects
+- Deploy to cloud services
+
+**Device Testing:**
+- Desktop (1920×1080)
+- Tablet (768×1024)
+- Phone (375×812)
+- 4K/TV (3840×2160)
+- Zoom 25% to 200%
+
+---
+
+### ⚡ Tips for Rapid Development
+
+1. **Use Kit Playground for Learning** - Visual feedback helps understand the system
+2. **Use CLI for Automation** - Scriptable and CI/CD friendly
+3. **Start with Base Editor** - Simplest template to understand
+4. **Add Extensions Incrementally** - Build features as separate extensions
+5. **Check Template Docs** - Each template has detailed documentation
+6. **Test Early, Test Often** - Build and run frequently to catch issues
+
+---
+
+### 🆘 Troubleshooting
+
+**Kit Playground won't start:**
+```bash
+make install-deps  # Reinstall dependencies
+make playground    # Try again
+```
+
+**Build fails:**
+```bash
+./repo.sh build --clean  # Clean build
+```
+
+**License prompt on first run:**
+```bash
+# You must accept license terms on first template creation
+# This only happens once per machine
+```
+
+**Python dependencies missing:**
+```bash
+make install-python-deps  # Install just Python packages
+```
+
+---
+
+### 📚 Next Steps
+
+Once you've created your first application:
+
+1. **Explore the Code** - Open the generated `.kit` file and extensions
+2. **Read Template Docs** - Use `./repo.sh template docs <name>` for details
+3. **Build Custom Extensions** - Add your own functionality
+4. **Try Different Templates** - Experiment with viewers, composers, services
+5. **Deploy Applications** - Package and distribute your creations
+
+**For detailed documentation:**
+- [Kit SDK Companion Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html)
+- [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md)
+- [Omniverse Kit SDK Manual](https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/index.html)
+
+---
 
 ## Repository Structure
 
 | Directory Item   | Purpose                                                    |
 |------------------|------------------------------------------------------------|
 | .vscode          | VS Code configuration details and helper tasks             |
-| _build/          | **Build output directory (generated)**                     |
-| ├─ apps/         | **Generated application projects (each in own directory)** |
-| │  └─ {app_name}/| **Application directory with .kit, README, metadata, and scripts** |
+| **_build/**      | **Build output directory (generated automatically)**       |
+| ├─ **apps/**     | **Symlink to `source/apps/` - applications appear here**   |
+| ├─ linux-x86_64/ | **Linux build artifacts and runtime files**                |
+| └─ windows-x86_64/| **Windows build artifacts and runtime files**             |
 | readme-assets/   | Images and additional repository documentation             |
-| source/          | Source extensions and custom code                          |
-| ├─ extensions/   | Your custom extensions source code                         |
+| **source/**      | **Source code directory (your applications and extensions)**|
+| ├─ **apps/**     | **Your application projects (created by templates)**       |
+| │  └─ {app_name}/| **Application directory with .kit, README, metadata, scripts** |
+| └─ **extensions/**| **Your custom extensions source code**                    |
 | templates/       | Enhanced data-driven template system with hierarchical organization |
 | ├─ applications/ | Standalone runnable application templates                   |
 | ├─ extensions/   | Reusable extension templates organized by language          |
@@ -136,41 +474,70 @@ Ensure your system is set up with the following to work with Omniverse Applicati
 | repo.toml        | Top level configuration of repo tools.                     |
 | repo_tools.toml  | Setup of local, repository specific tools                  |
 
-> **Important:** Generated applications are placed in `_build/apps/` with each project in its own directory. This separates build artifacts from source code and provides proper project organization. Each application directory is self-contained with wrapper scripts that allow running repository commands from within the project directory.
+### Directories Created by Templates
 
-## Quick Start
+When you create applications or extensions from templates, the following structure is automatically generated:
 
-You can develop Kit applications using either the **Visual Kit Playground** (recommended for beginners) or the **Command Line Interface**. Choose the approach that best fits your workflow.
+**Applications** (created in `source/apps/{app_name}/`):
+```
+source/apps/my_company.my_editor/
+├── my_company.my_editor.kit    # Main application configuration
+├── README.md                    # Template-specific documentation
+├── .project-meta.toml          # Project metadata (name, version, template)
+├── repo.sh                      # Linux wrapper script for commands
+└── repo.bat                     # Windows wrapper script for commands
+```
+
+**Extensions** (created in `source/extensions/{extension_name}/`):
+```
+source/extensions/my_company.my_extension/
+├── config/
+│   └── extension.toml          # Extension configuration
+├── docs/                        # Documentation
+├── data/                        # Extension data files
+├── my_company/
+│   └── my_extension/
+│       ├── __init__.py         # Python entry point
+│       └── extension.py        # Main extension code
+└── README.md                   # Extension documentation
+```
+
+**Build Artifacts** (automatically created during first build):
+```
+_build/
+├── linux-x86_64/release/
+│   ├── apps/                   # Symlink → source/apps/
+│   ├── exts/                   # Built extensions
+│   ├── extscache/              # Extension cache
+│   └── kit/                    # Kit SDK runtime
+└── windows-x86_64/release/
+    └── ... (same structure for Windows)
+```
+
+> **Important:** 
+> - Applications are created in `source/apps/{name}/` and accessed via symlink at `_build/{platform}/release/apps/`
+> - Extensions are created in `source/extensions/{name}/`
+> - Build artifacts and Kit SDK runtime are in `_build/{platform}/release/`
+> - Each application directory is self-contained with wrapper scripts for running commands
+
+## Detailed CLI Workflow
+
+This section provides in-depth information about the command-line workflow for advanced users and automation scenarios. **For quick start instructions, see [Quick Start](#-quick-start) above.**
 
 > **Architecture Note:** The CLI and Kit Playground are **independent systems**. The CLI is a monolithic application that works standalone without any web server or background services. Kit Playground is an optional browser-based UI that provides a visual development experience. You can use either or both, and they do not interfere with each other.
 
-### Option 1: Visual Development with Kit Playground (Recommended)
+### Step-by-Step CLI Development Process
 
-Kit Playground provides a Swift Playgrounds-like visual environment where you can browse, edit, build, and run templates side-by-side without using the command line. **This is an optional tool** that launches a local web server for the visual interface.
-
-**[Jump to Kit Playground Setup →](#kit-playground---visual-development-environment)**
-
-### Option 2: Command Line Development
-
-For developers who prefer traditional command-line workflows, follow the steps below. **The CLI tools work completely standalone** - no web server or additional services are required. For a more comprehensive explanation of functionality, reference the [Tutorial](https://docs.omniverse.nvidia.com/kit/docs/kit-app-template/latest/docs/intro.html).
-
-### 1. Clone the Repository
+#### 1. Clone the Repository
 
 Begin by cloning the `kit-app-template` to your local workspace:
 
-#### 1a. Clone
-
 ```bash
 git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
-```
-
-#### 1b. Navigate to Cloned Directory
-
-```bash
 cd kit-app-template
 ```
 
-### 2. Check and Install Dependencies (Optional)
+#### 2. Check and Install Dependencies (Optional)
 
 > **NOTE:** Python dependencies (`toml` package) are automatically installed when you first run `./repo.sh` or `.\repo.bat` commands. This step is optional but recommended to verify your setup.
 
@@ -190,7 +557,7 @@ This will install:
 
 > **TIP:** If you only need to install Python dependencies, run `make install-python-deps`
 
-### 3. Explore Available Templates
+#### 3. Explore Available Templates
 
 Before creating a new project, explore the available templates:
 
@@ -202,78 +569,68 @@ Before creating a new project, explore the available templates:
 **List templates by type:**
 ```bash
 ./repo.sh template list --type application
+./repo.sh template list --type extension
 ./repo.sh template list --type microservice
 ```
 
 **View template documentation:**
 ```bash
 ./repo.sh template docs kit_base_editor
+./repo.sh template docs basic_python_ui_extension
 ./repo.sh template docs kit_service
 ```
 
-### 4. Create and Configure New Application From Template
+#### 4. Create New Project From Template
 
 Run the following command to create a new project:
 
 **Linux:**
 ```bash
-./repo.sh template new kit_base_editor --name my_company.my_editor --display-name "My Editor"
+./repo.sh template new kit_base_editor --name my_company.my_editor --display-name "My Editor" --version 1.0.0
 ```
 
 **Windows:**
 ```powershell
-.\repo.bat template new kit_base_editor --name my_company.my_editor --display-name "My Editor"
+.\repo.bat template new kit_base_editor --name my_company.my_editor --display-name "My Editor" --version 1.0.0
 ```
 
 > **NOTE:** If this is your first time running the `template new` tool, you'll be prompted to accept the Omniverse Licensing Terms.
 
-Follow the prompt instructions:
-- **? Select what you want to create with arrow keys ↑↓:** Application
-- **? Select desired template with arrow keys ↑↓:** Kit Base Editor
-- **? Enter name of application .kit file [name-spaced, lowercase, alphanumeric]:** [set application name]
-- **? Enter application_display_name:** [set application display name]
-- **? Enter version:** [set application version]
+**What Gets Created:**
+- Application files in `source/apps/my_company.my_editor/`
+- Main configuration: `my_company.my_editor.kit`
+- Project metadata: `.project-meta.toml`
+- Wrapper scripts: `repo.sh` and `repo.bat`
+- Documentation: `README.md`
 
-  Application [application name] created successfully in [path to project]/_build/apps/[application name]/[application name].kit
-
-- **? Do you want to add application layers?** No
-
-> **Note:** Each application is created in its own directory under `_build/apps/`. For example, creating `my_company.my_editor` results in `_build/apps/my_company.my_editor/my_company.my_editor.kit`. The directory also includes a `README.md`, `.project-meta.toml` metadata file, and `repo.sh`/`repo.bat` wrapper scripts for running commands directly from the project directory.
-
-#### Explanation of Example Selections
-
-• **`.kit` file name:** This file defines the application according to Kit SDK guidelines. The file name should be lowercase and alphanumeric to remain compatible with Kit’s conventions.
-
-• **display name:** This is the application name users will see. It can be any descriptive text.
-
-• **version:** The version number of the application. While you can use any format, semantic versioning (e.g., 0.1.0) is recommended for clarity and consistency.
-
-• **application layers:** These optional layers add functionality for features such as streaming to web browsers. For this quick-start, we skip adding layers, but choosing "yes" would let you enable and configure streaming capabilities.
-
-### 5. Build
+#### 5. Build Your Application
 
 Build your new application with the following command:
-
 
 **Linux:**
 ```bash
 ./repo.sh build
 ```
+
 **Windows:**
 ```powershell
 .\repo.bat build
- ```
+```
 
-A successful build will result in the following message:
-
+A successful build will result in:
 ```text
 BUILD (RELEASE) SUCCEEDED (Took XX.XX seconds)
 ```
 
- If you experience issues related to build, please see the [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md) section for additional information.
+**What Happens During Build:**
+- Kit SDK runtime is downloaded (first time only)
+- Extensions are compiled and packaged
+- Symlinks created: `_build/{platform}/release/apps` → `source/apps/`
+- Build artifacts placed in `_build/{platform}/release/`
 
+If you experience issues related to build, please see the [Usage and Troubleshooting](readme-assets/additional-docs/usage_and_troubleshooting.md) section for additional information.
 
-### 6. Launch
+#### 6. Launch Your Application
 
 Initiate your newly created application using:
 
@@ -281,17 +638,84 @@ Initiate your newly created application using:
 ```bash
 ./repo.sh launch
 ```
+
 **Windows:**
 ```powershell
 .\repo.bat launch
 ```
 
-**? Select with arrow keys which App would you like to launch:** [Select the created editor application]
+If you have multiple applications, you'll be prompted to select one:
+```
+? Select with arrow keys which App would you like to launch:
+  ▸ my_company.my_editor
+    my_company.another_app
+```
+
+**Launch specific application directly:**
+```bash
+./repo.sh launch --name my_company.my_editor
+```
 
 ![Kit Base Editor Image](readme-assets/kit_base_editor.png)
 
-
 > **NOTE:** The initial startup may take 5 to 8 minutes as shaders compile for the first time. After initial shader compilation, startup time will reduce dramatically
+
+### Advanced CLI Usage
+
+#### Interactive Mode (Default)
+
+Without command-line arguments, the template system runs interactively:
+
+```bash
+./repo.sh template new
+```
+
+This will prompt you for:
+- Template type (Application, Extension, Microservice)
+- Specific template selection
+- Project name and details
+- Optional layers and features
+
+#### Non-Interactive Mode (Automation)
+
+For CI/CD pipelines and automation, use command-line arguments:
+
+```bash
+./repo.sh template new kit_base_editor \
+  --name my_company.automated_app \
+  --display-name "Automated App" \
+  --version 1.0.0 \
+  --accept-license
+```
+
+#### Build Configurations
+
+**Release build (default):**
+```bash
+./repo.sh build --config release
+```
+
+**Debug build (with symbols):**
+```bash
+./repo.sh build --config debug
+```
+
+**Clean build (removes cached artifacts):**
+```bash
+./repo.sh build --clean
+```
+
+#### Running from Application Directory
+
+Each application has wrapper scripts that allow running commands from within its directory:
+
+```bash
+cd source/apps/my_company.my_editor
+./repo.sh build    # Builds from app directory
+./repo.sh launch   # Launches this specific app
+```
+
+The wrapper scripts automatically find the repository root and execute the appropriate commands.
 
 ## Kit Playground - Visual Development Environment
 
@@ -477,21 +901,25 @@ On first launch, Kit Playground will:
   - Save projects regularly
   - Use version control for team projects
 
-## Working with Multiple Applications
+## Working with Multiple Applications and Standalone Projects
 
-By default, `./repo.sh template new` creates application projects in `_build/apps/` with each project in its own directory. You can create multiple applications:
+> **Quick Reference:** See [Common Workflows](#-common-workflows) in the Quick Start section for examples.
+
+### Multiple Applications in Repository
+
+By default, `./repo.sh template new` creates application projects in `source/apps/` with each project in its own directory. You can create multiple applications within the same repository:
 
 ```bash
 # Create first application
 ./repo.sh template new kit_base_editor --name my_company.app_one --display-name "App One" --version 1.0.0
 
-# Create second application
-./repo.sh template new kit_base_editor --name my_company.app_two --display-name "App Two" --version 1.0.0
+# Create second application  
+./repo.sh template new omni_usd_viewer --name my_company.app_two --display-name "App Two" --version 1.0.0
 ```
 
-Both applications will be created with the following structure:
+**Resulting Structure:**
 ```
-_build/apps/
+source/apps/
 ├── my_company.app_one/
 │   ├── my_company.app_one.kit
 │   ├── README.md
@@ -506,51 +934,65 @@ _build/apps/
     └── repo.bat
 ```
 
-Each project directory includes:
-- **`.kit` file**: The application configuration
-- **`README.md`**: Template documentation
-- **`.project-meta.toml`**: Project metadata (name, version, template source, etc.)
-- **`repo.sh`/`repo.bat`**: Wrapper scripts that allow you to run repository commands from within the project directory
+**Benefits of Multiple Applications:**
+- Share extensions across applications
+- Common build environment
+- Unified dependency management
+- Single repository for related projects
 
-To launch a specific application:
+**Launch specific application:**
 ```bash
 ./repo.sh launch --name my_company.app_one
 ```
 
-You can also run commands directly from a project directory:
+**Run commands from application directory:**
 ```bash
-cd _build/apps/my_company.app_one
-./repo.sh launch
+cd source/apps/my_company.app_one
+./repo.sh build   # Builds entire repo
+./repo.sh launch  # Launches this specific app
 ```
 
-## Creating Standalone Projects
+### Standalone Projects
 
-For self-contained projects outside the repository, you can use the `--output-dir` option to create a complete standalone project:
+For self-contained projects outside the repository, use the `--output-dir` option:
 
 ```bash
-./repo.sh template new kit_service --name my_company.my_api --display-name "My API Service" --output-dir ./my-standalone-project
+./repo.sh template new kit_service \
+  --name my_company.my_api \
+  --display-name "My API Service" \
+  --output-dir ~/projects/my-standalone-api
 ```
 
-**Supported Template Types for Standalone Projects:**
-- **Applications**: `kit_base_editor`, `usd_viewer`, `usd_explorer`, `usd_composer`
-- **Microservices**: `kit_service`
+**Supported Template Types:**
+- ✅ **Applications**: `kit_base_editor`, `omni_usd_viewer`, `omni_usd_explorer`, `omni_usd_composer`
+- ✅ **Microservices**: `kit_service`
+- ❌ **Extensions**: Not supported (must be part of an application)
 
-> **Note:** Extension templates (`basic_python`, `basic_cpp`, etc.) are not supported as standalone projects since they must be part of an application.
-
-Standalone projects include:
+**What's Included in Standalone Projects:**
 - Complete source code and configuration files
-- All necessary build tools (repo.sh, repo.bat)
+- All necessary build tools (`repo.sh`, `repo.bat`)
 - Independent build tooling and dependencies
 - Self-contained git repository structure
 - Project-specific documentation and metadata
+- No dependencies on parent repository
 
-Once created, standalone projects can be built and run independently:
-
+**Building and Running Standalone Projects:**
 ```bash
-cd my-standalone-project
+cd ~/projects/my-standalone-api
 ./repo.sh build
 ./repo.sh launch
 ```
+
+**When to Use Standalone vs Repository:**
+
+| Scenario | Use Standalone | Use Repository |
+|----------|----------------|----------------|
+| Single application | ✅ Yes | ✅ Yes |
+| Multiple related apps | ❌ No | ✅ Yes (recommended) |
+| Shared extensions | ❌ No | ✅ Yes (required) |
+| Independent deployment | ✅ Yes | ⚠️ Possible |
+| Simple distribution | ✅ Yes | ❌ No |
+| Team development | ⚠️ Depends | ✅ Yes (recommended) |
 
 ## Enhanced Template System
 
