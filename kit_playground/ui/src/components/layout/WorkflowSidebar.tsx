@@ -124,7 +124,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
       );
     } else if (status.built !== undefined) {
       const buildIcon = status.built === 'success'
-        ? <CheckCircle sx={{ fontSize: 12 }} />
+        ? <SuccessIcon sx={{ fontSize: 12 }} />
         : <ErrorIcon sx={{ fontSize: 12 }} />;
 
       badges.push(
@@ -163,7 +163,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
       );
     } else if (status.launched !== undefined) {
       const launchIcon = status.launched === 'success'
-        ? <CheckCircle sx={{ fontSize: 12 }} />
+        ? <SuccessIcon sx={{ fontSize: 12 }} />
         : <ErrorIcon sx={{ fontSize: 12 }} />;
 
       badges.push(

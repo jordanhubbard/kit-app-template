@@ -223,28 +223,15 @@ def create_project_routes(
             preview_url = None
 
             if use_xpra:
-                # Launch with Xpra for browser preview
+                # Launch with Xpra using repo.sh --xpra flag
+                # This delegates Xpra management to the CLI tool
                 socketio.emit('log', {
                     'level': 'info',
                     'source': 'runtime',
-                    'message': 'Starting Xpra session for browser preview...'
+                    'message': 'Using Xpra for browser preview...'
                 })
 
-                session_id = f"project_{project_name}"
-                session = xpra_manager.create_session(session_id)
-
-                if not session:
-                    socketio.emit('log', {
-                        'level': 'error',
-                        'source': 'runtime',
-                        'message': 'Failed to start Xpra. Is Xpra installed? See XPRA_SETUP.md'
-                    })
-                    return jsonify({
-                        'success': False,
-                        'error': 'Failed to start Xpra session. Please check if Xpra is installed.'
-                    }), 500
-
-                # Determine launch command - prefer project wrapper if available
+                # Determine launch command - prefer project wrapper
                 launch_cmd = None
                 launch_cwd = None
 
@@ -253,33 +240,20 @@ def create_project_routes(
                     if app_dir:
                         wrapper_script = app_dir / 'repo.sh'
                         if wrapper_script.exists():
-                            # Use project wrapper with 'launch' command and kit file name
-                            # repo.sh launch requires --name flag
-                            launch_cmd = f"./repo.sh launch --name {kit_file}"
+                            # Use project wrapper with --xpra flag
+                            launch_cmd = ['./repo.sh', 'launch', '--name', kit_file, '--xpra']
                             launch_cwd = str(app_dir)
                             logger.info(f"Using project wrapper for Xpra launch in {launch_cwd}")
 
-                # Fallback to global kit script if wrapper not found
+                # Fallback to repo root
                 if not launch_cmd:
-                    kit_script = repo_root / '_build' / 'linux-x86_64' / 'release' / f'{kit_file}.sh'
-                    if not kit_script.exists():
-                        socketio.emit('log', {
-                            'level': 'error',
-                            'source': 'runtime',
-                            'message': f'Kit script not found: {kit_script}. Did you build the project?'
-                        })
-                        xpra_manager.stop_session(session_id)
-                        return jsonify({
-                            'success': False,
-                            'error': 'Kit script not found. Please build the project first.'
-                        }), 400
-                    launch_cmd = str(kit_script)
+                    launch_cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file, '--xpra']
                     launch_cwd = str(repo_root)
 
                 # Log the launch command for reproducibility
                 logger.info("=" * 80)
                 logger.info(f"XPRA LAUNCH COMMAND: {project_name}")
-                logger.info(f"Command: {launch_cmd}")
+                logger.info(f"Command: {' '.join(launch_cmd)}")
                 logger.info(f"Working directory: {launch_cwd}")
                 logger.info("=" * 80)
 
@@ -291,25 +265,65 @@ def create_project_routes(
                 socketio.emit('log', {
                     'level': 'info',
                     'source': 'runtime',
-                    'message': f'$ DISPLAY=:100 {launch_cmd}'
+                    'message': f'$ {" ".join(launch_cmd)}'
                 })
 
-                if session.launch_app(launch_cmd, cwd=launch_cwd):
+                # Launch using subprocess directly (repo.sh handles Xpra)
+                try:
+                    process = subprocess.Popen(
+                        launch_cmd,
+                        cwd=launch_cwd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+
+                    # Store process for later management
+                    processes[project_name] = process
+
+                    # Get server host for preview URL
                     server_host = request.host.split(':')[0]
-                    preview_url = xpra_manager.get_session_url(session_id, host=server_host)
+                    # Xpra will be on port 10000 (display :100)
+                    preview_url = f"http://{server_host}:10000"
+
                     socketio.emit('log', {
                         'level': 'success',
                         'source': 'runtime',
-                        'message': f'Application launched in Xpra. Preview: {preview_url}'
+                        'message': f'Application launched with Xpra'
                     })
-                else:
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Preview: {preview_url}'
+                    })
+
+                    # Start thread to stream output
+                    def stream_output():
+                        for line in iter(process.stdout.readline, ''):
+                            if line:
+                                socketio.emit('log', {
+                                    'level': 'info',
+                                    'source': 'runtime',
+                                    'message': line.rstrip()
+                                })
+                        for line in iter(process.stderr.readline, ''):
+                            if line:
+                                socketio.emit('log', {
+                                    'level': 'error',
+                                    'source': 'runtime',
+                                    'message': line.rstrip()
+                                })
+
+                    threading.Thread(target=stream_output, daemon=True).start()
+
+                except Exception as e:
+                    logger.error(f"Failed to launch with Xpra: {e}", exc_info=True)
                     socketio.emit('log', {
                         'level': 'error',
                         'source': 'runtime',
-                        'message': 'Failed to launch application in Xpra session'
+                        'message': f'Launch failed: {str(e)}'
                     })
-                    xpra_manager.stop_session(session_id)
-                    return jsonify({'success': False, 'error': 'Failed to launch app in Xpra'}), 500
+                    return jsonify({'success': False, 'error': str(e)}), 500
 
             else:
                 # Direct launch (normal mode)
