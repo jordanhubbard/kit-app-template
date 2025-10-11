@@ -81,9 +81,11 @@ all: check-deps
 	@echo "  make install-xpra          - Install Xpra for remote X11 display"
 	@echo ""
 	@echo "$(BLUE)Utilities:$(NC)"
-	@echo "  make clean             - Clean build artifacts"
-	@echo "  make clean-project PROJECT=<name> - Remove a specific project completely"
-	@echo "  make help              - Show this help message"
+	@echo "  make clean                           - Clean build artifacts"
+	@echo "  make clean-apps                      - Remove all user-created applications (for testing)"
+	@echo "  make clean-all                       - Clean everything (build + apps + dependencies)"
+	@echo "  make clean-project PROJECT=<name>    - Remove a specific project completely"
+	@echo "  make help                            - Show this help message"
 
 .PHONY: help
 help: all
@@ -459,10 +461,49 @@ clean:
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@echo "$(GREEN)Clean complete!$(NC)"
 
-# Deep clean including dependencies
+# Clean all user-created applications (for testing iteration)
+.PHONY: clean-apps
+clean-apps:
+	@echo "$(BLUE)Removing all user-created applications...$(NC)"
+	@echo "$(YELLOW)⚠  This will delete ALL applications in source/apps/$(NC)"
+	@echo "$(YELLOW)⚠  System directories (exts, extscache) will be preserved$(NC)"
+	@echo ""
+	@# Count apps to be deleted (excluding system dirs)
+	@APP_COUNT=$$(find $(ROOT_DIR)/source/apps -maxdepth 1 -type d ! -name apps ! -name exts ! -name extscache ! -name '.*' | wc -l); \
+	if [ $$APP_COUNT -gt 0 ]; then \
+		echo "$(YELLOW)Found $$APP_COUNT application(s) to remove:$(NC)"; \
+		find $(ROOT_DIR)/source/apps -maxdepth 1 -type d ! -name apps ! -name exts ! -name extscache ! -name '.*' -exec basename {} \; | sed 's/^/  - /'; \
+		echo ""; \
+		echo "Removing applications..."; \
+		find $(ROOT_DIR)/source/apps -maxdepth 1 -type d ! -name apps ! -name exts ! -name extscache ! -name '.*' -exec rm -rf {} + 2>/dev/null || true; \
+		echo "$(GREEN)✓ Removed $$APP_COUNT application(s)$(NC)"; \
+	else \
+		echo "$(GREEN)No user applications found to remove$(NC)"; \
+	fi
+	@# Also remove any stray .kit files in the root of source/apps (flat structure)
+	@if ls $(ROOT_DIR)/source/apps/*.kit 1> /dev/null 2>&1; then \
+		echo "$(YELLOW)Found stray .kit files (flat structure), removing...$(NC)"; \
+		rm -f $(ROOT_DIR)/source/apps/*.kit; \
+		echo "$(GREEN)✓ Cleaned up stray .kit files$(NC)"; \
+	fi
+	@# Clean repo.toml apps list
+	@echo "$(BLUE)Cleaning repo.toml apps list...$(NC)"
+	@if grep -q "^apps = \[" $(ROOT_DIR)/repo.toml 2>/dev/null; then \
+		if grep -q "^apps = \[\]" $(ROOT_DIR)/repo.toml 2>/dev/null; then \
+			echo "$(GREEN)✓ repo.toml apps list already empty$(NC)"; \
+		else \
+			sed -i.bak 's/^apps = \[.*\]/apps = []/' $(ROOT_DIR)/repo.toml && rm -f $(ROOT_DIR)/repo.toml.bak; \
+			echo "$(GREEN)✓ Cleared repo.toml apps list$(NC)"; \
+		fi; \
+	fi
+	@echo ""
+	@echo "$(GREEN)Application cleanup complete!$(NC)"
+	@echo "$(BLUE)Note: Build system uses dynamic discovery, so new apps will be auto-detected$(NC)"
+
+# Deep clean including dependencies and applications
 .PHONY: clean-all
-clean-all: clean playground-clean
-	@echo "$(GREEN)Deep clean complete!$(NC)"
+clean-all: clean playground-clean clean-apps
+	@echo "$(GREEN)Deep clean complete - all build artifacts and applications removed!$(NC)"
 
 # Clean a specific project
 # Usage: make clean-project PROJECT=my_company.explorer
