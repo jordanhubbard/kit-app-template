@@ -240,7 +240,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                 logger.info("=" * 80)
 
                 try:
-                    # Emit log to UI
+                    # Emit log to UI including the CLI command
                     if socketio:
                         socketio.emit('log', {
                             'level': 'info',
@@ -251,6 +251,17 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                             'level': 'info',
                             'source': 'build',
                             'message': f'Template: {template_name}'
+                        })
+                        # Show the CLI command for reproducibility
+                        socketio.emit('log', {
+                            'level': 'info',
+                            'source': 'build',
+                            'message': f'$ cd {repo_root}'
+                        })
+                        socketio.emit('log', {
+                            'level': 'info',
+                            'source': 'build',
+                            'message': f'$ {" ".join(replay_cmd)}'
                         })
 
                     replay_result = subprocess.run(

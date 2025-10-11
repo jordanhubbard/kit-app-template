@@ -81,6 +81,30 @@ def create_project_routes(
                 cmd = [str(repo_root / 'repo.sh'), 'build', '--config', 'release']
                 cwd = str(repo_root)
 
+            # Log the command being executed (critical for user reproducibility)
+            logger.info("=" * 80)
+            logger.info(f"BUILD COMMAND: {project_name}")
+            logger.info(f"Command: {' '.join(cmd)}")
+            logger.info(f"Working directory: {cwd}")
+            logger.info("=" * 80)
+
+            # Emit command to UI so users can reproduce it
+            socketio.emit('log', {
+                'level': 'info',
+                'source': 'build',
+                'message': f'Building {project_name}...'
+            })
+            socketio.emit('log', {
+                'level': 'info',
+                'source': 'build',
+                'message': f'$ cd {cwd}'
+            })
+            socketio.emit('log', {
+                'level': 'info',
+                'source': 'build',
+                'message': f'$ {" ".join(cmd)}'
+            })
+
             # Use Popen for real-time output streaming
             process = subprocess.Popen(
                 cmd,
@@ -91,13 +115,6 @@ def create_project_routes(
                 bufsize=1,  # Line buffered
                 universal_newlines=True
             )
-
-            # Emit initial build start message
-            socketio.emit('log', {
-                'level': 'info',
-                'source': 'build',
-                'message': f'Building {project_name}...'
-            })
 
             # Stream stdout in real-time
             stdout_lines = []
@@ -259,6 +276,9 @@ def create_project_routes(
 
             else:
                 # Direct launch (normal mode)
+                cmd = None
+                cwd = None
+
                 if project_path:
                     # SECURITY: Validate and normalize project_path
                     app_dir = security_validator._validate_project_path(repo_root, project_path)
@@ -269,29 +289,41 @@ def create_project_routes(
 
                     if wrapper_script.exists():
                         logger.info("Launching from: %s", app_dir)
-                        process = subprocess.Popen(
-                            ['./repo.sh', 'launch', kit_file],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            text=True,
-                            cwd=str(app_dir)
-                        )
+                        cmd = ['./repo.sh', 'launch', kit_file]
+                        cwd = str(app_dir)
                     else:
-                        process = subprocess.Popen(
-                            [str(repo_root / 'repo.sh'), 'launch', kit_file],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            text=True,
-                            cwd=str(repo_root)
-                        )
+                        cmd = [str(repo_root / 'repo.sh'), 'launch', kit_file]
+                        cwd = str(repo_root)
                 else:
-                    process = subprocess.Popen(
-                        [str(repo_root / 'repo.sh'), 'launch', kit_file],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                        cwd=str(repo_root)
-                    )
+                    cmd = [str(repo_root / 'repo.sh'), 'launch', kit_file]
+                    cwd = str(repo_root)
+
+                # Log the command being executed (critical for user reproducibility)
+                logger.info("=" * 80)
+                logger.info(f"LAUNCH COMMAND: {project_name}")
+                logger.info(f"Command: {' '.join(cmd)}")
+                logger.info(f"Working directory: {cwd}")
+                logger.info("=" * 80)
+
+                # Emit command to UI so users can reproduce it
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'$ cd {cwd}'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'$ {" ".join(cmd)}'
+                })
+
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=cwd
+                )
 
                 # SECURITY: Limit number of concurrent processes
                 if len(processes) >= 10:
