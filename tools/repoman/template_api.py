@@ -530,10 +530,46 @@ class TemplateAPI:
                 'error': result.error
             }
 
+        # Post-process: Fix application directory structure
+        # The template replay creates a flat .kit file, but we need
+        # it in a proper directory structure: source/apps/{name}/{name}.kit
+        # This matches what the CLI does in repo_dispatcher.py
+        try:
+            # Read playback file to get template metadata
+            playback_path = Path(result.playback_file)
+            if playback_path.exists():
+                try:
+                    import tomllib
+                    with open(playback_path, 'rb') as f:
+                        playback_data = tomllib.load(f)
+                except ImportError:
+                    import toml  # noqa: E402
+                    with open(playback_path, 'r') as f:
+                        playback_data = toml.load(f)
+
+                # Import and call _fix_application_structure
+                # This restructures the app directory to match build system
+                # expectations
+                from .repo_dispatcher import _fix_application_structure
+                _fix_application_structure(
+                    self.repo_root,
+                    playback_data,
+                    build_config='release'
+                )
+        except Exception as e:  # noqa: BLE001
+            # If restructuring fails, return error
+            # This is critical for GUI functionality
+            return {
+                'success': False,
+                'error': (
+                    f"Template executed but failed to restructure "
+                    f"application: {str(e)}"
+                )
+            }
+
         # Calculate application paths
-        # Note: This assumes the standard directory structure
-        # If --no-register is used, apps go to source/apps
-        # Otherwise, they're symlinked to _build/{platform}/{config}/apps
+        # After _fix_application_structure, files are in:
+        # source/apps/{name}/{name}.kit
         app_dir = self.repo_root / "source" / "apps" / name
         kit_file_rel = f"source/apps/{name}/{name}.kit"
 
