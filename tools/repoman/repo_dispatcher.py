@@ -269,6 +269,25 @@ exit /b %ERRORLEVEL%
         print(f"Note: Build system will symlink to: _build/{platform_name}-{arch}/{build_config}/apps/{app_name}")
         print("")
 
+        # Create the symlink immediately so UI can access files before first build
+        # The build system will reuse this symlink if it already exists
+        platform_build_dir = get_platform_build_dir(repo_root, build_config)
+        symlink_path = platform_build_dir / "apps"
+        symlink_target = repo_root / "source" / "apps"
+
+        # Create symlink if it doesn't exist
+        if not symlink_path.exists():
+            symlink_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                symlink_path.symlink_to(symlink_target)
+                print(f"✓ Created symlink: {symlink_path} → {symlink_target}")
+            except Exception as e:
+                logger.warning(f"Could not create symlink (build system will create it): {e}")
+        elif symlink_path.is_symlink():
+            print(f"✓ Symlink already exists: {symlink_path} → {symlink_path.readlink()}")
+        else:
+            logger.warning(f"Path exists but is not a symlink: {symlink_path}")
+
         # Return the new app directory path for API consumers
         return app_dir
 

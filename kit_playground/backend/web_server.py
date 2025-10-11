@@ -105,17 +105,25 @@ class PlaygroundWebServer:
             Validated absolute Path object or None if invalid
         """
         try:
-            # Construct absolute path
-            abs_path = (repo_root / project_path).resolve()
+            # Construct path (don't resolve yet - we want to check before following symlinks)
+            path_obj = repo_root / project_path
 
-            # Ensure the path is within the repository
-            repo_root_resolved = repo_root.resolve()
-            if not str(abs_path).startswith(str(repo_root_resolved)):
-                logger.warning(f"Path traversal attempt blocked: {project_path}")
+            # Check path exists (follows symlinks automatically)
+            if not path_obj.exists():
+                logger.warning(f"Project path does not exist: {project_path}")
                 return None
 
-            # Check path exists and is a directory
-            if not abs_path.exists() or not abs_path.is_dir():
+            # Now resolve (follows symlinks) and validate it's within repo
+            abs_path = path_obj.resolve()
+            repo_root_resolved = repo_root.resolve()
+
+            # Ensure the resolved path is within the repository
+            if not str(abs_path).startswith(str(repo_root_resolved)):
+                logger.warning(f"Path traversal attempt blocked: {project_path} → {abs_path}")
+                return None
+
+            # Check it's a directory (after following symlinks)
+            if not abs_path.is_dir():
                 logger.warning(f"Invalid project path (not a directory): {project_path}")
                 return None
 
