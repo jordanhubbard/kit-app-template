@@ -288,6 +288,29 @@ exit /b %ERRORLEVEL%
         else:
             logger.warning(f"Path exists but is not a symlink: {symlink_path}")
 
+        # Fix repo.toml: The template replay adds entries with flat paths
+        # (e.g., "source/apps/app.kit") but we've restructured to nested paths
+        # (e.g., "source/apps/app/app.kit"). Since we use dynamic discovery
+        # via app_discovery_paths, clear the static apps list to prevent build errors.
+        try:
+            import re
+            repo_toml_path = repo_root / "repo.toml"
+            if repo_toml_path.exists():
+                content = repo_toml_path.read_text()
+                
+                # Use regex to clear the apps list without reformatting the file
+                # This preserves comments and formatting
+                pattern = r'^apps\s*=\s*\[.*?\]'
+                replacement = 'apps = []'
+                new_content, count = re.subn(pattern, replacement, content, flags=re.MULTILINE)
+                
+                if count > 0:
+                    repo_toml_path.write_text(new_content)
+                    print(f"✓ Cleared static apps list in repo.toml (using dynamic discovery)")
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Could not update repo.toml after restructuring: {e}")
+            # Continue anyway - this is not critical as dynamic discovery should work
+
         # Return the new app directory path for API consumers
         return app_dir
 
