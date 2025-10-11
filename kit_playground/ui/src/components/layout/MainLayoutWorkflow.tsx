@@ -45,7 +45,7 @@ const MainLayoutWorkflow: React.FC = () => {
   const [isBuilding, setIsBuilding] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>('');
-  const [useXpra, setUseXpra] = useState(false);
+  const [useXpra, setUseXpra] = useState(true);  // Default to true for Browser Preview
   const [previewUrl, setPreviewUrl] = useState<string>('');
 
   // Templates and projects state
