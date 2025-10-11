@@ -95,7 +95,13 @@ class XpraSession:
             env = os.environ.copy()
             env['DISPLAY'] = f':{self.display_number}'
 
-            logger.info(f"Launching app on :{self.display_number}: {app_command}")
+            logger.info("=" * 80)
+            logger.info(f"LAUNCHING APP IN XPRA")
+            logger.info(f"Display: :{self.display_number}")
+            logger.info(f"Command: {app_command}")
+            logger.info(f"Environment DISPLAY={env['DISPLAY']}")
+            logger.info("=" * 80)
+
             # SECURITY: Use list form instead of shell=True to prevent injection
             # Split on whitespace but preserve the script path as first arg
             import shlex
@@ -111,10 +117,27 @@ class XpraSession:
             )
 
             logger.info(f"App launched with PID {self.app_process.pid}")
+
+            # Wait briefly and check if the process is still running
+            import time
+            time.sleep(2)
+
+            poll_result = self.app_process.poll()
+            if poll_result is not None:
+                # Process has already exited
+                stdout, stderr = self.app_process.communicate(timeout=1)
+                logger.error(f"App exited immediately with code {poll_result}")
+                if stdout:
+                    logger.error(f"App stdout:\n{stdout}")
+                if stderr:
+                    logger.error(f"App stderr:\n{stderr}")
+                return False
+
+            logger.info(f"App process is running (PID {self.app_process.pid})")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to launch app: {e}")
+            logger.error(f"Failed to launch app: {e}", exc_info=True)
             return False
 
     def stop(self):
