@@ -274,6 +274,14 @@ class PlaygroundWebServer:
             port: Port to listen on
             debug: Enable debug mode (with hot-reload)
         """
+        # Print reload notification when running under reloader
+        if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print(f"\n{'='*60}")
+            print(f"🔄 BACKEND HOT-RELOAD at {timestamp}")
+            print(f"   Backend code changes detected and reloaded")
+            print(f"{'='*60}\n", flush=True)
+
         logger.info(f"Starting Kit Playground web server on {host}:{port}")
         logger.info(f"Debug mode: {debug}")
 

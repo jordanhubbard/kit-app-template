@@ -61,6 +61,41 @@ https.createServer = function(...args) {
   return wrapServer(server);
 };
 
+// Add webpack hooks for hot-reload notifications
+// This needs to run before react-scripts starts
+const webpack = require('webpack');
+const originalRun = webpack.Compiler.prototype.run;
+const originalWatch = webpack.Compiler.prototype.watch;
+
+let isFirstCompile = true;
+
+// Hook into webpack compiler to detect recompilation
+webpack.Compiler.prototype.watch = function(...args) {
+  this.hooks.watchRun.tap('HotReloadNotifier', (compiler) => {
+    if (!isFirstCompile) {
+      const timestamp = new Date().toLocaleString();
+      console.log('\n' + '='.repeat(60));
+      console.log(`🔄 FRONTEND HOT-RELOAD at ${timestamp}`);
+      console.log('   Frontend code changes detected and recompiling...');
+      console.log('='.repeat(60) + '\n');
+    }
+  });
+
+  this.hooks.done.tap('HotReloadNotifier', (stats) => {
+    if (!isFirstCompile) {
+      const timestamp = new Date().toLocaleString();
+      const duration = stats.endTime - stats.startTime;
+      console.log('\n' + '='.repeat(60));
+      console.log(`✅ FRONTEND RELOAD COMPLETE at ${timestamp}`);
+      console.log(`   Compilation finished in ${duration}ms`);
+      console.log('='.repeat(60) + '\n');
+    }
+    isFirstCompile = false;
+  });
+
+  return originalWatch.apply(this, args);
+};
+
 // Now start react-scripts
 console.log('Starting development server with enhanced error handling...');
 require('react-scripts/scripts/start');
