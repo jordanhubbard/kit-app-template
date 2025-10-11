@@ -29,7 +29,7 @@ import threading
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
 from tools.repoman.template_engine import TemplateEngine  # Legacy support
-from tools.repoman.repo_dispatcher import _fix_application_structure
+from tools.repoman.repo_dispatcher import _fix_application_structure, get_platform_build_dir
 from kit_playground.core.playground_app import PlaygroundApp
 from kit_playground.backend.xpra_manager import XpraManager
 
@@ -221,7 +221,11 @@ class PlaygroundWebServer:
 
                 # Default paths relative to repo root
                 templates_path = str(repo_root / 'templates')
-                projects_path = str(repo_root / '_build' / 'apps')
+
+                # Use platform-specific build directory for projects
+                # Structure: _build/{platform}-{arch}/release/apps
+                platform_build_dir = get_platform_build_dir(repo_root, 'release')
+                projects_path = str(platform_build_dir / 'apps')
 
                 return jsonify({
                     'templatesPath': templates_path,

@@ -7,8 +7,9 @@ Handles enhanced template functionality and delegates other commands to repoman.
 import os
 import sys
 import shutil
+import platform
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 def get_repo_root() -> Path:
     """Get the repository root directory."""
@@ -21,6 +22,52 @@ def get_repo_root() -> Path:
 
     # Fallback: assume standard structure
     return Path(__file__).parent / ".." / ".."
+
+def get_platform_info() -> Tuple[str, str]:
+    """
+    Get current platform and architecture.
+
+    Returns:
+        Tuple of (platform_name, architecture) matching build system conventions
+        Examples: ('linux', 'x86_64'), ('windows', 'x86_64'), ('linux', 'aarch64')
+    """
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+
+    # Normalize platform name
+    if system == 'darwin':
+        platform_name = 'macos'
+    elif system == 'windows':
+        platform_name = 'windows'
+    else:
+        platform_name = 'linux'
+
+    # Normalize architecture
+    if machine in ['x86_64', 'amd64']:
+        arch = 'x86_64'
+    elif machine in ['aarch64', 'arm64']:
+        arch = 'aarch64'
+    elif machine in ['i386', 'i686']:
+        arch = 'x86'
+    else:
+        arch = machine
+
+    return platform_name, arch
+
+def get_platform_build_dir(repo_root: Path, config: str = 'release') -> Path:
+    """
+    Get the platform-specific build directory.
+
+    Args:
+        repo_root: Repository root directory
+        config: Build configuration (release or debug)
+
+    Returns:
+        Path to platform-specific build directory
+        Example: /path/to/repo/_build/linux-x86_64/release
+    """
+    platform_name, arch = get_platform_info()
+    return repo_root / "_build" / f"{platform_name}-{arch}" / config
 
 def parse_template_new_args(args: List[str]) -> tuple[str, Dict[str, str], List[str]]:
     """Parse template new command arguments."""
@@ -55,24 +102,29 @@ def parse_template_new_args(args: List[str]) -> tuple[str, Dict[str, str], List[
 
     return template_name, kwargs, remaining_args
 
-def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any]) -> None:
+def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], config: str = 'release') -> None:
     """
     Fix application directory structure after template replay.
 
-    The template replay system creates _build/apps/{name}.kit as a FILE,
-    but we need it to be _build/apps/{name}/{name}.kit (directory with file inside).
+    Moves applications from source/apps/ to platform-specific build directory
+    following the convention: _build/{platform}-{arch}/{config}/apps/{name}/
 
     Args:
         repo_root: Repository root directory
         playback_data: Parsed playback TOML data
+        config: Build configuration (release or debug), defaults to release
     """
+    # Get platform-specific build directory
+    platform_build_dir = get_platform_build_dir(repo_root, config)
+    platform_name, arch = get_platform_info()
+
     # Determine if this is an application template
     # Application templates have 'application_name' or 'application_display_name'
-    for template_name, config in playback_data.items():
+    for template_name, config_data in playback_data.items():
         if template_name.startswith('_'):
             continue  # Skip internal fields like _standalone_project
 
-        app_name = config.get('application_name')
+        app_name = config_data.get('application_name')
         if not app_name:
             # Not an application, skip (might be extension)
             continue
@@ -87,12 +139,12 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any]) -
             # Already a directory, skip
             continue
 
-        # Found a .kit FILE that should be moved to _build/apps DIRECTORY
+        # Found a .kit FILE that should be moved to platform-specific apps directory
         print(f"\nRestructuring application: {app_name}")
-        print(f"Moving from source/apps/ to _build/apps/...")
+        print(f"Moving from source/apps/ to {platform_name}-{arch}/{config}/apps/...")
 
-        # Create new directory structure in _build/apps
-        app_dir = repo_root / "_build" / "apps" / app_name
+        # Create new directory structure in platform-specific build dir
+        app_dir = platform_build_dir / "apps" / app_name
         app_dir.mkdir(parents=True, exist_ok=True)
 
         # Move the .kit file into the directory
@@ -203,14 +255,18 @@ exit /b %ERRORLEVEL%
         print(f"✓ Application '{app_name}' created successfully in")
         print(f"  {app_dir}")
         print("")
+        print(f"Platform: {platform_name}-{arch} ({config})")
         print(f"Main configuration: {app_name}.kit")
         print("")
         print(f"To build (from repository root):")
-        print(f"  cd {repo_root} && ./repo.sh build --config release")
+        print(f"  cd {repo_root} && ./repo.sh build --config {config}")
         print("")
         print(f"Or build from app directory:")
-        print(f"  cd {app_dir} && ./repo.sh build --config release")
+        print(f"  cd {app_dir} && ./repo.sh build --config {config}")
         print("")
+
+        # Return the new app directory path for API consumers
+        return app_dir
 
 def handle_template_command(args: List[str]) -> int:
     """Handle template commands with enhanced functionality."""

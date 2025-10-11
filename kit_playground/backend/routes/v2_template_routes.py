@@ -8,7 +8,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request, send_from_directory
 
 from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
-from tools.repoman.repo_dispatcher import _fix_application_structure
+from tools.repoman.repo_dispatcher import _fix_application_structure, get_platform_build_dir
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +338,8 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                                 playback_data = toml.load(f)
 
                         # Call the restructuring function
-                        _fix_application_structure(repo_root, playback_data)
+                        # This moves apps to platform-specific directory: _build/{platform}-{arch}/release/apps/
+                        app_dir = _fix_application_structure(repo_root, playback_data)
                         logger.info("✓ Application structure fixed")
 
                         # Fix repo.toml: The template system adds entries to the static apps list,
@@ -401,14 +402,16 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                         'error': error_msg
                     }), 500
 
-                # Apps are created in source/apps then automatically moved to _build/apps
-                # Final location: _build/apps/{name}/{name}.kit (flat structure)
-                output_dir = '_build/apps'
-                kit_file_path = f"{output_dir}/{name}/{name}.kit"
+                # Apps are now created in platform-specific directory
+                # New structure: _build/{platform}-{arch}/release/apps/{name}/{name}.kit
+                platform_build_dir = get_platform_build_dir(repo_root, 'release')
+                output_dir = str(platform_build_dir / 'apps')
+                relative_output_dir = str((platform_build_dir / 'apps').relative_to(repo_root))
+                kit_file_path = f"{relative_output_dir}/{name}/{name}.kit"
 
                 # Verify the project files were actually created
-                project_dir = repo_root / output_dir / name
-                kit_file = repo_root / kit_file_path
+                project_dir = platform_build_dir / 'apps' / name
+                kit_file = project_dir / f"{name}.kit"
 
                 if not project_dir.exists():
                     error_msg = f"Project directory was not created: {project_dir}"
@@ -436,12 +439,12 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
 
                 return jsonify({
                     'success': True,
-                    'outputDir': output_dir,
+                    'outputDir': relative_output_dir,  # Platform-specific: _build/linux-x86_64/release/apps
                     'projectInfo': {
                         'projectName': name,
                         'displayName': display_name,
-                        'outputDir': output_dir,
-                        'kitFile': kit_file_path,  # Relative path: _build/apps/name/name.kit
+                        'outputDir': relative_output_dir,
+                        'kitFile': kit_file_path,  # Relative path: _build/linux-x86_64/release/apps/name/name.kit
                         'kitFileName': f"{name}.kit"
                     },
                     'message': f"Project '{display_name}' created successfully",
