@@ -27,9 +27,9 @@ import threading
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
+from tools.repoman.template_api import TemplateAPI
 from tools.repoman.template_engine import TemplateEngine  # Legacy support
-from tools.repoman.repo_dispatcher import _fix_application_structure, get_platform_build_dir
+from tools.repoman.repo_dispatcher import get_platform_build_dir
 from kit_playground.core.playground_app import PlaygroundApp
 from kit_playground.backend.xpra_manager import XpraManager
 

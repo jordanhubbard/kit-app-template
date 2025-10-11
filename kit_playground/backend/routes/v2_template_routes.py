@@ -3,12 +3,11 @@ V2 Template API routes for Kit Playground.
 These routes provide template management with icon support for the frontend.
 """
 import logging
-import subprocess
 from pathlib import Path
 from flask import Blueprint, jsonify, request, send_from_directory
 
-from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
-from tools.repoman.repo_dispatcher import _fix_application_structure, get_platform_build_dir
+from tools.repoman.template_api import TemplateAPI
+from tools.repoman.repo_dispatcher import get_platform_build_dir
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +186,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
 
     @v2_template_bp.route('/generate', methods=['POST'])
     def generate_template_v2():
-        """Generate a template using unified API."""
+        """Generate a template using unified API (new high-level method)."""
         try:
             data = request.json
 
@@ -202,261 +201,75 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                     'error': 'templateName and name are required'
                 }), 400
 
-            # Don't pass output_dir - this creates the app normally in the current repo
-            # The template system will create in source/apps then automatically restructure
-            # and move to _build/apps/{name}/{name}.kit (flat structure, same as CLI)
+            # Emit log to UI for user feedback
+            if socketio:
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'build',
+                    'message': f'Creating project: {display_name}'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'build',
+                    'message': f'Template: {template_name}'
+                })
 
-            # Prepare generation request
-            req = TemplateGenerationRequest(
+            # Use new high-level API - handles everything cleanly
+            result = template_api.create_application(
                 template_name=template_name,
                 name=name,
                 display_name=display_name,
                 version=version,
-                output_dir=None,  # Use default repo behavior (source/apps -> _build/apps)
                 accept_license=True,  # Auto-accept for GUI
-                force_overwrite=True,  # Skip directory overwrite confirmation for GUI
-                extra_params=data.get('options', {})
+                no_register=False,  # Use default registration
+                **data.get('options', {})
             )
 
-            # Generate project (creates playback file)
-            result = template_api.generate_template(req)
+            if result.get('success', False):
+                # Success! Emit to UI
+                if socketio:
+                    socketio.emit('log', {
+                        'level': 'success',
+                        'source': 'build',
+                        'message': f'Project created successfully: {display_name}'
+                    })
 
-            if result.success:
-                # Execute the playback file to actually create the project files
+                logger.info(f"✓ Project created: {result['app_dir']}")
+                logger.info(f"✓ Kit file: {result['kit_file']}")
+
+                # Calculate paths for UI response
                 repo_root = Path(__file__).parent.parent.parent.parent
-                replay_cmd = [
-                    str(repo_root / 'repo.sh'),
-                    'template',
-                    'replay',
-                    result.playback_file  # Positional argument, not --playback-file
-                ]
-
-                logger.info("=" * 80)
-                logger.info(f"TEMPLATE CREATION: {display_name} (template: {template_name})")
-                logger.info(f"Executing replay command: {' '.join(replay_cmd)}")
-                logger.info(f"Playback file: {result.playback_file}")
-                logger.info(f"Playback file exists: {Path(result.playback_file).exists()}")
-                logger.info(f"Working directory: {repo_root}")
-                logger.info("=" * 80)
-
-                try:
-                    # Emit log to UI including the CLI command
-                    if socketio:
-                        socketio.emit('log', {
-                            'level': 'info',
-                            'source': 'build',
-                            'message': f'Creating project: {display_name}'
-                        })
-                        socketio.emit('log', {
-                            'level': 'info',
-                            'source': 'build',
-                            'message': f'Template: {template_name}'
-                        })
-                        # Show the CLI command for reproducibility
-                        socketio.emit('log', {
-                            'level': 'info',
-                            'source': 'build',
-                            'message': f'$ cd {repo_root}'
-                        })
-                        socketio.emit('log', {
-                            'level': 'info',
-                            'source': 'build',
-                            'message': f'$ {" ".join(replay_cmd)}'
-                        })
-
-                    replay_result = subprocess.run(
-                        replay_cmd,
-                        cwd=str(repo_root),
-                        capture_output=True,
-                        text=True,
-                        timeout=120  # 2 minutes timeout for template replay
-                    )
-
-                    logger.info(f"Replay command exit code: {replay_result.returncode}")
-
-                    # Emit replay output to UI
-                    if replay_result.stdout:
-                        logger.info(f"Replay stdout:\n{replay_result.stdout}")
-                        if socketio:
-                            for line in replay_result.stdout.strip().split('\n'):
-                                if line:
-                                    socketio.emit('log', {
-                                        'level': 'info',
-                                        'source': 'build',
-                                        'message': line
-                                    })
-
-                    if replay_result.stderr:
-                        logger.info(f"Replay stderr:\n{replay_result.stderr}")
-                        if socketio:
-                            for line in replay_result.stderr.strip().split('\n'):
-                                if line:
-                                    socketio.emit('log', {
-                                        'level': 'warning',
-                                        'source': 'build',
-                                        'message': line
-                                    })
-
-                    logger.info("=" * 80)
-
-                    if replay_result.returncode != 0:
-                        error_msg = f"Template replay failed with exit code {replay_result.returncode}"
-                        if replay_result.stderr:
-                            error_msg += f": {replay_result.stderr}"
-                        elif replay_result.stdout:
-                            error_msg += f": {replay_result.stdout}"
-
-                        logger.error(error_msg)
-                        return jsonify({
-                            'success': False,
-                            'error': error_msg,
-                            'stdout': replay_result.stdout,
-                            'stderr': replay_result.stderr,
-                            'exitCode': replay_result.returncode
-                        }), 500
-
-                    # Post-process: Move files from source/apps to _build/apps
-                    # The replay creates files in source/apps but they need to be
-                    # restructured in _build/apps/{name}/{name}.kit format
-                    try:
-                        logger.info("Post-processing: Moving files from source/apps to _build/apps")
-                        if socketio:
-                            socketio.emit('log', {
-                                'level': 'info',
-                                'source': 'build',
-                                'message': 'Finalizing project structure...'
-                            })
-
-                        # Read the playback file to get configuration
-                        try:
-                            import tomllib
-                            with open(result.playback_file, 'rb') as f:
-                                playback_data = tomllib.load(f)
-                        except ImportError:
-                            import toml
-                            with open(result.playback_file, 'r') as f:
-                                playback_data = toml.load(f)
-
-                        # Call the restructuring function
-                        # This moves apps to platform-specific directory: _build/{platform}-{arch}/release/apps/
-                        app_dir = _fix_application_structure(repo_root, playback_data)
-                        logger.info("✓ Application structure fixed")
-
-                        # Fix repo.toml: The template system adds entries to the static apps list,
-                        # but we use dynamic discovery via app_discovery_paths instead.
-                        # Clear the static apps list to prevent build errors.
-                        # We use regex replacement to preserve formatting and comments.
-                        try:
-                            import re
-                            repo_toml_path = repo_root / "repo.toml"
-                            if repo_toml_path.exists():
-                                with open(repo_toml_path, 'r') as f:
-                                    content = f.read()
-
-                                # Find and replace the apps = [...] line with apps = []
-                                # This regex matches: apps = ["anything"] or apps = ['anything']
-                                # and replaces it with apps = []
-                                pattern = r'^apps\s*=\s*\[.*?\]'
-                                replacement = 'apps = []'
-
-                                new_content, count = re.subn(pattern, replacement, content, flags=re.MULTILINE)
-
-                                if count > 0:
-                                    with open(repo_toml_path, 'w') as f:
-                                        f.write(new_content)
-                                    logger.info(f"✓ Cleared static apps list in repo.toml ({count} replacements)")
-                                else:
-                                    logger.info("✓ No apps list to clear in repo.toml")
-                        except Exception as e:
-                            logger.warning(f"Failed to fix repo.toml after project creation: {e}")
-                            # Continue anyway - this is not critical
-
-                        if socketio:
-                            socketio.emit('log', {
-                                'level': 'success',
-                                'source': 'build',
-                                'message': f'Project created successfully: {display_name}'
-                            })
-
-                    except Exception as e:
-                        error_msg = f"Failed to restructure application: {str(e)}"
-                        logger.error(error_msg, exc_info=True)
-                        return jsonify({
-                            'success': False,
-                            'error': error_msg,
-                            'replayStdout': replay_result.stdout
-                        }), 500
-
-                except subprocess.TimeoutExpired:
-                    error_msg = "Template replay timed out after 120 seconds"
-                    logger.error(error_msg)
-                    return jsonify({
-                        'success': False,
-                        'error': error_msg
-                    }), 500
-                except Exception as e:
-                    error_msg = f"Failed to execute replay command: {str(e)}"
-                    logger.error(error_msg, exc_info=True)
-                    return jsonify({
-                        'success': False,
-                        'error': error_msg
-                    }), 500
-
-                # Apps are created in source/apps (real location)
-                # Build system symlinks: source/apps → _build/{platform}/{config}/apps
-                # Return the symlinked path to UI for consistency with build artifacts
                 platform_build_dir = get_platform_build_dir(repo_root, 'release')
-
-                # Real location (source/apps)
-                project_dir = repo_root / "source" / "apps" / name
-                kit_file = project_dir / f"{name}.kit"
-
-                # Symlinked location (what UI and build system use)
-                relative_output_dir = str((platform_build_dir / 'apps').relative_to(repo_root))
+                relative_output_dir = str(
+                    (platform_build_dir / 'apps').relative_to(repo_root)
+                )
                 kit_file_path = f"{relative_output_dir}/{name}/{name}.kit"
-
-                if not project_dir.exists():
-                    error_msg = f"Project directory was not created: {project_dir}"
-                    logger.error(error_msg)
-                    return jsonify({
-                        'success': False,
-                        'error': error_msg,
-                        'replayStdout': replay_result.stdout,
-                        'replayStderr': replay_result.stderr
-                    }), 500
-
-                if not kit_file.exists():
-                    error_msg = f"Kit configuration file was not created: {kit_file}"
-                    logger.error(error_msg)
-                    return jsonify({
-                        'success': False,
-                        'error': error_msg,
-                        'replayStdout': replay_result.stdout,
-                        'replayStderr': replay_result.stderr
-                    }), 500
-
-                logger.info(f"✓ Project created successfully: {project_dir}")
-                logger.info(f"✓ Kit file exists: {kit_file}")
-                logger.info("=" * 80)
 
                 return jsonify({
                     'success': True,
-                    'outputDir': relative_output_dir,  # Platform-specific: _build/linux-x86_64/release/apps
+                    'outputDir': relative_output_dir,
                     'projectInfo': {
                         'projectName': name,
                         'displayName': display_name,
                         'outputDir': relative_output_dir,
-                        'kitFile': kit_file_path,  # Relative path: _build/linux-x86_64/release/apps/name/name.kit
+                        'kitFile': kit_file_path,
                         'kitFileName': f"{name}.kit"
                     },
-                    'message': f"Project '{display_name}' created successfully",
-                    'playbackFile': result.playback_file,
-                    'replayOutput': replay_result.stdout
+                    'message': result.get('message'),
+                    'playbackFile': result.get('playback_file', '')
                 })
             else:
+                # Failed
+                error = result.get('error', 'Unknown error')
+                if socketio:
+                    socketio.emit('log', {
+                        'level': 'error',
+                        'source': 'build',
+                        'message': f'Failed to create project: {error}'
+                    })
                 return jsonify({
                     'success': False,
-                    'error': result.error
+                    'error': error
                 }), 500
 
         except Exception as e:
