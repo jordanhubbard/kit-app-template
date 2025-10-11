@@ -73,7 +73,9 @@ echo Press Ctrl+C to stop servers
 echo.
 
 REM Create temporary setupProxy.js with dynamic backend port
-REM Use BACKEND_HOST (which respects REMOTE variable) for the proxy target
+REM Important: The proxy (Node.js server) always connects to localhost because
+REM it runs on the same machine as the backend. The router function handles
+REM remote browser connections by extracting the hostname from the request.
 (
 echo const { createProxyMiddleware } = require('http-proxy-middleware'^);
 echo.
@@ -81,17 +83,17 @@ echo module.exports = function(app^) {
 echo   app.use(
 echo     '/api',
 echo     createProxyMiddleware({
-echo       target: 'http://%BACKEND_HOST%:%BACKEND_PORT%',
+echo       target: 'http://localhost:%BACKEND_PORT%',
 echo       changeOrigin: true,
 echo       logLevel: 'warn',
 echo       router: function(req^) {
 echo         const requestHost = req.headers.host;
 echo         if (requestHost ^&^& !requestHost.includes('localhost'^) ^&^& !requestHost.includes('127.0.0.1'^)^) {
 echo           const backendUrl = 'http://' + requestHost.split(':'^)[0] + ':%BACKEND_PORT%';
-echo           console.log('[Proxy] Routing API request to:', backendUrl^);
+echo           console.log('[Proxy] Routing to:', backendUrl^);
 echo           return backendUrl;
 echo         }
-echo         return 'http://%BACKEND_HOST%:%BACKEND_PORT%';
+echo         return 'http://localhost:%BACKEND_PORT%';
 echo       },
 echo     }^)
 echo   ^);
