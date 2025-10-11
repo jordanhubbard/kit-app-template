@@ -254,7 +254,8 @@ def create_project_routes(
                         wrapper_script = app_dir / 'repo.sh'
                         if wrapper_script.exists():
                             # Use project wrapper with 'launch' command and kit file name
-                            launch_cmd = f"./repo.sh launch {kit_file}"
+                            # repo.sh launch requires --name flag
+                            launch_cmd = f"./repo.sh launch --name {kit_file}"
                             launch_cwd = str(app_dir)
                             logger.info(f"Using project wrapper for Xpra launch in {launch_cwd}")
 
@@ -325,13 +326,13 @@ def create_project_routes(
 
                     if wrapper_script.exists():
                         logger.info("Launching from: %s", app_dir)
-                        cmd = ['./repo.sh', 'launch', kit_file]
+                        cmd = ['./repo.sh', 'launch', '--name', kit_file]
                         cwd = str(app_dir)
                     else:
-                        cmd = [str(repo_root / 'repo.sh'), 'launch', kit_file]
+                        cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file]
                         cwd = str(repo_root)
                 else:
-                    cmd = [str(repo_root / 'repo.sh'), 'launch', kit_file]
+                    cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file]
                     cwd = str(repo_root)
 
                 # Log the command being executed (critical for user reproducibility)

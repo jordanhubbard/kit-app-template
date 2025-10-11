@@ -61,6 +61,12 @@ const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
     const [iframeKey, setIframeKey] = useState(0);
     const [xpraInstalled, setXpraInstalled] = useState<boolean | null>(null);
 
+    // Log when URL changes
+    useEffect(() => {
+      console.log('[PreviewPane] URL changed:', url);
+      console.log('[PreviewPane] Mode:', mode);
+    }, [url, mode]);
+
     // Check if Xpra is installed (for Xpra mode)
     useEffect(() => {
       if (mode === 'xpra') {
@@ -138,11 +144,13 @@ const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
     };
 
     // Handle iframe error
-    const handleIframeError = () => {
+    const handleIframeError = (e: any) => {
       setLoading(false);
-      setError('Failed to load preview');
+      const errorMsg = `Failed to load preview from ${url}`;
+      setError(errorMsg);
+      console.error('[PreviewPane] Iframe error:', errorMsg, e);
       if (onError) {
-        onError(new Error('Preview load failed'));
+        onError(new Error(errorMsg));
       }
     };
 

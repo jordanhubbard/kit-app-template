@@ -374,9 +374,11 @@ const MainLayoutWorkflow: React.FC = () => {
         emitConsoleLog('success', 'runtime', `Application launched: ${selectedProject}`);
         // Navigate to preview if Xpra session available
         if (result.previewUrl) {
+          console.log('[Xpra] Setting preview URL:', result.previewUrl);
           setPreviewUrl(result.previewUrl);
           navigateToStep('preview');
           emitConsoleLog('info', 'runtime', `Preview available at: ${result.previewUrl}`);
+          emitConsoleLog('info', 'runtime', `Opening preview window...`);
         } else if (useXpra) {
           emitConsoleLog('warning', 'runtime', `Xpra preview not available. Check if Xpra is installed (see XPRA_SETUP.md)`);
         }
