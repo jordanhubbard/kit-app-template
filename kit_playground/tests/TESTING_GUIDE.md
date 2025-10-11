@@ -317,4 +317,3 @@ If tests fail unexpectedly:
 2. Review `PHASE1_COMPLETE.md` for what was implemented
 3. Run tests with `-vv` flag for detailed output
 4. Check git history for recent changes to GUI code
-

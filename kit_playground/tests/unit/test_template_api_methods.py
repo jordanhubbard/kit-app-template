@@ -29,16 +29,16 @@ class TestExecutePlayback:
         """Test successful playback execution."""
         # Setup mock
         mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
-        
+
         # Test
         api = TemplateAPI()
         result = api.execute_playback('/path/to/playback.toml')
-        
+
         # Verify
         assert result.success is True
         assert result.playback_file == '/path/to/playback.toml'
         assert 'successfully' in result.message.lower()
-        
+
         # Verify subprocess was called correctly
         mock_run.assert_called_once()
         call_args = mock_run.call_args
@@ -55,11 +55,11 @@ class TestExecutePlayback:
             stdout='',
             stderr='Error message'
         )
-        
+
         # Test
         api = TemplateAPI()
         result = api.execute_playback('/path/to/playback.toml')
-        
+
         # Verify
         assert result.success is False
         assert result.error is not None
@@ -71,11 +71,11 @@ class TestExecutePlayback:
         # Setup mock
         import subprocess
         mock_run.side_effect = subprocess.TimeoutExpired('cmd', 120)
-        
+
         # Test
         api = TemplateAPI()
         result = api.execute_playback('/path/to/playback.toml')
-        
+
         # Verify
         assert result.success is False
         assert result.error is not None
@@ -86,11 +86,11 @@ class TestExecutePlayback:
         """Test that no_register flag is passed correctly."""
         # Setup mock
         mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
-        
+
         # Test
         api = TemplateAPI()
         result = api.execute_playback('/path/to/playback.toml', no_register=True)
-        
+
         # Verify
         call_args = mock_run.call_args[0][0]
         # The --no-register flag should be in the command
@@ -102,18 +102,18 @@ class TestExecutePlayback:
         """Test that correct repo command is used based on platform."""
         # Setup mock
         mock_run.return_value = Mock(returncode=0, stdout='', stderr='')
-        
+
         # Test
         api = TemplateAPI()
         result = api.execute_playback('/path/to/playback.toml')
-        
+
         # Verify command structure
         call_args = mock_run.call_args[0][0]
         assert isinstance(call_args, list)
-        
+
         # Should have repo.sh or repo.bat
         assert any('repo.' in str(arg) for arg in call_args)
-        
+
         # Should have template replay
         assert 'template' in call_args
         assert 'replay' in call_args
@@ -137,7 +137,7 @@ class TestGenerateAndExecuteTemplate:
             playback_file='/tmp/test.toml',
             message='Executed'
         )
-        
+
         # Test
         api = TemplateAPI()
         request = TemplateGenerationRequest(
@@ -148,7 +148,7 @@ class TestGenerateAndExecuteTemplate:
             accept_license=True
         )
         result = api.generate_and_execute_template(request)
-        
+
         # Verify
         assert result.success is True
         assert mock_generate.called
@@ -164,7 +164,7 @@ class TestGenerateAndExecuteTemplate:
             success=False,
             error='Generation failed'
         )
-        
+
         # Test
         api = TemplateAPI()
         request = TemplateGenerationRequest(
@@ -174,7 +174,7 @@ class TestGenerateAndExecuteTemplate:
             version='1.0.0'
         )
         result = api.generate_and_execute_template(request)
-        
+
         # Verify
         assert result.success is False
         assert mock_generate.called
@@ -198,7 +198,7 @@ class TestGenerateAndExecuteTemplate:
             playback_file='/tmp/test.toml',
             message='Executed'
         )
-        
+
         # Test
         api = TemplateAPI()
         request = TemplateGenerationRequest(
@@ -208,7 +208,7 @@ class TestGenerateAndExecuteTemplate:
             version='1.0.0'
         )
         result = api.generate_and_execute_template(request, no_register=True)
-        
+
         # Verify no_register was passed
         mock_execute.assert_called_with('/tmp/test.toml', True)
 
@@ -225,7 +225,7 @@ class TestCreateApplication:
             playback_file='/tmp/test.toml',
             message='Created'
         )
-        
+
         # Test
         api = TemplateAPI()
         result = api.create_application(
@@ -235,7 +235,7 @@ class TestCreateApplication:
             version='1.0.0',
             accept_license=True
         )
-        
+
         # Verify structure
         assert isinstance(result, dict)
         assert result['success'] is True
@@ -245,7 +245,7 @@ class TestCreateApplication:
         assert 'kit_file' in result
         assert 'message' in result
         assert 'playback_file' in result
-        
+
         # Verify paths are strings
         assert isinstance(result['app_dir'], str)
         assert isinstance(result['kit_file'], str)
@@ -258,7 +258,7 @@ class TestCreateApplication:
             success=False,
             error='Creation failed'
         )
-        
+
         # Test
         api = TemplateAPI()
         result = api.create_application(
@@ -267,7 +267,7 @@ class TestCreateApplication:
             display_name='Test Application',
             version='1.0.0'
         )
-        
+
         # Verify structure
         assert isinstance(result, dict)
         assert result['success'] is False
@@ -282,7 +282,7 @@ class TestCreateApplication:
             playback_file='/tmp/test.toml',
             message='Created'
         )
-        
+
         # Test with extra parameters
         api = TemplateAPI()
         result = api.create_application(
@@ -294,14 +294,14 @@ class TestCreateApplication:
             no_register=True,
             custom_param='value'
         )
-        
+
         # Verify method was called
         assert mock_generate_execute.called
-        
+
         # Get the request that was passed
         call_args = mock_generate_execute.call_args
         request = call_args[0][0]
-        
+
         # Verify request fields
         assert request.template_name == 'kit_base_editor'
         assert request.name == 'test_app'
@@ -309,7 +309,7 @@ class TestCreateApplication:
         assert request.version == '2.0.0'
         assert request.accept_license is True
         assert request.force_overwrite is True  # GUI sets this automatically
-        
+
         # Verify no_register flag was passed
         no_register_arg = call_args[0][1]
         assert no_register_arg is True
@@ -318,7 +318,7 @@ class TestCreateApplication:
         """Test that return format matches documentation."""
         # This tests the expected interface even if it fails
         api = TemplateAPI()
-        
+
         # Call with minimal parameters
         result = api.create_application(
             template_name='nonexistent',
@@ -326,11 +326,11 @@ class TestCreateApplication:
             display_name='Test',
             accept_license=False  # Will fail license check
         )
-        
+
         # Should return dict with success key
         assert isinstance(result, dict)
         assert 'success' in result
-        
+
         # Failed result should have error
         if not result['success']:
             assert 'error' in result
@@ -343,12 +343,12 @@ class TestMethodSignatures:
         """Test execute_playback has correct signature."""
         import inspect
         sig = inspect.signature(TemplateAPI.execute_playback)
-        
+
         params = list(sig.parameters.keys())
         assert 'self' in params
         assert 'playback_file' in params
         assert 'no_register' in params
-        
+
         # no_register should have default value
         assert sig.parameters['no_register'].default is False
 
@@ -356,12 +356,12 @@ class TestMethodSignatures:
         """Test generate_and_execute_template has correct signature."""
         import inspect
         sig = inspect.signature(TemplateAPI.generate_and_execute_template)
-        
+
         params = list(sig.parameters.keys())
         assert 'self' in params
         assert 'request' in params
         assert 'no_register' in params
-        
+
         # no_register should have default value
         assert sig.parameters['no_register'].default is False
 
@@ -369,7 +369,7 @@ class TestMethodSignatures:
         """Test create_application has correct signature."""
         import inspect
         sig = inspect.signature(TemplateAPI.create_application)
-        
+
         params = list(sig.parameters.keys())
         assert 'self' in params
         assert 'template_name' in params
@@ -379,7 +379,7 @@ class TestMethodSignatures:
         assert 'accept_license' in params
         assert 'no_register' in params
         assert 'kwargs' in params  # For extra parameters
-        
+
         # Check defaults
         assert sig.parameters['version'].default == "0.1.0"
         assert sig.parameters['accept_license'].default is False
@@ -388,4 +388,3 @@ class TestMethodSignatures:
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
-

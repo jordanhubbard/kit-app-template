@@ -37,7 +37,7 @@ The GUI correctly delegates to `repo.sh` for build and launch operations:
 cmd = ['./repo.sh', 'build', '--config', 'release']
 subprocess.run(cmd, cwd=app_dir)
 
-# Launch  
+# Launch
 cmd = ['./repo.sh', 'launch', '--name', kit_file]
 subprocess.Popen(cmd, cwd=app_dir)
 ```
@@ -238,13 +238,13 @@ class TemplateAPI:
         """Generate template and optionally execute playback."""
         playback = self.engine.generate_template(...)
         playback_file = self.engine.save_playback_file(playback)
-        
+
         if execute:
             self.execute_playback(playback_file)
-        
+
         return TemplateGenerationResult(...)
-    
-    def execute_playback(self, playback_file: str, 
+
+    def execute_playback(self, playback_file: str,
                         no_register: bool = False) -> bool:
         """Execute a playback file."""
         cmd = [self._get_repo_cmd(), 'template', 'replay', playback_file]
@@ -287,7 +287,7 @@ result = template_api.create_application(
 **Implementation:**
 ```python
 class TemplateAPI:
-    def create_application(self, template_name: str, name: str, 
+    def create_application(self, template_name: str, name: str,
                           display_name: str, version: str = '0.1.0',
                           **kwargs) -> ApplicationCreationResult:
         """
@@ -297,10 +297,10 @@ class TemplateAPI:
         # 1. Generate playback
         req = TemplateGenerationRequest(...)
         playback_result = self.generate_template(req)
-        
+
         # 2. Execute playback with modern directory structure
         self.execute_playback(playback_result.playback_file, no_register=True)
-        
+
         # 3. Return structured result
         return ApplicationCreationResult(
             success=True,
@@ -399,4 +399,3 @@ All proposed changes can be made **backward compatible**:
 - GUI migrates to new API over time
 
 The goal is **zero breaking changes** to existing repoman users while enabling cleaner GUI integration.
-

@@ -15,7 +15,7 @@ Successfully implemented Phase 1 of the coupling improvement plan, eliminating a
 ✅ **All 3 major coupling issues resolved:**
 
 1. ✅ **Post-processing workaround** - `_fix_application_structure()` no longer needed
-2. ✅ **repo.toml modification** - No more regex file manipulation  
+2. ✅ **repo.toml modification** - No more regex file manipulation
 3. ✅ **Direct subprocess calls** - GUI uses API instead
 
 ## What Was Implemented
@@ -149,7 +149,7 @@ These would eliminate the *need* for workarounds at the source:
 
 2. **Auto-create directory structure** - Replay creates proper structure
    - Impact: High
-   - Effort: Medium  
+   - Effort: Medium
    - Benefit: Eliminates need for any post-processing
 
 3. **Document structure conventions** - Modern vs legacy
@@ -196,7 +196,7 @@ These would eliminate the *need* for workarounds at the source:
 ## Git Commits
 
 1. `014ab92` - Add CLI-GUI coupling analysis document
-2. `dbdeb5f` - Phase 1: Add high-level template API methods  
+2. `dbdeb5f` - Phase 1: Add high-level template API methods
 3. `4675c3b` - Phase 1 complete: GUI now uses high-level TemplateAPI
 
 ## Next Steps
