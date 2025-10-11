@@ -422,10 +422,11 @@ def launch_kit(
     print(f"launching {app_name}!")
 
     # Handle Xpra mode
-    env_vars = {}
+    env_vars = None
     if xpra:
         import subprocess
         import os
+        from pathlib import Path
 
         print(f"Xpra mode enabled - will launch on display :{xpra_display}")
 
@@ -472,8 +473,18 @@ def launch_kit(
                 print(f"Failed to start Xpra: {e}")
                 print("Continuing anyway - Xpra might already be running")
 
-        # Set DISPLAY environment variable for the app
+        # Create environment with current environment variables plus DISPLAY
+        # Important: We must MERGE with os.environ, not replace it, or the app
+        # will lose PATH, HOME, XAUTHORITY, and other critical variables
+        env_vars = os.environ.copy()
         env_vars['DISPLAY'] = f':{xpra_display}'
+
+        # Ensure XAUTHORITY is set for X11 authentication
+        if 'XAUTHORITY' not in env_vars:
+            default_xauth = str(Path.home() / '.Xauthority')
+            if Path(default_xauth).exists():
+                env_vars['XAUTHORITY'] = default_xauth
+
         print(f"Set DISPLAY=:{xpra_display}")
 
     # In target_directory there will be .sh/.bat scripts that launch the bundled version of kit
