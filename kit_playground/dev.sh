@@ -117,6 +117,7 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
 fi
 
 # Create temporary setupProxy.js with dynamic backend port
+# Use BACKEND_HOST (which respects REMOTE variable) for the proxy target
 cat > "$UI_DIR/src/setupProxy.js" << EOF
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
@@ -124,9 +125,22 @@ module.exports = function(app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'http://localhost:${BACKEND_PORT}',
+      target: 'http://${BACKEND_HOST}:${BACKEND_PORT}',
       changeOrigin: true,
       logLevel: 'warn',
+      // When running in remote mode, the proxy needs to connect to the backend
+      // using the same host that the browser uses to connect to the frontend
+      router: function(req) {
+        // If accessing via remote hostname, connect to backend on same host
+        const requestHost = req.headers.host;
+        if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
+          const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
+          console.log('[Proxy] Routing API request to:', backendUrl);
+          return backendUrl;
+        }
+        // Default: use localhost
+        return 'http://${BACKEND_HOST}:${BACKEND_PORT}';
+      },
     })
   );
 };
