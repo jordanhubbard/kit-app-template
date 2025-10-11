@@ -37,11 +37,16 @@ class XpraSession:
             logger.error("See XPRA_SETUP.md for installation instructions")
             return False
 
+        # Determine bind host based on REMOTE environment variable
+        # REMOTE=1 means bind to 0.0.0.0 (all interfaces), otherwise localhost
+        bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+        logger.info(f"Xpra will bind to {bind_host} (REMOTE={os.environ.get('REMOTE', 'not set')})")
+
         try:
             cmd = [
                 'xpra', 'start',
                 f':{self.display_number}',
-                f'--bind-tcp=0.0.0.0:{self.port}',
+                f'--bind-tcp={bind_host}:{self.port}',
                 '--html=on',
                 '--encodings=rgb,png,jpeg',
                 '--compression=0',
