@@ -109,16 +109,15 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], b
     """
     Fix application directory structure after template replay.
 
-    Moves applications from source/apps/ to platform-specific build directory
-    following the convention: _build/{platform}-{arch}/{config}/apps/{name}/
+    The template replay system creates app.kit as a FILE in source/apps/,
+    but we need it to be source/apps/{name}/{name}.kit (directory structure).
+    The build system will then symlink source/apps → _build/{platform}/{config}/apps
 
     Args:
         repo_root: Repository root directory
         playback_data: Parsed playback TOML data
         build_config: Build configuration (release or debug), defaults to release
     """
-    # Get platform-specific build directory
-    platform_build_dir = get_platform_build_dir(repo_root, build_config)
     platform_name, arch = get_platform_info()
 
     # Determine if this is an application template
@@ -142,26 +141,18 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], b
             # Already a directory, skip
             continue
 
-        # Found a .kit FILE that should be moved to platform-specific apps directory
+        # Found a .kit FILE that should be restructured into a directory
         print(f"\nRestructuring application: {app_name}")
-        print(f"Moving from source/apps/ to {platform_name}-{arch}/{build_config}/apps/...")
+        print(f"Creating directory structure in source/apps/...")
 
-        # Create new directory structure in platform-specific build dir
-        app_dir = platform_build_dir / "apps" / app_name
+        # Create new directory structure in source/apps
+        # The build system will symlink this to _build/{platform}/{config}/apps
+        app_dir = repo_root / "source" / "apps" / app_name
         app_dir.mkdir(parents=True, exist_ok=True)
 
         # Move the .kit file into the directory
         new_kit_file = app_dir / f"{app_name}.kit"
         shutil.move(str(old_kit_file), str(new_kit_file))
-
-        # Clean up the source/apps directory for this app (might be leftover files)
-        source_app_dir = repo_root / "source" / "apps" / app_name
-        if source_app_dir.exists() and source_app_dir.is_dir():
-            try:
-                shutil.rmtree(source_app_dir)
-                logger.info(f"Cleaned up source app directory: {source_app_dir}")
-            except Exception as e:
-                logger.warning(f"Could not clean up source app directory: {e}")
 
         # Copy README.md from template if it exists
         template_readme = repo_root / "templates" / "apps" / template_name / "README.md"
@@ -267,7 +258,6 @@ exit /b %ERRORLEVEL%
         print(f"✓ Application '{app_name}' created successfully in")
         print(f"  {app_dir}")
         print("")
-        print(f"Platform: {platform_name}-{arch} ({build_config})")
         print(f"Main configuration: {app_name}.kit")
         print("")
         print(f"To build (from repository root):")
@@ -275,6 +265,8 @@ exit /b %ERRORLEVEL%
         print("")
         print(f"Or build from app directory:")
         print(f"  cd {app_dir} && ./repo.sh build --config {build_config}")
+        print("")
+        print(f"Note: Build system will symlink to: _build/{platform_name}-{arch}/{build_config}/apps/{app_name}")
         print("")
 
         # Return the new app directory path for API consumers

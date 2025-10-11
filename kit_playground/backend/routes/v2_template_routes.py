@@ -402,16 +402,18 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                         'error': error_msg
                     }), 500
 
-                # Apps are now created in platform-specific directory
-                # New structure: _build/{platform}-{arch}/release/apps/{name}/{name}.kit
+                # Apps are created in source/apps (real location)
+                # Build system symlinks: source/apps → _build/{platform}/{config}/apps
+                # Return the symlinked path to UI for consistency with build artifacts
                 platform_build_dir = get_platform_build_dir(repo_root, 'release')
-                output_dir = str(platform_build_dir / 'apps')
+
+                # Real location (source/apps)
+                project_dir = repo_root / "source" / "apps" / name
+                kit_file = project_dir / f"{name}.kit"
+
+                # Symlinked location (what UI and build system use)
                 relative_output_dir = str((platform_build_dir / 'apps').relative_to(repo_root))
                 kit_file_path = f"{relative_output_dir}/{name}/{name}.kit"
-
-                # Verify the project files were actually created
-                project_dir = platform_build_dir / 'apps' / name
-                kit_file = project_dir / f"{name}.kit"
 
                 if not project_dir.exists():
                     error_msg = f"Project directory was not created: {project_dir}"
