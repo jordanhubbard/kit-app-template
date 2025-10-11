@@ -17,6 +17,18 @@ export interface WorkflowState {
   canGoForward: boolean;
 }
 
+export type StatusState = 'success' | 'failed' | undefined;
+
+export interface ProjectStatus {
+  created?: StatusState;      // undefined | 'success' | 'failed'
+  built?: StatusState;         // undefined | 'success' | 'failed'
+  launched?: StatusState;      // undefined | 'success' | 'failed'
+  isBuilding?: boolean;        // Currently building
+  isRunning?: boolean;         // Currently running
+  lastBuildTime?: string;
+  lastLaunchTime?: string;
+}
+
 export interface WorkflowNode {
   id: string;
   label: string;
@@ -24,4 +36,5 @@ export interface WorkflowNode {
   icon?: string;
   children?: WorkflowNode[];
   expanded?: boolean;
+  status?: ProjectStatus;  // Only for projects
 }

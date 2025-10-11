@@ -34,8 +34,11 @@ import {
   KeyboardArrowDown as CollapseIcon,
   KeyboardArrowRight as ExpandIcon,
   Delete as DeleteIcon,
+  CheckCircle as SuccessIcon,
+  Error as ErrorIcon,
+  PlayArrow as RunningIcon,
 } from '@mui/icons-material';
-import { WorkflowNode } from '../../types/workflow';
+import { WorkflowNode, ProjectStatus } from '../../types/workflow';
 import DirectoryBrowserDialog from '../dialogs/DirectoryBrowserDialog';
 
 interface WorkflowSidebarProps {
@@ -99,6 +102,96 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
     return <TemplateIcon />;
   };
 
+  const renderStatusBadges = (status?: ProjectStatus) => {
+    if (!status) return null;
+
+    const badges: React.ReactNode[] = [];
+
+    // Build status badge (only show if attempted)
+    if (status.isBuilding) {
+      badges.push(
+        <Chip
+          key="build"
+          label="Building..."
+          size="small"
+          color="info"
+          sx={{
+            height: 18,
+            fontSize: '0.65rem',
+            '& .MuiChip-label': { px: 0.5 },
+          }}
+        />
+      );
+    } else if (status.built !== undefined) {
+      const buildIcon = status.built === 'success'
+        ? <CheckCircle sx={{ fontSize: 12 }} />
+        : <ErrorIcon sx={{ fontSize: 12 }} />;
+
+      badges.push(
+        <Chip
+          key="build"
+          label={status.built === 'success' ? 'Built' : 'Build Failed'}
+          icon={buildIcon}
+          size="small"
+          color={status.built === 'success' ? 'success' : 'error'}
+          sx={{
+            height: 18,
+            fontSize: '0.65rem',
+            '& .MuiChip-label': { px: 0.5 },
+            '& .MuiChip-icon': { ml: 0.5 },
+          }}
+        />
+      );
+    }
+
+    // Launch status badge (only show if attempted)
+    if (status.isRunning) {
+      badges.push(
+        <Chip
+          key="launch"
+          label="Running"
+          icon={<RunningIcon sx={{ fontSize: 12 }} />}
+          size="small"
+          color="warning"
+          sx={{
+            height: 18,
+            fontSize: '0.65rem',
+            '& .MuiChip-label': { px: 0.5 },
+            '& .MuiChip-icon': { ml: 0.5 },
+          }}
+        />
+      );
+    } else if (status.launched !== undefined) {
+      const launchIcon = status.launched === 'success'
+        ? <CheckCircle sx={{ fontSize: 12 }} />
+        : <ErrorIcon sx={{ fontSize: 12 }} />;
+
+      badges.push(
+        <Chip
+          key="launch"
+          label={status.launched === 'success' ? 'Ran' : 'Launch Failed'}
+          icon={launchIcon}
+          size="small"
+          color={status.launched === 'success' ? 'success' : 'error'}
+          sx={{
+            height: 18,
+            fontSize: '0.65rem',
+            '& .MuiChip-label': { px: 0.5 },
+            '& .MuiChip-icon': { ml: 0.5 },
+          }}
+        />
+      );
+    }
+
+    if (badges.length === 0) return null;
+
+    return (
+      <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
+        {badges}
+      </Box>
+    );
+  };
+
   const renderNode = (node: WorkflowNode, depth: number = 0, isProject: boolean = false) => {
     const isExpanded = expandedNodes.has(node.id);
     const isSelected = selectedId === node.id;
@@ -155,11 +248,20 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
               {getNodeIcon(node, isExpanded)}
             </ListItemIcon>
             <ListItemText
-              primary={node.label}
-              primaryTypographyProps={{
-                fontSize: 14,
-                fontWeight: isSelected ? 'bold' : 'normal',
-              }}
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontSize: 14,
+                      fontWeight: isSelected ? 'bold' : 'normal',
+                    }}
+                  >
+                    {node.label}
+                  </Typography>
+                  {isProject && renderStatusBadges(node.status)}
+                </Box>
+              }
             />
             {hasChildren && (
               isExpanded ? <ExpandLess /> : <ExpandMore />
