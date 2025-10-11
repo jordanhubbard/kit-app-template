@@ -461,11 +461,12 @@ clean:
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@echo "$(GREEN)Clean complete!$(NC)"
 
-# Clean all user-created applications (for testing iteration)
+# Clean all user-created applications and extensions (for testing iteration)
 .PHONY: clean-apps
 clean-apps:
-	@echo "$(BLUE)Removing all user-created applications...$(NC)"
+	@echo "$(BLUE)Removing all user-created applications and extensions...$(NC)"
 	@echo "$(YELLOW)⚠  This will delete ALL applications in source/apps/$(NC)"
+	@echo "$(YELLOW)⚠  This will delete template-generated extensions$(NC)"
 	@echo "$(YELLOW)⚠  System directories (exts, extscache) will be preserved$(NC)"
 	@echo ""
 	@# Count apps to be deleted (excluding system dirs)
@@ -486,6 +487,18 @@ clean-apps:
 		rm -f $(ROOT_DIR)/source/apps/*.kit; \
 		echo "$(GREEN)✓ Cleaned up stray .kit files$(NC)"; \
 	fi
+	@# Remove template-generated extensions (viewer_messaging, viewer_setup, editor_setup, etc.)
+	@echo "$(BLUE)Removing template-generated extensions...$(NC)"
+	@EXT_COUNT=$$(find $(ROOT_DIR)/source/extensions -maxdepth 1 -type d \( -name "*.viewer_messaging" -o -name "*.viewer_setup" -o -name "*.editor_setup" -o -name "*.composer_setup" -o -name "*.explorer_setup" \) | wc -l); \
+	if [ $$EXT_COUNT -gt 0 ]; then \
+		echo "$(YELLOW)Found $$EXT_COUNT extension(s) to remove:$(NC)"; \
+		find $(ROOT_DIR)/source/extensions -maxdepth 1 -type d \( -name "*.viewer_messaging" -o -name "*.viewer_setup" -o -name "*.editor_setup" -o -name "*.composer_setup" -o -name "*.explorer_setup" \) -exec basename {} \; | sed 's/^/  - /'; \
+		echo ""; \
+		find $(ROOT_DIR)/source/extensions -maxdepth 1 -type d \( -name "*.viewer_messaging" -o -name "*.viewer_setup" -o -name "*.editor_setup" -o -name "*.composer_setup" -o -name "*.explorer_setup" \) -exec rm -rf {} + 2>/dev/null || true; \
+		echo "$(GREEN)✓ Removed $$EXT_COUNT extension(s)$(NC)"; \
+	else \
+		echo "$(GREEN)No template extensions found to remove$(NC)"; \
+	fi
 	@# Clean repo.toml apps list
 	@echo "$(BLUE)Cleaning repo.toml apps list...$(NC)"
 	@if grep -q "^apps = \[" $(ROOT_DIR)/repo.toml 2>/dev/null; then \
@@ -496,8 +509,17 @@ clean-apps:
 			echo "$(GREEN)✓ Cleared repo.toml apps list$(NC)"; \
 		fi; \
 	fi
+	@# Stage any git deletions
+	@echo "$(BLUE)Staging git deletions...$(NC)"
+	@git add -u source/apps/ source/extensions/ 2>/dev/null || true
+	@DELETED=$$(git status --short source/apps/ source/extensions/ 2>/dev/null | grep "^D" | wc -l); \
+	if [ $$DELETED -gt 0 ]; then \
+		echo "$(GREEN)✓ Staged $$DELETED deleted file(s)$(NC)"; \
+	else \
+		echo "$(GREEN)✓ No deletions to stage$(NC)"; \
+	fi
 	@echo ""
-	@echo "$(GREEN)Application cleanup complete!$(NC)"
+	@echo "$(GREEN)Application and extension cleanup complete!$(NC)"
 	@echo "$(BLUE)Note: Build system uses dynamic discovery, so new apps will be auto-detected$(NC)"
 
 # Deep clean including dependencies and applications
