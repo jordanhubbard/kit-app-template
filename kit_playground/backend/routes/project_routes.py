@@ -244,20 +244,56 @@ def create_project_routes(
                         'error': 'Failed to start Xpra session. Please check if Xpra is installed.'
                     }), 500
 
-                kit_script = repo_root / '_build' / 'linux-x86_64' / 'release' / f'{kit_file}.sh'
-                if not kit_script.exists():
-                    socketio.emit('log', {
-                        'level': 'error',
-                        'source': 'runtime',
-                        'message': f'Kit script not found: {kit_script}. Did you build the project?'
-                    })
-                    xpra_manager.stop_session(session_id)
-                    return jsonify({
-                        'success': False,
-                        'error': 'Kit script not found. Please build the project first.'
-                    }), 400
+                # Determine launch command - prefer project wrapper if available
+                launch_cmd = None
+                launch_cwd = None
 
-                if session.launch_app(str(kit_script)):
+                if project_path:
+                    app_dir = security_validator._validate_project_path(repo_root, project_path)
+                    if app_dir:
+                        wrapper_script = app_dir / 'repo.sh'
+                        if wrapper_script.exists():
+                            # Use project wrapper with 'launch' command and kit file name
+                            launch_cmd = f"./repo.sh launch {kit_file}"
+                            launch_cwd = str(app_dir)
+                            logger.info(f"Using project wrapper for Xpra launch in {launch_cwd}")
+
+                # Fallback to global kit script if wrapper not found
+                if not launch_cmd:
+                    kit_script = repo_root / '_build' / 'linux-x86_64' / 'release' / f'{kit_file}.sh'
+                    if not kit_script.exists():
+                        socketio.emit('log', {
+                            'level': 'error',
+                            'source': 'runtime',
+                            'message': f'Kit script not found: {kit_script}. Did you build the project?'
+                        })
+                        xpra_manager.stop_session(session_id)
+                        return jsonify({
+                            'success': False,
+                            'error': 'Kit script not found. Please build the project first.'
+                        }), 400
+                    launch_cmd = str(kit_script)
+                    launch_cwd = str(repo_root)
+
+                # Log the launch command for reproducibility
+                logger.info("=" * 80)
+                logger.info(f"XPRA LAUNCH COMMAND: {project_name}")
+                logger.info(f"Command: {launch_cmd}")
+                logger.info(f"Working directory: {launch_cwd}")
+                logger.info("=" * 80)
+
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'$ cd {launch_cwd}'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'$ DISPLAY=:100 {launch_cmd}'
+                })
+
+                if session.launch_app(launch_cmd, cwd=launch_cwd):
                     server_host = request.host.split(':')[0]
                     preview_url = xpra_manager.get_session_url(session_id, host=server_host)
                     socketio.emit('log', {

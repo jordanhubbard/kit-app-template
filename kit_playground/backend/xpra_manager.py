@@ -81,11 +81,12 @@ class XpraSession:
             logger.error(f"Failed to start Xpra session: {e}")
             return False
 
-    def launch_app(self, app_command: str) -> bool:
+    def launch_app(self, app_command: str, cwd: str = None) -> bool:
         """Launch an application on this Xpra display.
 
         Args:
-            app_command: Path to executable script (must be validated by caller)
+            app_command: Path to executable script or command (must be validated by caller)
+            cwd: Working directory for the command (optional)
         """
         if not self.started:
             logger.error("Xpra session not started")
@@ -99,6 +100,7 @@ class XpraSession:
             logger.info(f"LAUNCHING APP IN XPRA")
             logger.info(f"Display: :{self.display_number}")
             logger.info(f"Command: {app_command}")
+            logger.info(f"Working directory: {cwd or 'current'}")
             logger.info(f"Environment DISPLAY={env['DISPLAY']}")
             logger.info("=" * 80)
 
@@ -111,6 +113,7 @@ class XpraSession:
                 cmd_list,
                 shell=False,  # More secure than shell=True
                 env=env,
+                cwd=cwd,  # Set working directory
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
