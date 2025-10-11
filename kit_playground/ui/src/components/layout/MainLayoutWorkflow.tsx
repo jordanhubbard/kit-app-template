@@ -10,6 +10,7 @@ import {
   PlayArrow as RunIcon,
   Stop as StopIcon,
   Save as SaveIcon,
+  OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
 import SlidingPanelLayout from './SlidingPanelLayout';
 import WorkflowSidebar from './WorkflowSidebar';
@@ -370,16 +371,20 @@ const MainLayoutWorkflow: React.FC = () => {
       });
 
       const result = await response.json();
+      console.log('[DEBUG] API response from /api/projects/run:', result);
       if (result.success) {
         emitConsoleLog('success', 'runtime', `Application launched: ${selectedProject}`);
         // Navigate to preview if Xpra session available
         if (result.previewUrl) {
-          console.log('[Xpra] Setting preview URL:', result.previewUrl);
+          console.log('[DEBUG] Preview URL from API:', result.previewUrl);
+          console.log('[DEBUG] Setting preview URL state to:', result.previewUrl);
           setPreviewUrl(result.previewUrl);
+          console.log('[DEBUG] Navigating to preview step');
           navigateToStep('preview');
           emitConsoleLog('info', 'runtime', `Preview available at: ${result.previewUrl}`);
           emitConsoleLog('info', 'runtime', `Opening preview window...`);
         } else if (useXpra) {
+          console.log('[DEBUG] No previewUrl in response');
           emitConsoleLog('warning', 'runtime', `Xpra preview not available. Check if Xpra is installed (see XPRA_SETUP.md)`);
         }
       } else {
@@ -769,12 +774,78 @@ const MainLayoutWorkflow: React.FC = () => {
     }
 
     return (
-      <Box sx={{ height: '100%', width: '100%' }}>
-        <PreviewPane
-          url={previewUrl}
-          templateId={selectedProject}
-          mode="xpra"
-        />
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+        {/* Preview toolbar with stop button */}
+        <Toolbar
+          variant="dense"
+          sx={{
+            backgroundColor: '#2d2d30',
+            borderBottom: 1,
+            borderColor: 'divider',
+            minHeight: 48,
+            gap: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: '#cccccc', mr: 2 }}>
+            Application Preview
+          </Typography>
+
+          {/* Stop Button */}
+          {isRunning && (
+            <Tooltip title="Stop application">
+              <IconButton
+                size="small"
+                onClick={handleStop}
+                sx={{
+                  color: '#f48771',
+                  '&:hover': { backgroundColor: '#3e3e42' },
+                }}
+              >
+                <StopIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Box sx={{ flex: 1 }} />
+
+          {/* Preview URL display */}
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#858585',
+              fontFamily: 'monospace',
+              px: 1,
+              py: 0.5,
+              backgroundColor: '#1e1e1e',
+              borderRadius: 1,
+            }}
+          >
+            {previewUrl}
+          </Typography>
+
+          {/* Open in new tab */}
+          <Tooltip title="Open in new tab">
+            <IconButton
+              size="small"
+              onClick={() => window.open(previewUrl, '_blank')}
+              sx={{
+                color: '#4ec9b0',
+                '&:hover': { backgroundColor: '#3e3e42' },
+              }}
+            >
+              <OpenInNewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Toolbar>
+
+        {/* Preview iframe */}
+        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+          <PreviewPane
+            url={previewUrl}
+            templateId={selectedProject}
+            mode="xpra"
+          />
+        </Box>
       </Box>
     );
   };

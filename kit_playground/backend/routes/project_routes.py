@@ -281,21 +281,25 @@ def create_project_routes(
                     # Store process for later management
                     processes[project_name] = process
 
-                    # Get server host for preview URL
-                    server_host = request.host.split(':')[0]
-                    # Xpra will be on port 10000 (display :100)
-                    preview_url = f"http://{server_host}:10000"
+                # Get server host for preview URL
+                server_host = request.host.split(':')[0]
+                # Xpra will be on port 10000 (display :100)
+                preview_url = f"http://{server_host}:10000"
+                
+                logger.info(f"[PREVIEW URL] Request.host: {request.host}")
+                logger.info(f"[PREVIEW URL] Server host: {server_host}")
+                logger.info(f"[PREVIEW URL] Constructed URL: {preview_url}")
 
-                    socketio.emit('log', {
-                        'level': 'success',
-                        'source': 'runtime',
-                        'message': f'Application launched with Xpra'
-                    })
-                    socketio.emit('log', {
-                        'level': 'info',
-                        'source': 'runtime',
-                        'message': f'Preview: {preview_url}'
-                    })
+                socketio.emit('log', {
+                    'level': 'success',
+                    'source': 'runtime',
+                    'message': f'Application launched with Xpra'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'Preview: {preview_url}'
+                })
 
                     # Start thread to stream output
                     def stream_output():
@@ -415,10 +419,12 @@ def create_project_routes(
 
                 threading.Thread(target=stream_output, daemon=True).start()
 
-            return jsonify({
+            response_data = {
                 'success': True,
                 'previewUrl': preview_url
-            })
+            }
+            logger.info(f"[PREVIEW URL] Returning response: {response_data}")
+            return jsonify(response_data)
         except Exception as e:
             logger.error(f"Failed to run project: {e}")
             return jsonify({'error': str(e)}), 500

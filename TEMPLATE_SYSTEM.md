@@ -1,5 +1,11 @@
 # Kit App Template System Documentation
 
+> **📖 Documentation Guide:**
+> - **This document** (TEMPLATE_SYSTEM.md) - User guide for creating applications and extensions
+> - **[TEMPLATE_DESIGN.md](TEMPLATE_DESIGN.md)** - Technical architecture and internal design for contributors
+> 
+> If you're looking to **create applications**, you're in the right place! If you want to understand or **contribute to the system**, see TEMPLATE_DESIGN.md.
+
 ## Overview
 
 The Kit App Template System provides a fully data-driven, non-interactive approach for generating Kit applications and extensions. This system enables teams to create consistent, validated templates using configuration files and command-line parameters.

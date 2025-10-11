@@ -3,6 +3,12 @@
 **Last Updated**: 2025-10-11
 **Version**: 2.0
 
+> **📖 Documentation Guide:**
+> - **This document** (TEMPLATE_DESIGN.md) - Technical architecture and internal design for contributors
+> - **[TEMPLATE_SYSTEM.md](TEMPLATE_SYSTEM.md)** - User guide for creating applications and extensions
+> 
+> If you're looking to **understand the architecture** or **contribute**, you're in the right place! If you want to **create applications**, see TEMPLATE_SYSTEM.md.
+
 ---
 
 ## Table of Contents
