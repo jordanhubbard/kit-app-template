@@ -409,7 +409,7 @@ def select_kit(target_directory: Path, config: dict) -> str:
 
 
 def launch_kit(
-    app_name, target_directory: Path, config: dict = {}, dev_bundle: bool = False, extra_args: List[str] = []
+    app_name, target_directory: Path, config: dict = {}, dev_bundle: bool = False, extra_args: List[str] = [], xpra: bool = False, xpra_display: int = 100
 ):
     # Some assumptions are being made on the folder structure of target_directory.
     # It should be the `_build/${host_platform}/${config}/` folder which contains entrypoint scripts
@@ -420,6 +420,61 @@ def launch_kit(
         app_name = select_kit(target_directory / "apps", config)
 
     print(f"launching {app_name}!")
+
+    # Handle Xpra mode
+    env_vars = {}
+    if xpra:
+        import subprocess
+        import os
+
+        print(f"Xpra mode enabled - will launch on display :{xpra_display}")
+
+        # Check if Xpra is running on this display
+        try:
+            result = subprocess.run(
+                ['xpra', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            xpra_running = f':{xpra_display}' in result.stdout
+        except Exception:
+            xpra_running = False
+
+        if not xpra_running:
+            print(f"Starting Xpra on display :{xpra_display}...")
+            # Determine bind host based on REMOTE environment variable
+            bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+            xpra_port = 10000 + (xpra_display - 100)
+
+            try:
+                subprocess.Popen(
+                    [
+                        'xpra', 'start',
+                        f':{xpra_display}',
+                        f'--bind-tcp={bind_host}:{xpra_port}',
+                        '--html=on',
+                        '--encodings=rgb,png,jpeg',
+                        '--compression=0',
+                        '--opengl=yes',
+                        '--speaker=off',
+                        '--microphone=off',
+                        '--daemon=yes',  # Run as daemon
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                print(f"Xpra started on port {xpra_port}")
+                print(f"Browser preview: http://{bind_host}:{xpra_port}")
+                import time
+                time.sleep(2)  # Wait for Xpra to start
+            except Exception as e:
+                print(f"Failed to start Xpra: {e}")
+                print("Continuing anyway - Xpra might already be running")
+
+        # Set DISPLAY environment variable for the app
+        env_vars['DISPLAY'] = f':{xpra_display}'
+        print(f"Set DISPLAY=:{xpra_display}")
 
     # In target_directory there will be .sh/.bat scripts that launch the bundled version of kit
     # with the targeted kit app .kit file.
@@ -440,6 +495,7 @@ def launch_kit(
     _ = _run_process(
         kit_cmd,
         exit_on_error=False,
+        env=env_vars if env_vars else None,
     )
 
 
@@ -509,6 +565,23 @@ def add_args(parser: argparse.ArgumentParser):
         help="Enable the developer debugging extension bundle.",
     )
 
+    parser.add_argument(
+        "--xpra",
+        dest="xpra",
+        required=False,
+        action="store_true",
+        help="Launch in Xpra virtual display for browser preview (requires Xpra installed). Sets DISPLAY=:100 and starts Xpra if not running.",
+    )
+
+    parser.add_argument(
+        "--xpra-display",
+        dest="xpra_display",
+        required=False,
+        type=int,
+        default=100,
+        help="Xpra display number to use (default: 100)",
+    )
+
 
 def add_package_arg(parser: argparse.ArgumentParser):
     parser.add_argument(
@@ -564,9 +637,13 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Optional[C
         try:
             # Launching from a distributed package
             console.print("\[ctrl+c to Exit]", style=INFO_COLOR)
+            # Extract xpra options
+            xpra_mode = getattr(options, 'xpra', False)
+            xpra_display = getattr(options, 'xpra_display', 100)
+
             if options.from_package:
                 package_path = expand_package(options.from_package)
-                launch_kit(app_name, package_path, config_dict, dev_bundle, options.extra_args)
+                launch_kit(app_name, package_path, config_dict, dev_bundle, options.extra_args, xpra_mode, xpra_display)
 
             # Launching a locally built application
             else:
@@ -586,7 +663,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Optional[C
                     return
 
                 # Launch the thing, or query the user and then launch the thing.
-                launch_kit(app_name, build_path, config_dict, dev_bundle, options.extra_args)
+                launch_kit(app_name, build_path, config_dict, dev_bundle, options.extra_args, xpra_mode, xpra_display)
 
         except (KeyboardInterrupt, SystemExit):
             console.print("Exiting", style=INFO_COLOR)
