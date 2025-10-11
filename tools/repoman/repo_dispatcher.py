@@ -102,7 +102,7 @@ def parse_template_new_args(args: List[str]) -> tuple[str, Dict[str, str], List[
 
     return template_name, kwargs, remaining_args
 
-def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], config: str = 'release') -> None:
+def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], build_config: str = 'release') -> None:
     """
     Fix application directory structure after template replay.
 
@@ -112,10 +112,10 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], c
     Args:
         repo_root: Repository root directory
         playback_data: Parsed playback TOML data
-        config: Build configuration (release or debug), defaults to release
+        build_config: Build configuration (release or debug), defaults to release
     """
     # Get platform-specific build directory
-    platform_build_dir = get_platform_build_dir(repo_root, config)
+    platform_build_dir = get_platform_build_dir(repo_root, build_config)
     platform_name, arch = get_platform_info()
 
     # Determine if this is an application template
@@ -141,7 +141,7 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], c
 
         # Found a .kit FILE that should be moved to platform-specific apps directory
         print(f"\nRestructuring application: {app_name}")
-        print(f"Moving from source/apps/ to {platform_name}-{arch}/{config}/apps/...")
+        print(f"Moving from source/apps/ to {platform_name}-{arch}/{build_config}/apps/...")
 
         # Create new directory structure in platform-specific build dir
         app_dir = platform_build_dir / "apps" / app_name
@@ -162,8 +162,8 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], c
 
 [project]
 name = "{app_name}"
-display_name = "{config.get('application_display_name', app_name)}"
-version = "{config.get('version', '0.1.0')}"
+display_name = "{config_data.get('application_display_name', app_name)}"
+version = "{config_data.get('version', '0.1.0')}"
 type = "application"
 template = "{template_name}"
 created = "{__import__('datetime').datetime.now().isoformat()}"
@@ -255,14 +255,14 @@ exit /b %ERRORLEVEL%
         print(f"✓ Application '{app_name}' created successfully in")
         print(f"  {app_dir}")
         print("")
-        print(f"Platform: {platform_name}-{arch} ({config})")
+        print(f"Platform: {platform_name}-{arch} ({build_config})")
         print(f"Main configuration: {app_name}.kit")
         print("")
         print(f"To build (from repository root):")
-        print(f"  cd {repo_root} && ./repo.sh build --config {config}")
+        print(f"  cd {repo_root} && ./repo.sh build --config {build_config}")
         print("")
         print(f"Or build from app directory:")
-        print(f"  cd {app_dir} && ./repo.sh build --config {config}")
+        print(f"  cd {app_dir} && ./repo.sh build --config {build_config}")
         print("")
 
         # Return the new app directory path for API consumers
