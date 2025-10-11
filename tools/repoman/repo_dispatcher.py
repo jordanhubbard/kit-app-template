@@ -8,8 +8,11 @@ import os
 import sys
 import shutil
 import platform
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
+
+logger = logging.getLogger(__name__)
 
 def get_repo_root() -> Path:
     """Get the repository root directory."""
@@ -150,6 +153,15 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], b
         # Move the .kit file into the directory
         new_kit_file = app_dir / f"{app_name}.kit"
         shutil.move(str(old_kit_file), str(new_kit_file))
+
+        # Clean up the source/apps directory for this app (might be leftover files)
+        source_app_dir = repo_root / "source" / "apps" / app_name
+        if source_app_dir.exists() and source_app_dir.is_dir():
+            try:
+                shutil.rmtree(source_app_dir)
+                logger.info(f"Cleaned up source app directory: {source_app_dir}")
+            except Exception as e:
+                logger.warning(f"Could not clean up source app directory: {e}")
 
         # Copy README.md from template if it exists
         template_readme = repo_root / "templates" / "apps" / template_name / "README.md"

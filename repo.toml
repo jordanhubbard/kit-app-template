@@ -16,13 +16,14 @@ name = "kit-app-template"
 [repo_build]
 # These are necessary to avoid a repo_build failure where the _build/apps directory
 # is expected to always exist.
+# Platform-specific apps directory
 fetch."platform:linux-x86_64".before_pull_commands = [
-    ["mkdir", "--parents", "${root}/_build/apps"],
+    ["mkdir", "--parents", "${root}/_build/${platform}/${config}/apps"],
 ]
 
 # Mute this command, don't emit to console.
 fetch."platform:windows-x86_64".before_pull_commands = [
-    ["powershell", "-Command", "New-Item -ItemType Directory -Path ${root}/_build/apps -ErrorAction SilentlyContinue", ";", "Write-Host 'Done'"],
+    ["powershell", "-Command", "New-Item -ItemType Directory -Path ${root}/_build/${platform}/${config}/apps -ErrorAction SilentlyContinue", ";", "Write-Host 'Done'"],
 ]
 
 # If caching do not try to cache extensions. These will come from the NGC Kit Extension Registry.
@@ -88,8 +89,9 @@ ext_folders = [
 # Dynamic app discovery paths
 # Apps are automatically discovered by scanning these directories for .kit files
 # This allows for flexible app creation without manually updating this list
+# Platform-specific structure: _build/{platform}/{config}/apps
 app_discovery_paths = [
-    "${root}/_build/apps",
+    "${root}/_build/${platform}/${config}/apps",
 ]
 
 # Legacy static apps list (kept for reference, but app_discovery_paths takes precedence)
@@ -183,7 +185,8 @@ files_exclude = [
 ########################################################################################################################
 [repo_kit_template]
 extension_templates_config = "templates/templates.toml"
-applications_path = "${root}/_build/apps"
+# Platform-specific structure: _build/{platform}/{config}/apps
+applications_path = "${root}/_build/${platform}/${config}/apps"
 
 
 ########################################################################################################################
