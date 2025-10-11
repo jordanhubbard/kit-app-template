@@ -311,11 +311,22 @@ const MainLayoutWorkflow: React.FC = () => {
         }),
       });
 
-      const result = await response.json();
+      // Get response text first (can only read body once)
+      const responseText = await response.text();
 
       // Check if response itself failed
       if (!response.ok) {
-        emitConsoleLog('error', 'build', `Build request failed: ${result.error || response.statusText}`);
+        emitConsoleLog('error', 'build', `Build request failed: ${responseText || response.statusText}`);
+        return;
+      }
+
+      // Parse JSON response
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (jsonError: any) {
+        emitConsoleLog('error', 'build', `Invalid response from server: ${responseText.substring(0, 200)}`);
+        console.error('JSON parse error:', jsonError, 'Response text:', responseText);
         return;
       }
 
@@ -328,6 +339,7 @@ const MainLayoutWorkflow: React.FC = () => {
       }
     } catch (error: any) {
       emitConsoleLog('error', 'build', `Build error: ${error.message || error}`);
+      console.error('Build error details:', error);
     } finally {
       setIsBuilding(false);
     }
@@ -583,17 +595,47 @@ const MainLayoutWorkflow: React.FC = () => {
         flexDirection: 'column',
       }}
     >
-      {/* Toolbar */}
+      {/* Editor */}
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+        <CodeEditor
+          value={editorContent}
+          onChange={handleCodeChange}
+          language="toml"
+          templateId={selectedProject || selectedTemplate}
+          readOnly={false}
+        />
+      </Box>
+
+      {/* Toolbar - MOVED BELOW EDITOR */}
       <Toolbar
         variant="dense"
         sx={{
           backgroundColor: '#252526',
+          borderTop: 1,
           borderBottom: 1,
           borderColor: '#3e3e42',
           minHeight: 40,
           gap: 1,
+          px: 2,
         }}
       >
+        {/* Project Info - Moved to front */}
+        <Typography
+          variant="caption"
+          sx={{
+            color: '#cccccc',
+            fontFamily: 'monospace',
+            fontWeight: 500,
+          }}
+        >
+          {selectedProject || 'No project selected'}
+          {isBuilding && ' • Building...'}
+          {isRunning && ' • Running'}
+        </Typography>
+
+        <Divider orientation="vertical" flexItem sx={{ mx: 1, backgroundColor: '#3e3e42' }} />
+
+        {/* Save Button */}
         <Tooltip title="Save (Ctrl+S)">
           <IconButton
             size="small"
@@ -607,6 +649,7 @@ const MainLayoutWorkflow: React.FC = () => {
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1, backgroundColor: '#3e3e42' }} />
 
+        {/* Build Button */}
         <Tooltip title="Build project">
           <IconButton
             size="small"
@@ -621,6 +664,7 @@ const MainLayoutWorkflow: React.FC = () => {
           </IconButton>
         </Tooltip>
 
+        {/* Run/Stop Button */}
         {!isRunning ? (
           <Tooltip title="Run (Build + Launch)">
             <IconButton
@@ -652,6 +696,7 @@ const MainLayoutWorkflow: React.FC = () => {
 
         <Divider orientation="vertical" flexItem sx={{ mx: 1, backgroundColor: '#3e3e42' }} />
 
+        {/* Browser Preview Checkbox */}
         <Tooltip title="Launch in browser using Xpra (requires Xpra to be installed)">
           <FormControlLabel
             control={
@@ -674,31 +719,7 @@ const MainLayoutWorkflow: React.FC = () => {
             sx={{ mr: 1 }}
           />
         </Tooltip>
-
-        <Typography
-          variant="caption"
-          sx={{
-            ml: 'auto',
-            color: '#858585',
-            fontFamily: 'monospace',
-          }}
-        >
-          {selectedProject || 'No project selected'}
-          {isBuilding && ' • Building...'}
-          {isRunning && ' • Running'}
-        </Typography>
       </Toolbar>
-
-      {/* Editor */}
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        <CodeEditor
-          value={editorContent}
-          onChange={handleCodeChange}
-          language="toml"
-          templateId={selectedProject || selectedTemplate}
-          readOnly={false}
-        />
-      </Box>
 
       {/* File browser at bottom */}
       <Box

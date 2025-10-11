@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 project_bp = Blueprint('projects', __name__, url_prefix='/api/projects')
 
 
+def get_repo_root() -> Path:
+    """Get the repository root directory."""
+    return Path(__file__).parent.parent.parent.parent
+
+
 def create_project_routes(
     playground_app,
     socketio: SocketIO,
