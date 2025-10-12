@@ -39,6 +39,10 @@ from kit_playground.backend.routes.v2_template_routes import create_v2_template_
 from kit_playground.backend.routes.project_routes import create_project_routes
 from kit_playground.backend.routes.filesystem_routes import create_filesystem_routes
 from kit_playground.backend.routes.xpra_routes import create_xpra_routes
+from kit_playground.backend.routes.port_routes import port_bp
+
+# Import PortRegistry for centralized port management
+from kit_playground.backend.source.port_registry import PortRegistry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -220,6 +224,9 @@ class PlaygroundWebServer:
         xpra_bp = create_xpra_routes(self.xpra_manager)
         self.app.register_blueprint(xpra_bp)
 
+        # Register port configuration routes
+        self.app.register_blueprint(port_bp)
+
         # Configuration routes (keep in main file as they're simple)
         @self.app.route('/api/config/paths', methods=['GET'])
         def get_default_paths():
@@ -299,6 +306,19 @@ class PlaygroundWebServer:
 
         if debug:
             logger.info("Hot-reload enabled: Backend will auto-reload on code changes")
+
+        # Register backend port with PortRegistry
+        registry = PortRegistry.get_instance()
+        registry.register_backend(port=port, host=host)
+
+        # Register frontend port if provided via environment variable
+        frontend_port = os.environ.get('FRONTEND_PORT')
+        if frontend_port:
+            try:
+                registry.register_frontend(port=int(frontend_port), host=host)
+                logger.info(f"Registered frontend port: {frontend_port}")
+            except ValueError:
+                logger.warning(f"Invalid FRONTEND_PORT environment variable: {frontend_port}")
 
         # Use socketio.run instead of app.run for WebSocket support
         self.socketio.run(

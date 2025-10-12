@@ -102,6 +102,8 @@ trap cleanup EXIT INT TERM
 # Start backend in background
 echo -e "${BLUE}Starting backend...${NC}"
 cd "$BACKEND_DIR"
+# Pass FRONTEND_PORT to backend so it can register it in the PortRegistry
+export FRONTEND_PORT="$FRONTEND_PORT"
 if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
     python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
 else
@@ -117,9 +119,8 @@ if ! kill -0 $BACKEND_PID 2>/dev/null; then
 fi
 
 # Create temporary setupProxy.js with dynamic backend port
-# Important: The proxy (Node.js server) always connects to localhost because
-# it runs on the same machine as the backend. The router function handles
-# remote browser connections by extracting the hostname from the request.
+# Important: The proxy must preserve the original Host header so the backend
+# knows what hostname the client used. We do this via X-Forwarded-Host.
 cat > "$UI_DIR/src/setupProxy.js" << EOF
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
@@ -128,8 +129,13 @@ module.exports = function(app) {
     '/api',
     createProxyMiddleware({
       target: 'http://localhost:${BACKEND_PORT}',
-      changeOrigin: true,
+      changeOrigin: false,  // Keep original Host header
       logLevel: 'warn',
+      // Preserve original host in X-Forwarded-Host header
+      onProxyReq: function(proxyReq, req, res) {
+        // Set X-Forwarded-Host to the original Host header
+        proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
+      },
       // When browser accesses via remote hostname, route to backend on same host
       router: function(req) {
         const requestHost = req.headers.host;

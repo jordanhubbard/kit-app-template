@@ -17,15 +17,15 @@ template_bp = Blueprint('templates', __name__, url_prefix='/api/templates')
 def create_template_routes(playground_app, template_api: TemplateAPI):
     """
     Create and configure template routes.
-    
+
     Args:
         playground_app: PlaygroundApp instance
         template_api: TemplateAPI instance for template operations
-    
+
     Returns:
         Flask Blueprint with template routes configured
     """
-    
+
     @template_bp.route('/list', methods=['GET'])
     @template_bp.route('', methods=['GET'])  # Alias: /api/templates
     def list_templates():
@@ -72,6 +72,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 version=data.get('version', '1.0.0'),
                 output_dir=output_dir,  # Correct parameter name
                 accept_license=True,  # Auto-accept for GUI
+                force_overwrite=True,  # Auto-overwrite for GUI (no stdin for prompts)
                 extra_params=data.get('options', {})  # Correct parameter name
             )
 
@@ -122,4 +123,3 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             return jsonify({'error': str(e)}), 500
 
     return template_bp
-

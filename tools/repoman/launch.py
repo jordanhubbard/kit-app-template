@@ -424,10 +424,6 @@ def launch_kit(
     # Handle Xpra mode
     env_vars = None
     if xpra:
-        import subprocess
-        import os
-        from pathlib import Path
-
         print(f"Xpra mode enabled - will launch on display :{xpra_display}")
 
         # Check if Xpra is running on this display

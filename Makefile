@@ -368,9 +368,14 @@ playground-stop:
 	@sleep 0.5 2>/dev/null || true
 	@-pgrep -f "python.*web_server\.py" | xargs -r kill -9 2>/dev/null || true
 	@# Kill node/npm dev server processes (from kit_playground/ui)
-	@-pgrep -f "vite.*kit_playground" | xargs -r kill 2>/dev/null || true
+	@# Must kill both npm and node processes, on all kit_playground ports
+	@-lsof -ti:8000,8001,8002,8003 2>/dev/null | xargs -r kill 2>/dev/null || true
 	@sleep 0.5 2>/dev/null || true
+	@-lsof -ti:8000,8001,8002,8003 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+	@# Also kill by process name pattern
+	@-pgrep -f "npm.*kit_playground" | xargs -r kill -9 2>/dev/null || true
 	@-pgrep -f "vite.*kit_playground" | xargs -r kill -9 2>/dev/null || true
+	@-pgrep -f "node.*kit_playground" | xargs -r kill -9 2>/dev/null || true
 	@echo "$(GREEN)✓ Playground processes stopped$(NC)"
 
 # Start playground processes

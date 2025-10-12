@@ -1,15 +1,20 @@
 """
 Project build and run routes for Kit Playground.
 """
+import os
 import logging
 import subprocess
 import threading
 import shutil
+import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 
 from flask import Blueprint, jsonify, request
 from flask_socketio import SocketIO
+
+# Import PortRegistry for centralized port management
+from kit_playground.backend.source.port_registry import PortRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -120,9 +125,6 @@ def create_project_routes(
             stdout_lines = []
             stderr_lines = []
 
-            import select
-            import time
-
             # Non-blocking read with timeout
             while True:
                 # Check if process is still running
@@ -231,7 +233,7 @@ def create_project_routes(
                     'message': 'Using Xpra for browser preview...'
                 })
 
-                # Determine launch command - prefer project wrapper
+                # Build launch command using repo.sh with --xpra flag
                 launch_cmd = None
                 launch_cwd = None
 
@@ -268,26 +270,45 @@ def create_project_routes(
                     'message': f'$ {" ".join(launch_cmd)}'
                 })
 
-                # Launch using subprocess directly (repo.sh handles Xpra)
+                # Launch using repo.sh (which handles Xpra setup)
                 try:
+                    # Set PYTHONUNBUFFERED to ensure Python scripts output in real-time
+                    env = os.environ.copy()
+                    env['PYTHONUNBUFFERED'] = '1'
+
                     process = subprocess.Popen(
                         launch_cmd,
                         cwd=launch_cwd,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        text=True
+                        text=True,
+                        env=env,
+                        bufsize=1  # Line buffered
                     )
 
                     # Store process for later management
                     processes[project_name] = process
 
-                    # Get server host for preview URL
-                    server_host = request.host.split(':')[0]
-                    # Xpra will be on port 10000 (display :100)
-                    preview_url = f"http://{server_host}:10000"
+                    # Get preview URL from PortRegistry (centralized port management)
+                    registry = PortRegistry.get_instance()
+
+                    # Register Xpra display if not already registered
+                    xpra_display = 100  # Default display
+                    xpra_port = 10000 + (xpra_display - 100)
+                    registry.register_xpra_display(display=xpra_display, port=xpra_port)
+
+                    # Extract client host from request
+                    # Check X-Forwarded-Host first (set by proxy), then fall back to Host header
+                    original_host = request.headers.get('X-Forwarded-Host', request.host)
+                    client_host = registry.extract_client_host(original_host)
+
+                    # Construct preview URL using registry
+                    preview_url = registry.get_preview_url(display=xpra_display, client_host=client_host)
 
                     logger.info(f"[PREVIEW URL] Request.host: {request.host}")
-                    logger.info(f"[PREVIEW URL] Server host: {server_host}")
+                    logger.info(f"[PREVIEW URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
+                    logger.info(f"[PREVIEW URL] Original host: {original_host}")
+                    logger.info(f"[PREVIEW URL] Client host: {client_host}")
                     logger.info(f"[PREVIEW URL] Constructed URL: {preview_url}")
 
                     socketio.emit('log', {
@@ -301,22 +322,62 @@ def create_project_routes(
                         'message': f'Preview: {preview_url}'
                     })
 
-                    # Start thread to stream output
+                    # Start thread to stream output from both stdout and stderr concurrently
                     def stream_output():
-                        for line in iter(process.stdout.readline, ''):
+                        """Stream output from both stdout and stderr without blocking."""
+                        while True:
+                            # Check if process is still running
+                            if process.poll() is not None:
+                                # Process finished, read any remaining output
+                                remaining_stdout = process.stdout.read()
+                                remaining_stderr = process.stderr.read()
+
+                                if remaining_stdout:
+                                    for line in remaining_stdout.strip().split('\n'):
+                                        if line:
+                                            socketio.emit('log', {
+                                                'level': 'info',
+                                                'source': 'runtime',
+                                                'message': line
+                                            })
+
+                                if remaining_stderr:
+                                    for line in remaining_stderr.strip().split('\n'):
+                                        if line:
+                                            socketio.emit('log', {
+                                                'level': 'error',
+                                                'source': 'runtime',
+                                                'message': line
+                                            })
+
+                                socketio.emit('log', {
+                                    'level': 'info',
+                                    'source': 'runtime',
+                                    'message': f'Process exited with code: {process.returncode}'
+                                })
+                                break
+
+                            # Read from stdout (non-blocking)
+                            line = process.stdout.readline()
                             if line:
                                 socketio.emit('log', {
                                     'level': 'info',
                                     'source': 'runtime',
                                     'message': line.rstrip()
                                 })
-                        for line in iter(process.stderr.readline, ''):
-                            if line:
+
+                            # Read from stderr (non-blocking)
+                            err_line = process.stderr.readline()
+                            if err_line:
                                 socketio.emit('log', {
                                     'level': 'error',
                                     'source': 'runtime',
-                                    'message': line.rstrip()
+                                    'message': err_line.rstrip()
                                 })
+
+                            # Small sleep to prevent busy waiting if no output
+                            if not line and not err_line:
+                                time.sleep(0.1)
 
                     threading.Thread(target=stream_output, daemon=True).start()
 
@@ -372,12 +433,18 @@ def create_project_routes(
                     'message': f'$ {" ".join(cmd)}'
                 })
 
+                # Set PYTHONUNBUFFERED for real-time output
+                env = os.environ.copy()
+                env['PYTHONUNBUFFERED'] = '1'
+
                 process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
-                    cwd=cwd
+                    cwd=cwd,
+                    env=env,
+                    bufsize=1  # Line buffered
                 )
 
                 # SECURITY: Limit number of concurrent processes
@@ -400,22 +467,62 @@ def create_project_routes(
                     'message': 'Note: The application window will appear on the host machine.'
                 })
 
-                # Start a thread to stream output
+                # Start a thread to stream output from both stdout and stderr concurrently
                 def stream_output():
-                    for line in iter(process.stdout.readline, ''):
+                    """Stream output from both stdout and stderr without blocking."""
+                    while True:
+                        # Check if process is still running
+                        if process.poll() is not None:
+                            # Process finished, read any remaining output
+                            remaining_stdout = process.stdout.read()
+                            remaining_stderr = process.stderr.read()
+
+                            if remaining_stdout:
+                                for line in remaining_stdout.strip().split('\n'):
+                                    if line:
+                                        socketio.emit('log', {
+                                            'level': 'info',
+                                            'source': 'runtime',
+                                            'message': line
+                                        })
+
+                            if remaining_stderr:
+                                for line in remaining_stderr.strip().split('\n'):
+                                    if line:
+                                        socketio.emit('log', {
+                                            'level': 'error',
+                                            'source': 'runtime',
+                                            'message': line
+                                        })
+
+                            socketio.emit('log', {
+                                'level': 'info',
+                                'source': 'runtime',
+                                'message': f'Process exited with code: {process.returncode}'
+                            })
+                            break
+
+                        # Read from stdout (non-blocking)
+                        line = process.stdout.readline()
                         if line:
                             socketio.emit('log', {
                                 'level': 'info',
                                 'source': 'runtime',
                                 'message': line.rstrip()
                             })
-                    for line in iter(process.stderr.readline, ''):
-                        if line:
+
+                        # Read from stderr (non-blocking)
+                        err_line = process.stderr.readline()
+                        if err_line:
                             socketio.emit('log', {
                                 'level': 'error',
                                 'source': 'runtime',
-                                'message': line.rstrip()
+                                'message': err_line.rstrip()
                             })
+
+                        # Small sleep to prevent busy waiting if no output
+                        if not line and not err_line:
+                            time.sleep(0.1)
 
                 threading.Thread(target=stream_output, daemon=True).start()
 

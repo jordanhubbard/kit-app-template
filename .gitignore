@@ -41,3 +41,16 @@ deps/**/user.toml
 kit_playground/ui/build
 kit_playground/ui/node_modules
 kit_playground/ui/src/setupProxy.js
+
+# User-created apps and extensions (for testing/development)
+# These should not be committed to the template repository
+source/apps/my_company.*
+source/apps/boop.*
+source/apps/*/
+source/extensions/my_company.*
+source/extensions/boop.*
+source/extensions/*_setup/
+source/extensions/*_messaging/
+
+# Template metadata (generated during template creation)
+source/rendered_template_metadata.json

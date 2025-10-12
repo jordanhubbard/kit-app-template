@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Box, Toolbar, IconButton, Tooltip, Typography, Divider, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, Toolbar, IconButton, Tooltip, Typography, Divider, Checkbox, FormControlLabel, Button } from '@mui/material';
 import {
   Build as BuildIcon,
   PlayArrow as RunIcon,
@@ -374,15 +374,25 @@ const MainLayoutWorkflow: React.FC = () => {
       console.log('[DEBUG] API response from /api/projects/run:', result);
       if (result.success) {
         emitConsoleLog('success', 'runtime', `Application launched: ${selectedProject}`);
-        // Navigate to preview if Xpra session available
+        // Open Xpra preview in new tab if available
         if (result.previewUrl) {
           console.log('[DEBUG] Preview URL from API:', result.previewUrl);
-          console.log('[DEBUG] Setting preview URL state to:', result.previewUrl);
           setPreviewUrl(result.previewUrl);
-          console.log('[DEBUG] Navigating to preview step');
-          navigateToStep('preview');
+
           emitConsoleLog('info', 'runtime', `Preview available at: ${result.previewUrl}`);
-          emitConsoleLog('info', 'runtime', `Opening preview window...`);
+          emitConsoleLog('info', 'runtime', `Opening preview in new tab...`);
+
+          // Open preview in new tab and focus it
+          const previewWindow = window.open(result.previewUrl, '_blank');
+          if (previewWindow) {
+            previewWindow.focus();
+            emitConsoleLog('success', 'runtime', `Preview opened in new tab`);
+          } else {
+            emitConsoleLog('warning', 'runtime', `Could not open preview tab (popup blocked?). Click the link to open manually.`);
+          }
+
+          // Navigate to preview panel which now shows "opened in new tab" message
+          navigateToStep('preview');
         } else if (useXpra) {
           console.log('[DEBUG] No previewUrl in response');
           emitConsoleLog('warning', 'runtime', `Xpra preview not available. Check if Xpra is installed (see XPRA_SETUP.md)`);
@@ -827,7 +837,10 @@ const MainLayoutWorkflow: React.FC = () => {
           <Tooltip title="Open in new tab">
             <IconButton
               size="small"
-              onClick={() => window.open(previewUrl, '_blank')}
+              onClick={() => {
+                const win = window.open(previewUrl, '_blank');
+                if (win) win.focus();
+              }}
               sx={{
                 color: '#4ec9b0',
                 '&:hover': { backgroundColor: '#3e3e42' },
@@ -838,13 +851,113 @@ const MainLayoutWorkflow: React.FC = () => {
           </Tooltip>
         </Toolbar>
 
-        {/* Preview iframe */}
-        <Box sx={{ flex: 1, overflow: 'hidden' }}>
-          <PreviewPane
-            url={previewUrl}
-            templateId={selectedProject}
-            mode="xpra"
-          />
+        {/* Preview message - opened in new tab */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 3,
+            p: 4,
+            backgroundColor: '#1e1e1e',
+          }}
+        >
+          {/* Success icon */}
+          <Box
+            sx={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(76, 175, 80, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <OpenInNewIcon sx={{ fontSize: 48, color: '#4caf50' }} />
+          </Box>
+
+          {/* Message */}
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h5" sx={{ color: '#e0e0e0', mb: 1, fontWeight: 500 }}>
+              Preview Opened in New Tab
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#b0b0b0', mb: 3 }}>
+              The application is running in a separate browser tab for full-screen interaction
+            </Typography>
+          </Box>
+
+          {/* Action buttons */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<OpenInNewIcon />}
+              onClick={() => {
+                const win = window.open(previewUrl, '_blank');
+                if (win) win.focus();
+              }}
+              sx={{
+                backgroundColor: '#0e639c',
+                '&:hover': { backgroundColor: '#1177bb' },
+                textTransform: 'none',
+                px: 3,
+              }}
+            >
+              Reopen Preview Tab
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={() => {
+                navigator.clipboard.writeText(previewUrl);
+                emitConsoleLog('info', 'system', 'Preview URL copied to clipboard');
+              }}
+              sx={{
+                borderColor: '#3e3e42',
+                color: '#cccccc',
+                '&:hover': {
+                  borderColor: '#4ec9b0',
+                  backgroundColor: 'rgba(78, 201, 176, 0.08)',
+                },
+                textTransform: 'none',
+                px: 3,
+              }}
+            >
+              Copy URL
+            </Button>
+          </Box>
+
+          {/* URL display */}
+          <Box
+            sx={{
+              mt: 2,
+              p: 2,
+              backgroundColor: '#252526',
+              borderRadius: 1,
+              border: '1px solid #3e3e42',
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontFamily: 'monospace',
+                color: '#4ec9b0',
+                wordBreak: 'break-all',
+              }}
+            >
+              {previewUrl}
+            </Typography>
+          </Box>
+
+          {/* Help text */}
+          <Box sx={{ mt: 2, textAlign: 'center', maxWidth: 600 }}>
+            <Typography variant="caption" sx={{ color: '#858585' }}>
+              💡 The application requires full screen space to interact properly.
+              If the preview tab didn't open automatically, check your browser's popup blocker settings.
+            </Typography>
+          </Box>
         </Box>
       </Box>
     );
