@@ -142,7 +142,13 @@ make install-deps  # Installs Python packages + Node.js for GUI
 ```bash
 make playground
 ```
-This opens a visual development environment in your browser at `http://localhost:8200`
+This opens a visual development environment in your browser at `http://localhost:8001`
+
+For remote access (accessing from another machine):
+```bash
+make playground REMOTE=1
+# Access via: http://your-hostname:8001
+```
 
 **3. Create Your First Application:**
 - Click **"New Project"** button
@@ -723,9 +729,9 @@ The wrapper scripts automatically find the repository root and execute the appro
   <img src="readme-assets/kit_playground_preview.png" width=100% />
 </p>
 
-Kit Playground is a **visual development environment** inspired by Swift Playgrounds that allows you to develop Omniverse Kit applications without touching the command line. It features a side-by-side editor and live preview, visual template gallery, and one-click build and deployment.
+Kit Playground is a **visual development environment** inspired by Swift Playgrounds that allows you to develop Omniverse Kit applications without touching the command line. It features a side-by-side editor and live preview, visual template gallery, one-click build and deployment, and **real-time command logging**.
 
-> **Important:** Kit Playground is an **optional tool** that provides a browser-based visual interface. It runs a local Flask web server on port 8200 for the UI. When you use `make playground`, it starts this web server which runs until you stop it (Ctrl+C). **The CLI commands (`./repo.sh`) work completely independently** and do not require the playground server to be running.
+> **Important:** Kit Playground is an **optional tool** that provides a browser-based visual interface. It runs a local Flask backend (port 8000) and React frontend (port 8001). When you use `make playground`, it starts these services which run until you stop them (Ctrl+C). **The CLI commands (`./repo.sh`) work completely independently** and do not require the playground server to be running.
 
 ### Getting Started with Kit Playground
 
@@ -789,6 +795,11 @@ On first launch, Kit Playground will:
 - **Syntax Highlighting**: Python, TypeScript, TOML support
 - **IntelliSense**: Auto-completion and suggestions
 - **Hot Reload**: Changes appear instantly in preview
+- **Real-time Console**: See commands and full output as they execute
+  - Displays exact CLI commands (e.g., `$ ./repo.sh build --config release`)
+  - Streams build output line-by-line in real-time
+  - Color-coded log levels (info, warning, error, success)
+  - Filter by source (build, runtime, system)
 
 #### 📱 Device Preview Modes
 - Test on **Desktop** (1920×1080)
@@ -803,6 +814,13 @@ On first launch, Kit Playground will:
 - **Bi-directional** and **uni-directional** connections
 - **Data source resolution** with guided prompts
 - **Dependency visualization** graph
+
+#### 🧹 Project Management
+- **Clean All Button**: One-click removal of all user-created projects
+  - Executes `make clean-apps` to remove applications and extensions
+  - Shows confirmation dialog before deletion
+  - Real-time console output showing what's being removed
+  - Automatically refreshes project list after cleaning
 
 #### 🚀 Integrated Build & Run
 - **One-click build** without leaving the playground
