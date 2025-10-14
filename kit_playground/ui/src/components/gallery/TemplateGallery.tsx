@@ -582,12 +582,12 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   );
 };
 
-// Mock data for development
+// Mock data for development (fallback only - real data comes from API)
 function getMockTemplates(): Template[] {
   return [
     {
-      name: 'omni_usd_composer_setup',
-      display_name: 'USD Composer Setup',
+      name: 'omni_usd_composer',
+      display_name: 'USD Composer',
       type: 'application',
       category: 'editor',
       description: 'Full-featured USD scene composition and editing application with viewport and timeline.',
@@ -599,7 +599,7 @@ function getMockTemplates(): Template[] {
       metadata: { version: '1.0.0', tags: ['usd', 'editor', 'viewport'] },
     },
     {
-      name: 'omni_usd_viewer_setup',
+      name: 'omni_usd_viewer',
       display_name: 'USD Viewer',
       type: 'application',
       category: 'viewer',

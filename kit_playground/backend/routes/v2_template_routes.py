@@ -30,7 +30,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
 
     @v2_template_bp.route('', methods=['GET'])
     def list_templates_v2():
-        """List all templates with icon URLs."""
+        """List all templates with icon URLs (excluding components which can't be standalone)."""
         try:
             template_type = request.args.get('type')
             category = request.args.get('category')
@@ -39,8 +39,12 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             repo_root = Path(__file__).parent.parent.parent.parent
 
             # Convert to dict for JSON serialization with icon support
+            # Filter out components since they can't be instantiated as standalone projects
             result = []
             for t in templates:
+                # Skip components - they can only be used within applications
+                if t.type == 'component':
+                    continue
                 # Check for icon file in template directory
                 icon_url = None
 

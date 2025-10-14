@@ -42,6 +42,9 @@ kit_playground/ui/build
 kit_playground/ui/node_modules
 kit_playground/ui/src/setupProxy.js
 
+# Log files
+*.log
+
 # User-created apps and extensions (for testing/development)
 # These should not be committed to the template repository
 source/apps/my_company.*
