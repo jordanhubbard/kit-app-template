@@ -131,6 +131,8 @@ module.exports = function(app) {
       target: 'http://localhost:${BACKEND_PORT}',
       changeOrigin: false,  // Keep original Host header
       logLevel: 'warn',
+      timeout: 300000,  // 5 minute timeout for long-running operations
+      proxyTimeout: 300000,  // 5 minute proxy timeout
       // Preserve original host in X-Forwarded-Host header
       onProxyReq: function(proxyReq, req, res) {
         // Set X-Forwarded-Host to the original Host header
