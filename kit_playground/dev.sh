@@ -121,10 +121,12 @@ fi
 # Create temporary setupProxy.js with dynamic backend port
 # Important: The proxy must preserve the original Host header so the backend
 # knows what hostname the client used. We do this via X-Forwarded-Host.
+# Also proxy Socket.IO WebSocket connections for real-time log streaming.
 cat > "$UI_DIR/src/setupProxy.js" << EOF
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
+  // Proxy API requests
   app.use(
     '/api',
     createProxyMiddleware({
@@ -144,6 +146,28 @@ module.exports = function(app) {
         if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
           const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
           console.log('[Proxy] Routing to:', backendUrl);
+          return backendUrl;
+        }
+        // Default: localhost (proxy and backend on same machine)
+        return 'http://localhost:${BACKEND_PORT}';
+      },
+    })
+  );
+
+  // Proxy Socket.IO WebSocket connections for real-time log streaming
+  app.use(
+    '/socket.io',
+    createProxyMiddleware({
+      target: 'http://localhost:${BACKEND_PORT}',
+      changeOrigin: false,
+      ws: true,  // Enable WebSocket proxying
+      logLevel: 'warn',
+      // When browser accesses via remote hostname, route to backend on same host
+      router: function(req) {
+        const requestHost = req.headers.host;
+        if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
+          const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
+          console.log('[Proxy] Socket.IO routing to:', backendUrl);
           return backendUrl;
         }
         // Default: localhost (proxy and backend on same machine)
