@@ -201,15 +201,15 @@ const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
 
       // Check if response is ok before parsing JSON
       if (!response.ok) {
-        // Try to parse as JSON first
+        // Get response body as text first, then try to parse
+        const responseText = await response.text();
         let errorMessage = 'Failed to create project';
         try {
-          const errorData = await response.json();
+          const errorData = JSON.parse(responseText);
           errorMessage = errorData.error || errorMessage;
         } catch {
-          // If not JSON, use response text
-          const text = await response.text();
-          errorMessage = text || `Server error: ${response.status} ${response.statusText}`;
+          // If not JSON, use the raw text
+          errorMessage = responseText || `Server error: ${response.status} ${response.statusText}`;
         }
         setError(errorMessage);
         return;
