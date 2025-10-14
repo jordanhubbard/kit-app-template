@@ -90,7 +90,9 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
       console.log('[Socket.IO] Initializing connection...');
       const socket = io({
         path: '/socket.io',
-        transports: ['websocket', 'polling'],
+        // Use polling only - WebSocket upgrade doesn't work through webpack dev server proxy
+        // Polling is reliable and sufficient for our use case (low-frequency log messages)
+        transports: ['polling'],
       });
 
       socket.on('connect', () => {

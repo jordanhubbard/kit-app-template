@@ -48,6 +48,32 @@ function wrapServer(server) {
       }
     });
   });
+
+  // Handle WebSocket upgrade requests for Socket.IO
+  // This intercepts upgrade requests BEFORE the proxy middleware sees them
+  const originalUpgrade = server.listeners('upgrade').slice();
+  server.removeAllListeners('upgrade');
+  
+  server.on('upgrade', (req, socket, head) => {
+    // Check if this is a Socket.IO WebSocket upgrade
+    if (req.url && req.url.startsWith('/socket.io')) {
+      console.log('[WebSocket] Upgrade request for Socket.IO detected:', req.url);
+      // Let the http-proxy-middleware handle it
+      // Find the proxy upgrade handler (should be registered by setupProxy.js)
+      const proxyUpgradeHandlers = originalUpgrade.filter(h => h.name === 'upgrade' || h.name === 'onUpgrade');
+      if (proxyUpgradeHandlers.length > 0) {
+        console.log('[WebSocket] Forwarding to proxy handler');
+        proxyUpgradeHandlers[0](req, socket, head);
+      } else {
+        console.log('[WebSocket] No proxy handler found, calling original handlers');
+        originalUpgrade.forEach(handler => handler(req, socket, head));
+      }
+    } else {
+      // Not Socket.IO - pass to original handlers (webpack HMR, etc.)
+      originalUpgrade.forEach(handler => handler(req, socket, head));
+    }
+  });
+
   return server;
 }
 
