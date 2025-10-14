@@ -57,7 +57,19 @@ class PlaygroundWebServer:
         # Disable Flask's default static folder to avoid conflicts
         self.app = Flask(__name__, static_folder=None)
         CORS(self.app)  # Enable CORS for Electron renderer
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        
+        # Configure Socket.IO with explicit options for WebSocket support
+        # async_mode='threading' works with Flask's built-in server
+        # engineio_logger and socketio_logger enabled for debugging
+        self.socketio = SocketIO(
+            self.app,
+            cors_allowed_origins="*",
+            async_mode='threading',  # Use threading mode (works without eventlet/gevent)
+            logger=True,  # Enable Socket.IO logging
+            engineio_logger=True,  # Enable Engine.IO logging (transport layer)
+            ping_timeout=60,  # Client must respond to ping within 60s
+            ping_interval=25,  # Send ping every 25s
+        )
 
         # Running processes
         self.processes: Dict[str, subprocess.Popen] = {}
@@ -325,9 +337,9 @@ class PlaygroundWebServer:
         # user-created projects in source/apps and source/extensions. When users create
         # or edit projects via the UI, Flask would constantly reload, breaking active
         # connections and causing proxy timeouts.
-        # 
+        #
         # For backend development, manually restart the server when backend code changes.
-        
+
         # Use socketio.run instead of app.run for WebSocket support
         self.socketio.run(
             self.app,

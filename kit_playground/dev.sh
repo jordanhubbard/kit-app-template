@@ -125,6 +125,18 @@ fi
 cat > "$UI_DIR/src/setupProxy.js" << EOF
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
+// Determine backend target dynamically based on request
+function getBackendTarget(req) {
+  const requestHost = req.headers.host;
+  if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
+    const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
+    console.log('[Proxy] Routing to:', backendUrl);
+    return backendUrl;
+  }
+  // Default: localhost (proxy and backend on same machine)
+  return 'http://localhost:${BACKEND_PORT}';
+}
+
 module.exports = function(app) {
   // Proxy API requests
   app.use(
@@ -141,40 +153,36 @@ module.exports = function(app) {
         proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
       },
       // When browser accesses via remote hostname, route to backend on same host
-      router: function(req) {
-        const requestHost = req.headers.host;
-        if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
-          const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
-          console.log('[Proxy] Routing to:', backendUrl);
-          return backendUrl;
-        }
-        // Default: localhost (proxy and backend on same machine)
-        return 'http://localhost:${BACKEND_PORT}';
-      },
+      router: getBackendTarget,
     })
   );
 
   // Proxy Socket.IO WebSocket connections for real-time log streaming
-  app.use(
-    '/socket.io',
-    createProxyMiddleware({
-      target: 'http://localhost:${BACKEND_PORT}',
-      changeOrigin: true,  // Important for WebSocket connections
-      ws: true,  // Enable WebSocket proxying
-      logLevel: 'debug',  // More verbose logging for debugging
-      // When browser accesses via remote hostname, route to backend on same host
-      router: function(req) {
-        const requestHost = req.headers.host;
-        if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
-          const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
-          console.log('[Proxy] Socket.IO routing to:', backendUrl);
-          return backendUrl;
-        }
-        // Default: localhost (proxy and backend on same machine)
-        return 'http://localhost:${BACKEND_PORT}';
-      },
-    })
-  );
+  // CRITICAL: Must handle both HTTP and WebSocket protocols
+  const socketIOProxy = createProxyMiddleware({
+    target: 'http://localhost:${BACKEND_PORT}',
+    changeOrigin: true,  // Important for WebSocket connections
+    ws: true,  // Enable WebSocket proxying
+    logLevel: 'debug',  // More verbose logging for debugging
+    // When browser accesses via remote hostname, route to backend on same host
+    router: getBackendTarget,
+    // Handle WebSocket errors gracefully
+    onError: (err, req, res) => {
+      console.error('[Proxy] Socket.IO error:', err.message);
+    },
+    onProxyReqWs: (proxyReq, req, socket, options, head) => {
+      console.log('[Proxy] WebSocket upgrade request to:', options.target);
+    },
+  });
+
+  app.use('/socket.io', socketIOProxy);
+
+  // CRITICAL: Attach WebSocket upgrade handler to the server
+  // The 'app' here is actually the Express app, but we need the HTTP server
+  // In Create React App's webpack dev server, this is handled internally if we
+  // return a function that accepts both app and server
+  // However, setupProxy.js only gets the Express app, not the HTTP server
+  // So we rely on http-proxy-middleware to handle it via the 'ws: true' option
 };
 EOF
 
