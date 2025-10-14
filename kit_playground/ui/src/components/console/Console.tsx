@@ -82,15 +82,19 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
   }, [addLog]);
 
   // Connect to Socket.IO for streaming logs
+  // IMPORTANT: Empty dependency array means this only runs ONCE on mount
+  // addLog is stable (useCallback with []) so we don't need it as a dependency
   useEffect(() => {
     // Import socket.io-client dynamically
     import('socket.io-client').then(({ io }) => {
+      console.log('[Socket.IO] Initializing connection...');
       const socket = io({
         path: '/socket.io',
         transports: ['websocket', 'polling'],
       });
 
       socket.on('connect', () => {
+        console.log('[Socket.IO] Connected successfully');
         addLog({
           level: 'success',
           source: 'system',
@@ -99,6 +103,7 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
       });
 
       socket.on('disconnect', () => {
+        console.log('[Socket.IO] Disconnected');
         addLog({
           level: 'warning',
           source: 'system',
@@ -107,6 +112,7 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
       });
 
       socket.on('log', (data: { level: string; source: string; message: string }) => {
+        console.log('[Socket.IO] Received log:', data);
         addLog({
           level: data.level as any,
           source: data.source as any,
@@ -131,6 +137,7 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
       });
 
       return () => {
+        console.log('[Socket.IO] Cleaning up connection');
         socket.disconnect();
       };
     }).catch(error => {
@@ -141,7 +148,8 @@ const Console: React.FC<ConsoleProps> = ({ height = 200 }) => {
         message: 'Failed to connect to backend: ' + error.message,
       });
     });
-  }, [addLog]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array: only connect once on mount
 
   // Filter logs based on tab, search, and level
   useEffect(() => {

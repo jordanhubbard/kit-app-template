@@ -337,9 +337,9 @@ class PlaygroundWebServer:
         # user-created projects in source/apps and source/extensions. When users create
         # or edit projects via the UI, Flask would constantly reload, breaking active
         # connections and causing proxy timeouts.
-        # 
+        #
         # For backend development, manually restart the server when backend code changes.
-        
+
         # Use socketio.run instead of app.run for WebSocket support
         self.socketio.run(
             self.app,
