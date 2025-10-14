@@ -217,7 +217,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                     'source': 'build',
                     'message': f'Template: {template_name}'
                 })
-                
+
                 # Show equivalent CLI command for reproducibility
                 repo_root = Path(__file__).parent.parent.parent.parent
                 cli_cmd = f'./repo.sh template new {template_name} --name={name} --display-name="{display_name}" --version={version}'

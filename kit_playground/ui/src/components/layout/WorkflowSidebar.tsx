@@ -37,6 +37,7 @@ import {
   CheckCircle as SuccessIcon,
   Error as ErrorIcon,
   PlayArrow as RunningIcon,
+  DeleteSweep as CleanIcon,
 } from '@mui/icons-material';
 import { WorkflowNode, ProjectStatus } from '../../types/workflow';
 import DirectoryBrowserDialog from '../dialogs/DirectoryBrowserDialog';
@@ -77,6 +78,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
   const [tempProjectsPath, setTempProjectsPath] = useState(projectsPath);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [browserType, setBrowserType] = useState<'templates' | 'projects'>('templates');
+  const [isCleaning, setIsCleaning] = useState(false);
 
   const toggleExpand = (nodeId: string) => {
     const newExpanded = new Set(expandedNodes);
@@ -86,6 +88,37 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
       newExpanded.add(nodeId);
     }
     setExpandedNodes(newExpanded);
+  };
+
+  const handleCleanAll = async () => {
+    if (!confirm('Are you sure you want to remove ALL user-created projects and extensions?\n\nThis action cannot be undone.')) {
+      return;
+    }
+
+    setIsCleaning(true);
+    try {
+      const response = await fetch('/api/projects/clean-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh projects list after cleaning
+        onRefreshProjects();
+      } else {
+        console.error('Clean failed:', result.error);
+        alert('Failed to clean projects: ' + result.error);
+      }
+    } catch (error: any) {
+      console.error('Clean error:', error);
+      alert('Failed to clean projects: ' + error.message);
+    } finally {
+      setIsCleaning(false);
+    }
   };
 
   const getNodeIcon = (node: WorkflowNode, isExpanded: boolean) => {
@@ -471,12 +504,19 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             backgroundColor: '#252526',
-            cursor: 'pointer',
-            '&:hover': { backgroundColor: '#2a2a2a' },
           }}
-          onClick={() => setProjectsCollapsed(!projectsCollapsed)}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              flex: 1,
+              cursor: 'pointer',
+              '&:hover': { opacity: 0.8 },
+            }}
+            onClick={() => setProjectsCollapsed(!projectsCollapsed)}
+          >
             {projectsCollapsed ? (
               <ExpandIcon fontSize="small" />
             ) : (
@@ -485,8 +525,25 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
             <Typography variant="subtitle2" fontWeight="bold">
               My Projects
             </Typography>
+            {projects.length > 0 && <Chip label={projects.length} size="small" />}
           </Box>
-          {projects.length > 0 && <Chip label={projects.length} size="small" />}
+          
+          {/* Clean All Button */}
+          {projects.length > 0 && !projectsCollapsed && (
+            <Tooltip title="Clean All Projects (make clean-apps)">
+              <IconButton
+                size="small"
+                onClick={handleCleanAll}
+                disabled={isCleaning}
+                sx={{
+                  color: 'error.main',
+                  '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' },
+                }}
+              >
+                <CleanIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
 
         {/* Projects Path Selector */}

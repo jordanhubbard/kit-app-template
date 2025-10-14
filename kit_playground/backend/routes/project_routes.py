@@ -738,4 +738,139 @@ def create_project_routes(
             logger.error(f"Failed to delete project: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
+    @project_bp.route('/clean-all', methods=['POST'])
+    def clean_all_projects():
+        """Clean all user-created applications and extensions using make clean-apps."""
+        try:
+            repo_root = get_repo_root()
+            
+            # Log the operation
+            logger.info("=" * 80)
+            logger.info("CLEAN ALL PROJECTS")
+            logger.info(f"Command: make clean-apps")
+            logger.info(f"Working directory: {repo_root}")
+            logger.info("=" * 80)
+
+            # Emit to UI
+            if socketio:
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'system',
+                    'message': 'Cleaning all user-created applications and extensions...'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'system',
+                    'message': f'$ cd {repo_root}'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'system',
+                    'message': '$ make clean-apps'
+                })
+
+            # Execute make clean-apps
+            process = subprocess.Popen(
+                ['make', 'clean-apps'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=str(repo_root),
+                bufsize=1,
+                universal_newlines=True
+            )
+
+            # Stream output in real-time
+            stdout_lines = []
+            stderr_lines = []
+
+            while True:
+                if process.poll() is not None:
+                    # Process finished, read any remaining output
+                    remaining_stdout = process.stdout.read()
+                    remaining_stderr = process.stderr.read()
+
+                    if remaining_stdout:
+                        for line in remaining_stdout.strip().split('\n'):
+                            if line:
+                                stdout_lines.append(line)
+                                if socketio:
+                                    socketio.emit('log', {
+                                        'level': 'info',
+                                        'source': 'system',
+                                        'message': line
+                                    })
+
+                    if remaining_stderr:
+                        for line in remaining_stderr.strip().split('\n'):
+                            if line:
+                                stderr_lines.append(line)
+                                if socketio:
+                                    socketio.emit('log', {
+                                        'level': 'error',
+                                        'source': 'system',
+                                        'message': line
+                                    })
+                    break
+
+                # Read stdout
+                line = process.stdout.readline()
+                if line:
+                    line = line.rstrip()
+                    stdout_lines.append(line)
+                    if socketio:
+                        socketio.emit('log', {
+                            'level': 'info',
+                            'source': 'system',
+                            'message': line
+                        })
+
+                # Read stderr
+                err_line = process.stderr.readline()
+                if err_line:
+                    err_line = err_line.rstrip()
+                    stderr_lines.append(err_line)
+                    if socketio:
+                        socketio.emit('log', {
+                            'level': 'error',
+                            'source': 'system',
+                            'message': err_line
+                        })
+
+                if not line and not err_line:
+                    time.sleep(0.1)
+
+            returncode = process.returncode
+
+            # Log to backend
+            if stdout_lines:
+                logger.info("Clean output: %s", '\n'.join(stdout_lines))
+            if stderr_lines:
+                logger.info("Clean stderr: %s", '\n'.join(stderr_lines))
+
+            success = returncode == 0
+            
+            if success and socketio:
+                socketio.emit('log', {
+                    'level': 'success',
+                    'source': 'system',
+                    'message': 'All projects cleaned successfully!'
+                })
+
+            return jsonify({
+                'success': success,
+                'output': '\n'.join(stdout_lines),
+                'error': '\n'.join(stderr_lines) if not success else None
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to clean projects: {e}", exc_info=True)
+            if socketio:
+                socketio.emit('log', {
+                    'level': 'error',
+                    'source': 'system',
+                    'message': f'Clean failed: {str(e)}'
+                })
+            return jsonify({'error': str(e)}), 500
+
     return project_bp
