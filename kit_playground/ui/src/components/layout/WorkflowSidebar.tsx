@@ -91,7 +91,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
   };
 
   const handleCleanAll = async () => {
-    if (!confirm('Are you sure you want to remove ALL user-created projects and extensions?\n\nThis action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to remove ALL user-created projects and extensions?\n\nThis action cannot be undone.')) {
       return;
     }
 
@@ -105,7 +105,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         // Refresh projects list after cleaning
         onRefreshProjects();
@@ -506,10 +506,10 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
             backgroundColor: '#252526',
           }}
         >
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
               gap: 1,
               flex: 1,
               cursor: 'pointer',
@@ -527,7 +527,7 @@ const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({
             </Typography>
             {projects.length > 0 && <Chip label={projects.length} size="small" />}
           </Box>
-          
+
           {/* Clean All Button */}
           {projects.length > 0 && !projectsCollapsed && (
             <Tooltip title="Clean All Projects (make clean-apps)">

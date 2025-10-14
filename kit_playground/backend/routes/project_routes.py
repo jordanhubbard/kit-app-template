@@ -743,7 +743,7 @@ def create_project_routes(
         """Clean all user-created applications and extensions using make clean-apps."""
         try:
             repo_root = get_repo_root()
-            
+
             # Log the operation
             logger.info("=" * 80)
             logger.info("CLEAN ALL PROJECTS")
@@ -849,7 +849,7 @@ def create_project_routes(
                 logger.info("Clean stderr: %s", '\n'.join(stderr_lines))
 
             success = returncode == 0
-            
+
             if success and socketio:
                 socketio.emit('log', {
                     'level': 'success',
