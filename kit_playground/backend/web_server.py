@@ -320,13 +320,21 @@ class PlaygroundWebServer:
             except ValueError:
                 logger.warning(f"Invalid FRONTEND_PORT environment variable: {frontend_port}")
 
+        # IMPORTANT: Disable auto-reloader even in debug mode
+        # The reloader watches the entire working directory by default, which includes
+        # user-created projects in source/apps and source/extensions. When users create
+        # or edit projects via the UI, Flask would constantly reload, breaking active
+        # connections and causing proxy timeouts.
+        # 
+        # For backend development, manually restart the server when backend code changes.
+        
         # Use socketio.run instead of app.run for WebSocket support
         self.socketio.run(
             self.app,
             host=host,
             port=port,
             debug=debug,
-            use_reloader=debug,  # Enable reloader in debug mode for hot-reload
+            use_reloader=False,  # DISABLED: prevents reloads when user projects change
             log_output=True
         )
 
