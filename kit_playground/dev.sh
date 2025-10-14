@@ -155,28 +155,26 @@ module.exports = function(app) {
   );
 
   // Proxy Socket.IO WebSocket connections for real-time log streaming
-  const socketProxy = createProxyMiddleware('/socket.io', {
-    target: 'http://localhost:${BACKEND_PORT}',
-    changeOrigin: true,  // Important for WebSocket connections
-    ws: true,  // Enable WebSocket proxying
-    logLevel: 'debug',  // More verbose logging for debugging
-    // When browser accesses via remote hostname, route to backend on same host
-    router: function(req) {
-      const requestHost = req.headers.host;
-      if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
-        const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
-        console.log('[Proxy] Socket.IO routing to:', backendUrl);
-        return backendUrl;
-      }
-      // Default: localhost (proxy and backend on same machine)
-      return 'http://localhost:${BACKEND_PORT}';
-    },
-  });
-
-  app.use(socketProxy);
-
-  // Handle WebSocket upgrade for Socket.IO
-  app.on('upgrade', socketProxy.upgrade);
+  app.use(
+    '/socket.io',
+    createProxyMiddleware({
+      target: 'http://localhost:${BACKEND_PORT}',
+      changeOrigin: true,  // Important for WebSocket connections
+      ws: true,  // Enable WebSocket proxying
+      logLevel: 'debug',  // More verbose logging for debugging
+      // When browser accesses via remote hostname, route to backend on same host
+      router: function(req) {
+        const requestHost = req.headers.host;
+        if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
+          const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
+          console.log('[Proxy] Socket.IO routing to:', backendUrl);
+          return backendUrl;
+        }
+        // Default: localhost (proxy and backend on same machine)
+        return 'http://localhost:${BACKEND_PORT}';
+      },
+    })
+  );
 };
 EOF
 
