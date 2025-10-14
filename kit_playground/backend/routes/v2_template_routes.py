@@ -217,6 +217,20 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                     'source': 'build',
                     'message': f'Template: {template_name}'
                 })
+                
+                # Show equivalent CLI command for reproducibility
+                repo_root = Path(__file__).parent.parent.parent.parent
+                cli_cmd = f'./repo.sh template new {template_name} --name={name} --display-name="{display_name}" --version={version}'
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'build',
+                    'message': f'$ cd {repo_root}'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'build',
+                    'message': f'$ {cli_cmd}'
+                })
 
             # Use new high-level API - handles everything cleanly
             result = template_api.create_application(
@@ -230,13 +244,24 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             )
 
             if result.get('success', False):
-                # Success! Emit to UI
+                # Success! Emit detailed info to UI
                 if socketio:
                     socketio.emit('log', {
                         'level': 'success',
                         'source': 'build',
                         'message': f'Project created successfully: {display_name}'
                     })
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'build',
+                        'message': f'Project location: {result.get("app_dir", "")}'
+                    })
+                    if result.get('kit_file'):
+                        socketio.emit('log', {
+                            'level': 'info',
+                            'source': 'build',
+                            'message': f'Loading project file: {result["kit_file"]}'
+                        })
 
                 logger.info(f"✓ Project created: {result['app_dir']}")
                 logger.info(f"✓ Kit file: {result['kit_file']}")
