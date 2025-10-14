@@ -98,17 +98,20 @@ class PortRegistry:
             # Try to get the actual hostname
             try:
                 hostname = socket.gethostname()
-                # Validate hostname is reasonable (not empty, not localhost)
+                # Validate hostname is reasonable (not empty, not localhost, looks like a valid hostname)
                 if (hostname and
                     hostname not in ('localhost', 'localhost.localdomain') and
                     not hostname.startswith('127.') and
                     len(hostname) < 256 and  # Reasonable length
-                    hostname.isprintable()):  # No weird characters
+                    hostname.isprintable() and  # No weird characters
+                    not hostname.isupper() and  # Hostnames shouldn't be all caps
+                    ('.' in hostname or '-' in hostname or '_' in hostname)):  # Should have domain separators
                     return hostname
             except Exception as e:
                 logger.warning(f"Failed to detect hostname: {e}")
 
             # Fallback to 0.0.0.0 in remote mode (client must provide host)
+            logger.info(f"Using 0.0.0.0 for REMOTE mode (hostname: {socket.gethostname() if hasattr(socket, 'gethostname') else 'unknown'})")
             return "0.0.0.0"
         else:
             # Local mode - use localhost
