@@ -376,7 +376,38 @@ const MainLayoutWorkflow: React.FC = () => {
           console.log('[DEBUG] Preview URL from API:', result.previewUrl);
           setPreviewUrl(result.previewUrl);
 
-          emitConsoleLog('info', 'runtime', `Opening preview in new tab...`);
+          emitConsoleLog('info', 'runtime', `Waiting for Xpra server to be ready...`);
+
+          // Poll the Xpra URL to ensure it's responding before opening
+          const waitForXpra = async (url: string, maxAttempts: number = 10, delayMs: number = 500): Promise<boolean> => {
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              try {
+                // Try to fetch the URL (HEAD request would be better but fetch with no-cors works)
+                const testResponse = await fetch(url, {
+                  method: 'GET',
+                  mode: 'no-cors', // Don't care about response, just want to know if it's listening
+                  cache: 'no-cache',
+                });
+                // With no-cors, we can't read the response, but if fetch doesn't throw, server is responding
+                console.log(`[DEBUG] Xpra server check attempt ${attempt}: appears ready`);
+                return true;
+              } catch (err) {
+                console.log(`[DEBUG] Xpra server check attempt ${attempt}/${maxAttempts}: not ready yet`);
+                if (attempt < maxAttempts) {
+                  await new Promise(resolve => setTimeout(resolve, delayMs));
+                }
+              }
+            }
+            return false;
+          };
+
+          const isReady = await waitForXpra(result.previewUrl);
+          
+          if (isReady) {
+            emitConsoleLog('success', 'runtime', `Xpra server is ready, opening preview...`);
+          } else {
+            emitConsoleLog('warning', 'runtime', `Xpra server may still be starting, attempting to open preview...`);
+          }
 
           // Open preview in new tab and focus it
           const previewWindow = window.open(result.previewUrl, '_blank');
