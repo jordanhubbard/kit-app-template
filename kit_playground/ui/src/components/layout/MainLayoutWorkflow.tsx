@@ -299,10 +299,11 @@ const MainLayoutWorkflow: React.FC = () => {
     if (!selectedProject || !currentProjectPath) return;
 
     setIsBuilding(true);
-    emitConsoleLog('info', 'build', `Starting build for ${selectedProject}...`);
+    // Don't emit local console logs - let Socket.IO messages from backend show instead
 
     try {
       // Call repo.sh build command via API
+      // Backend will emit real-time logs via Socket.IO
       const response = await fetch('/api/projects/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -331,11 +332,9 @@ const MainLayoutWorkflow: React.FC = () => {
         return;
       }
 
-      if (result.success) {
-        emitConsoleLog('success', 'build', `Build completed successfully for ${selectedProject}`);
-      } else {
+      // Backend already emitted success/error via Socket.IO, so just check for errors
+      if (!result.success) {
         emitConsoleLog('error', 'build', `Build failed: ${result.error || 'Unknown error'}`);
-        // Log the full result for debugging
         console.error('Build result:', result);
       }
     } catch (error: any) {
@@ -350,16 +349,14 @@ const MainLayoutWorkflow: React.FC = () => {
     if (!selectedProject || !currentProjectPath) return;
 
     setIsRunning(true);
-    emitConsoleLog('info', 'runtime', `Launching ${selectedProject}...`);
-    if (useXpra) {
-      emitConsoleLog('info', 'runtime', 'Using Xpra for browser preview...');
-    }
+    // Don't emit local console logs - let Socket.IO messages from backend show instead
 
     try {
       // Build first, then run
       await handleBuild();
 
       // Call repo.sh launch command via API
+      // Backend will emit real-time logs via Socket.IO
       const response = await fetch('/api/projects/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,13 +370,12 @@ const MainLayoutWorkflow: React.FC = () => {
       const result = await response.json();
       console.log('[DEBUG] API response from /api/projects/run:', result);
       if (result.success) {
-        emitConsoleLog('success', 'runtime', `Application launched: ${selectedProject}`);
+        // Backend already emitted success via Socket.IO
         // Open Xpra preview in new tab if available
         if (result.previewUrl) {
           console.log('[DEBUG] Preview URL from API:', result.previewUrl);
           setPreviewUrl(result.previewUrl);
 
-          emitConsoleLog('info', 'runtime', `Preview available at: ${result.previewUrl}`);
           emitConsoleLog('info', 'runtime', `Opening preview in new tab...`);
 
           // Open preview in new tab and focus it
