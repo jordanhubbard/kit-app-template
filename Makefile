@@ -362,7 +362,7 @@ build-apps: check-deps
 # Stop playground processes
 .PHONY: playground-stop
 playground-stop:
-	@echo "$(BLUE)Stopping any running playground processes...$(NC)"
+	@echo "$(BLUE)Stopping all playground and application processes...$(NC)"
 	@# Kill web_server.py backend processes
 	@-pgrep -f "python.*web_server\.py" | xargs -r kill 2>/dev/null || true
 	@sleep 0.5 2>/dev/null || true
@@ -376,7 +376,19 @@ playground-stop:
 	@-pgrep -f "npm.*kit_playground" | xargs -r kill -9 2>/dev/null || true
 	@-pgrep -f "vite.*kit_playground" | xargs -r kill -9 2>/dev/null || true
 	@-pgrep -f "node.*kit_playground" | xargs -r kill -9 2>/dev/null || true
-	@echo "$(GREEN)✓ Playground processes stopped$(NC)"
+	@# Kill Xpra processes (for browser preview)
+	@-pkill -f "xpra.*start" 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pkill -9 -f "xpra.*start" 2>/dev/null || true
+	@# Kill running Kit applications (*.kit files)
+	@-pgrep -f "kit.*\.kit" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "kit.*\.kit" | xargs -r kill -9 2>/dev/null || true
+	@# Also kill by kit executable pattern
+	@-pgrep -f "_build.*kit/kit" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "_build.*kit/kit" | xargs -r kill -9 2>/dev/null || true
+	@echo "$(GREEN)✓ All playground and application processes stopped$(NC)"
 
 # Start playground processes
 .PHONY: playground-start

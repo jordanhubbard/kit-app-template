@@ -520,7 +520,7 @@ _build/
     └── ... (same structure for Windows)
 ```
 
-> **Important:** 
+> **Important:**
 > - Applications are created in `source/apps/{name}/` and accessed via symlink at `_build/{platform}/release/apps/`
 > - Extensions are created in `source/extensions/{name}/`
 > - Build artifacts and Kit SDK runtime are in `_build/{platform}/release/`
@@ -931,7 +931,7 @@ By default, `./repo.sh template new` creates application projects in `source/app
 # Create first application
 ./repo.sh template new kit_base_editor --name my_company.app_one --display-name "App One" --version 1.0.0
 
-# Create second application  
+# Create second application
 ./repo.sh template new omni_usd_viewer --name my_company.app_two --display-name "App Two" --version 1.0.0
 ```
 
