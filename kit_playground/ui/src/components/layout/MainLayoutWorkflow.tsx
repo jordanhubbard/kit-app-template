@@ -402,7 +402,7 @@ const MainLayoutWorkflow: React.FC = () => {
           };
 
           const isReady = await waitForXpra(result.previewUrl);
-          
+
           if (isReady) {
             emitConsoleLog('success', 'runtime', `Xpra server is ready, opening preview...`);
           } else {
