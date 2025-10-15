@@ -444,7 +444,8 @@ def create_project_routes(
                     text=True,
                     cwd=cwd,
                     env=env,
-                    bufsize=1  # Line buffered
+                    bufsize=1,  # Line buffered
+                    preexec_fn=os.setsid  # Create new process group for clean termination
                 )
 
                 # SECURITY: Limit number of concurrent processes
@@ -586,19 +587,48 @@ def create_project_routes(
 
             if project_name in processes:
                 process = processes[project_name]
-                process.terminate()
+                
+                # Terminate the entire process group to ensure child processes are stopped
+                # This is necessary because repo.sh spawns the Kit application as a child process
                 try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
+                    # Send SIGTERM to the process group
+                    import signal
+                    pgid = os.getpgid(process.pid)
+                    os.killpg(pgid, signal.SIGTERM)
+                    
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Sending SIGTERM to {project_name} (PID {process.pid}, PGID {pgid})...'
+                    })
+                    
+                    # Wait for graceful shutdown
+                    try:
+                        process.wait(timeout=5)
+                        socketio.emit('log', {
+                            'level': 'success',
+                            'source': 'runtime',
+                            'message': f'Application stopped gracefully'
+                        })
+                    except subprocess.TimeoutExpired:
+                        # Force kill if process doesn't terminate gracefully
+                        socketio.emit('log', {
+                            'level': 'warning',
+                            'source': 'runtime',
+                            'message': f'Application did not stop gracefully, sending SIGKILL...'
+                        })
+                        os.killpg(pgid, signal.SIGKILL)
+                        process.wait(timeout=2)
+                        
+                except ProcessLookupError:
+                    # Process already terminated
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Process already terminated'
+                    })
+                
                 del processes[project_name]
-
-                socketio.emit('log', {
-                    'level': 'info',
-                    'source': 'runtime',
-                    'message': f'Stopped project: {project_name}'
-                })
-
                 return jsonify({'success': True})
             else:
                 return jsonify({'error': 'Project not running'}), 404
@@ -612,11 +642,25 @@ def create_project_routes(
         try:
             if project_name in processes:
                 process = processes[project_name]
-                process.terminate()
+                
+                # Terminate the entire process group to ensure child processes are stopped
                 try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    process.kill()
+                    import signal
+                    pgid = os.getpgid(process.pid)
+                    os.killpg(pgid, signal.SIGTERM)
+                    
+                    # Wait for graceful shutdown
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        # Force kill if process doesn't terminate gracefully
+                        os.killpg(pgid, signal.SIGKILL)
+                        process.wait(timeout=2)
+                        
+                except ProcessLookupError:
+                    # Process already terminated
+                    pass
+                
                 del processes[project_name]
                 return jsonify({'success': True})
             else:
