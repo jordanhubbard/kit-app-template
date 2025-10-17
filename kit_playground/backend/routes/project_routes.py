@@ -653,7 +653,7 @@ def create_project_routes(
 
             if project_name in processes:
                 process = processes[project_name]
-                
+
                 # Terminate the entire process group to ensure child processes are stopped
                 # This is necessary because repo.sh spawns the Kit application as a child process
                 try:
@@ -661,13 +661,13 @@ def create_project_routes(
                     import signal
                     pgid = os.getpgid(process.pid)
                     os.killpg(pgid, signal.SIGTERM)
-                    
+
                     socketio.emit('log', {
                         'level': 'info',
                         'source': 'runtime',
                         'message': f'Sending SIGTERM to {project_name} (PID {process.pid}, PGID {pgid})...'
                     })
-                    
+
                     # Wait for graceful shutdown
                     try:
                         process.wait(timeout=5)
@@ -685,7 +685,7 @@ def create_project_routes(
                         })
                         os.killpg(pgid, signal.SIGKILL)
                         process.wait(timeout=2)
-                        
+
                 except ProcessLookupError:
                     # Process already terminated
                     socketio.emit('log', {
@@ -693,7 +693,7 @@ def create_project_routes(
                         'source': 'runtime',
                         'message': f'Process already terminated'
                     })
-                
+
                 del processes[project_name]
                 return jsonify({'success': True})
             else:
@@ -708,13 +708,13 @@ def create_project_routes(
         try:
             if project_name in processes:
                 process = processes[project_name]
-                
+
                 # Terminate the entire process group to ensure child processes are stopped
                 try:
                     import signal
                     pgid = os.getpgid(process.pid)
                     os.killpg(pgid, signal.SIGTERM)
-                    
+
                     # Wait for graceful shutdown
                     try:
                         process.wait(timeout=5)
@@ -722,11 +722,11 @@ def create_project_routes(
                         # Force kill if process doesn't terminate gracefully
                         os.killpg(pgid, signal.SIGKILL)
                         process.wait(timeout=2)
-                        
+
                 except ProcessLookupError:
                     # Process already terminated
                     pass
-                
+
                 del processes[project_name]
                 return jsonify({'success': True})
             else:
