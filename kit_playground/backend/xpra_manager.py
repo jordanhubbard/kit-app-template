@@ -23,6 +23,52 @@ class XpraSession:
         self.app_process: Optional[subprocess.Popen] = None
         self.started = False
 
+    def _wait_for_ready(self, timeout: int = 30) -> bool:
+        """Wait for Xpra to be ready to accept connections.
+        
+        Args:
+            timeout: Maximum time to wait in seconds
+            
+        Returns:
+            True if Xpra is ready, False if timeout
+        """
+        import socket
+        
+        logger.info(f"Waiting for Xpra display :{self.display_number} to be ready...")
+        
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                # Check if Xpra process is running
+                result = subprocess.run(
+                    ['xpra', 'list'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0 and f':{self.display_number}' in result.stdout:
+                    # Xpra process is running, now check if port is listening
+                    bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(1)
+                    try:
+                        result = sock.connect_ex((bind_host, self.port))
+                        sock.close()
+                        if result == 0:
+                            logger.info(f"Xpra display :{self.display_number} is ready on port {self.port}")
+                            return True
+                    except Exception:
+                        pass
+                    finally:
+                        sock.close()
+            except Exception:
+                pass
+            
+            time.sleep(0.5)
+        
+        logger.warning(f"Timeout waiting for Xpra display :{self.display_number} to be ready")
+        return False
+
     def start(self) -> bool:
         """Start the Xpra server."""
         if self.started:
@@ -64,8 +110,9 @@ class XpraSession:
                 text=True
             )
 
-            # Wait a bit for Xpra to start
-            time.sleep(2)
+            # Wait for Xpra to be ready
+            if not self._wait_for_ready(timeout=30):
+                logger.warning("Xpra may not be fully ready, but continuing...")
 
             # Check if process is still running
             if self.process.poll() is not None:

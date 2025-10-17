@@ -378,30 +378,41 @@ const MainLayoutWorkflow: React.FC = () => {
 
           emitConsoleLog('info', 'runtime', `Waiting for Xpra server to be ready...`);
 
-          // Poll the Xpra URL to ensure it's responding before opening
-          const waitForXpra = async (url: string, maxAttempts: number = 10, delayMs: number = 500): Promise<boolean> => {
+          // Poll the Xpra status endpoint to ensure it's ready
+          const waitForXpra = async (display: number = 100, maxAttempts: number = 30, delayMs: number = 1000): Promise<boolean> => {
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
               try {
-                // Try to fetch the URL (HEAD request would be better but fetch with no-cors works)
-                const testResponse = await fetch(url, {
+                // Use the backend Xpra status check endpoint
+                const statusResponse = await fetch(`/api/xpra/status/${display}`, {
                   method: 'GET',
-                  mode: 'no-cors', // Don't care about response, just want to know if it's listening
                   cache: 'no-cache',
                 });
-                // With no-cors, we can't read the response, but if fetch doesn't throw, server is responding
-                console.log(`[DEBUG] Xpra server check attempt ${attempt}: appears ready`);
-                return true;
-              } catch (err) {
-                console.log(`[DEBUG] Xpra server check attempt ${attempt}/${maxAttempts}: not ready yet`);
-                if (attempt < maxAttempts) {
-                  await new Promise(resolve => setTimeout(resolve, delayMs));
+                
+                if (statusResponse.ok) {
+                  const status = await statusResponse.json();
+                  console.log(`[DEBUG] Xpra status check attempt ${attempt}:`, status);
+                  
+                  if (status.ready) {
+                    console.log(`[DEBUG] Xpra display :${display} is ready`);
+                    return true;
+                  } else {
+                    console.log(`[DEBUG] Xpra display :${display} not ready yet (process: ${status.process_running}, port: ${status.port_listening}, web: ${status.web_ready})`);
+                  }
+                } else {
+                  console.log(`[DEBUG] Xpra status check attempt ${attempt}: HTTP ${statusResponse.status}`);
                 }
+              } catch (err) {
+                console.log(`[DEBUG] Xpra status check attempt ${attempt}/${maxAttempts}: error (${err})`);
+              }
+              
+              if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, delayMs));
               }
             }
             return false;
           };
 
-          const isReady = await waitForXpra(result.previewUrl);
+          const isReady = await waitForXpra(100); // Default display 100
 
           if (isReady) {
             emitConsoleLog('success', 'runtime', `Xpra server is ready, opening preview...`);

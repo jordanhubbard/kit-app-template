@@ -408,6 +408,56 @@ def select_kit(target_directory: Path, config: dict) -> str:
         return app_name
 
 
+def _wait_for_xpra_ready(display: int, port: int, bind_host: str, timeout: int = 30) -> bool:
+    """Wait for Xpra to be ready to accept connections.
+    
+    Args:
+        display: Xpra display number
+        port: Xpra TCP port
+        bind_host: Host to bind to
+        timeout: Maximum time to wait in seconds
+        
+    Returns:
+        True if Xpra is ready, False if timeout
+    """
+    import time
+    import socket
+    
+    print(f"Waiting for Xpra display :{display} to be ready...")
+    
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            # Check if Xpra process is running
+            result = subprocess.run(
+                ['xpra', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0 and f':{display}' in result.stdout:
+                # Xpra process is running, now check if port is listening
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                try:
+                    result = sock.connect_ex((bind_host, port))
+                    sock.close()
+                    if result == 0:
+                        print(f"Xpra display :{display} is ready on port {port}")
+                        return True
+                except Exception:
+                    pass
+                finally:
+                    sock.close()
+        except Exception:
+            pass
+        
+        time.sleep(0.5)
+    
+    print(f"Timeout waiting for Xpra display :{display} to be ready")
+    return False
+
+
 def launch_kit(
     app_name, target_directory: Path, config: dict = {}, dev_bundle: bool = False, extra_args: List[str] = [], xpra: bool = False, xpra_display: int = 100
 ):
@@ -463,11 +513,20 @@ def launch_kit(
                 )
                 print(f"Xpra started on port {xpra_port}")
                 print(f"Browser preview: http://{bind_host}:{xpra_port}")
-                import time
-                time.sleep(2)  # Wait for Xpra to start
+                
+                # Wait for Xpra to be ready before continuing
+                if not _wait_for_xpra_ready(xpra_display, xpra_port, bind_host, timeout=30):
+                    print("Warning: Xpra may not be fully ready, but continuing...")
+                    
             except Exception as e:
                 print(f"Failed to start Xpra: {e}")
                 print("Continuing anyway - Xpra might already be running")
+        else:
+            # Xpra is already running, but verify it's ready
+            bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+            xpra_port = 10000 + (xpra_display - 100)
+            if not _wait_for_xpra_ready(xpra_display, xpra_port, bind_host, timeout=10):
+                print("Warning: Existing Xpra session may not be ready")
 
         # Create environment with current environment variables plus DISPLAY
         # Important: We must MERGE with os.environ, not replace it, or the app

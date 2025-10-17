@@ -22,6 +22,55 @@ logger = logging.getLogger(__name__)
 project_bp = Blueprint('projects', __name__, url_prefix='/api/projects')
 
 
+def _wait_for_xpra_ready(display: int, port: int, timeout: int = 30) -> bool:
+    """Wait for Xpra to be ready to accept connections.
+    
+    Args:
+        display: Xpra display number
+        port: Xpra TCP port
+        timeout: Maximum time to wait in seconds
+        
+    Returns:
+        True if Xpra is ready, False if timeout
+    """
+    import socket
+    
+    logger.info(f"Waiting for Xpra display :{display} to be ready...")
+    
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            # Check if Xpra process is running
+            result = subprocess.run(
+                ['xpra', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0 and f':{display}' in result.stdout:
+                # Xpra process is running, now check if port is listening
+                bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                try:
+                    result = sock.connect_ex((bind_host, port))
+                    sock.close()
+                    if result == 0:
+                        logger.info(f"Xpra display :{display} is ready on port {port}")
+                        return True
+                except Exception:
+                    pass
+                finally:
+                    sock.close()
+        except Exception:
+            pass
+        
+        time.sleep(0.5)
+    
+    logger.warning(f"Timeout waiting for Xpra display :{display} to be ready")
+    return False
+
+
 def get_repo_root() -> Path:
     """Get the repository root directory."""
     return Path(__file__).parent.parent.parent.parent
@@ -296,6 +345,23 @@ def create_project_routes(
                     xpra_display = 100  # Default display
                     xpra_port = 10000 + (xpra_display - 100)
                     registry.register_xpra_display(display=xpra_display, port=xpra_port)
+
+                    # Wait for Xpra to be ready before returning preview URL
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Waiting for Xpra display :{xpra_display} to be ready...'
+                    })
+                    
+                    # Check if Xpra is ready
+                    xpra_ready = _wait_for_xpra_ready(xpra_display, xpra_port, timeout=30)
+                    
+                    if not xpra_ready:
+                        socketio.emit('log', {
+                            'level': 'warning',
+                            'source': 'runtime',
+                            'message': 'Xpra may not be fully ready, but continuing...'
+                        })
 
                     # Extract client host from request
                     # Check X-Forwarded-Host first (set by proxy), then fall back to Host header

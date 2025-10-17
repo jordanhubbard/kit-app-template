@@ -3,6 +3,7 @@ Xpra management routes for Kit Playground.
 """
 import logging
 import subprocess
+import time
 from flask import Blueprint, jsonify
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,71 @@ def create_xpra_routes(xpra_manager):
             return jsonify({'sessions': sessions})
         except Exception as e:
             logger.error(f"Failed to list Xpra sessions: {e}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+
+    @xpra_bp.route('/status/<int:display>', methods=['GET'])
+    def check_display_status(display: int):
+        """Check if a specific Xpra display is ready.
+        
+        Args:
+            display: Xpra display number to check
+            
+        Returns:
+            JSON with ready status and details
+        """
+        try:
+            import socket
+            
+            # Check if Xpra process is running
+            result = subprocess.run(
+                ['xpra', 'list'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            process_running = result.returncode == 0 and f':{display}' in result.stdout
+            
+            # Check if port is listening
+            port = 10000 + (display - 100)
+            bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+            
+            port_listening = False
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                result = sock.connect_ex((bind_host, port))
+                sock.close()
+                port_listening = result == 0
+            except Exception:
+                pass
+            
+            # Check if we can get a response from the web interface
+            web_ready = False
+            if port_listening:
+                try:
+                    import urllib.request
+                    import urllib.error
+                    url = f"http://{bind_host}:{port}"
+                    req = urllib.request.Request(url)
+                    req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36')
+                    with urllib.request.urlopen(req, timeout=2) as response:
+                        web_ready = response.status == 200
+                except Exception:
+                    pass
+            
+            return jsonify({
+                'display': display,
+                'port': port,
+                'process_running': process_running,
+                'port_listening': port_listening,
+                'web_ready': web_ready,
+                'ready': process_running and port_listening and web_ready,
+                'url': f"http://{bind_host}:{port}" if port_listening else None
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to check Xpra display status: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
     return xpra_bp
