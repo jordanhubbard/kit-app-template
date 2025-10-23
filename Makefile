@@ -464,6 +464,34 @@ test-coverage:
 .PHONY: test-all
 test-all: test test-playground
 
+# Compatibility tests (Phase 1 baseline)
+.PHONY: test-compatibility
+test-compatibility:
+	@echo "$(BLUE)Running compatibility baseline tests (fast)...$(NC)"
+	@echo "$(YELLOW)Testing CLI workflows and template creation$(NC)"
+	@python3 -m pytest tests/compatibility/ -v -m "not slow"
+	@echo "$(GREEN)✓ Compatibility tests complete$(NC)"
+
+.PHONY: test-compatibility-slow
+test-compatibility-slow:
+	@echo "$(BLUE)Running compatibility tests with builds and launches (SLOW - 1+ hour)...$(NC)"
+	@echo "$(YELLOW)⚠  This will build and launch ALL templates with --no-window$(NC)"
+	@echo "$(YELLOW)⚠  Estimated time: 1-2 hours$(NC)"
+	@python3 -m pytest tests/compatibility/ -v -m "slow"
+	@echo "$(GREEN)✓ Slow compatibility tests complete$(NC)"
+
+.PHONY: test-compatibility-all
+test-compatibility-all:
+	@echo "$(BLUE)Running ALL compatibility tests (fast + slow)...$(NC)"
+	@python3 -m pytest tests/compatibility/ -v
+	@echo "$(GREEN)✓ All compatibility tests complete$(NC)"
+
+.PHONY: test-compatibility-report
+test-compatibility-report:
+	@echo "$(BLUE)Running compatibility tests with detailed report...$(NC)"
+	@python3 -m pytest tests/compatibility/ -v -m "not slow" --tb=short | tee tests/compatibility/test_report_$$(date +%Y%m%d_%H%M%S).txt
+	@echo "$(GREEN)✓ Report saved to tests/compatibility/$(NC)"
+
 
 # Clean build artifacts
 .PHONY: clean
