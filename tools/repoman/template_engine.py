@@ -1096,20 +1096,48 @@ def handle_list_command(engine: TemplateEngine, args: List[str]) -> None:
     """Handle 'list' command."""
     template_type = None
     category = None
+    json_output = False
 
     for arg in args:
         if arg.startswith('--type='):
             template_type = arg.split('=', 1)[1]
         elif arg.startswith('--category='):
             category = arg.split('=', 1)[1]
+        elif arg == '--json':
+            json_output = True
 
     templates = engine.list_templates(template_type, category)
 
     if not templates:
-        print("No templates found")
+        if json_output:
+            import json as json_module
+            print(json_module.dumps({"status": "success", "count": 0, "templates": []}, indent=2))
+        else:
+            print("No templates found")
         return
 
-    # Group by type for better display
+    # JSON output mode
+    if json_output:
+        import json as json_module
+        template_list = []
+        for name, config in templates.items():
+            metadata = config.get('metadata', {})
+            template_list.append({
+                "name": name,
+                "display_name": metadata.get('display_name', name),
+                "type": metadata.get('type', 'unknown'),
+                "description": metadata.get('description', ''),
+                "category": metadata.get('category', '')
+            })
+        result = {
+            "status": "success",
+            "count": len(template_list),
+            "templates": sorted(template_list, key=lambda t: (t['type'], t['name']))
+        }
+        print(json_module.dumps(result, indent=2))
+        return
+
+    # Normal output mode - Group by type for better display
     by_type = {}
     for name, config in templates.items():
         t_type = config.get('metadata', {}).get('type', 'unknown')
@@ -1136,6 +1164,9 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
     add_layers = False
     layers = []
     accept_license = False
+    json_output = False
+    verbose = False
+    quiet = False
 
     for arg in args:
         if arg.startswith('--config='):
@@ -1150,6 +1181,12 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             add_layers = True  # Implies --add-layers
         elif arg == '--accept-license':
             accept_license = True
+        elif arg == '--json':
+            json_output = True
+        elif arg == '--verbose':
+            verbose = True
+        elif arg == '--quiet':
+            quiet = True
         elif arg.startswith('--'):
             if '=' in arg:
                 key, value = arg[2:].split('=', 1)
@@ -1173,20 +1210,66 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
     # Check license with auto-accept if flag provided
     from license_manager import check_and_prompt_license
     if not check_and_prompt_license(auto_accept=accept_license):
-        print("Error: License terms must be accepted to use templates.", file=sys.stderr)
+        if json_output:
+            import json as json_module
+            error_data = {
+                "status": "error",
+                "error": "License terms must be accepted to use templates",
+                "code": 1
+            }
+            print(json_module.dumps(error_data, indent=2))
+        else:
+            print("Error: License terms must be accepted to use templates.", file=sys.stderr)
         sys.exit(1)
 
     # Note: --output-dir can be used to create standalone projects
     # By default (when output_dir is None), templates are created in _build/apps/
 
-    # Generate template
-    playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)
+    try:
+        # Generate template
+        playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)
 
-    # Save to file
-    playback_file = engine.save_playback_file(playback)
+        # Save to file
+        playback_file = engine.save_playback_file(playback)
 
-    # Print file path for repo.sh to use
-    print(playback_file)
+        # Always print playback file path first (required for repo_dispatcher)
+        print(playback_file)
+        
+        # Output additional information based on mode
+        if json_output:
+            # JSON output mode - print JSON to stderr so repo_dispatcher ignores it
+            # but tests/users can still capture it
+            import json as json_module
+            result_data = {
+                "status": "success",
+                "playback_file": playback_file,
+                "template_name": template_name,
+                "name": kwargs.get('app_name', kwargs.get('name', 'unknown')),
+                "path": str(playback.get('output_path', '')) if isinstance(playback, dict) else ''
+            }
+            print(json_module.dumps(result_data, indent=2), file=sys.stderr)
+        elif verbose:
+            # Verbose mode - add extra details to stderr
+            print(f"[VERBOSE] Template: {template_name}", file=sys.stderr)
+            print(f"[VERBOSE] Playback file: {playback_file}", file=sys.stderr)
+            if kwargs.get('app_name'):
+                print(f"[VERBOSE] Application name: {kwargs['app_name']}", file=sys.stderr)
+        # Quiet mode and normal mode just print playback file (already done above)
+
+    except Exception as e:
+        # Handle errors
+        if json_output:
+            import json as json_module
+            error_data = {
+                "status": "error",
+                "error": str(e),
+                "template_name": template_name,
+                "code": 1
+            }
+            print(json_module.dumps(error_data, indent=2))
+        else:
+            print(f"Error generating template: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
