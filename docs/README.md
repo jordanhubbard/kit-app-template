@@ -462,6 +462,100 @@ strategy = "isolated"
 
 **See**: [PER_APP_DEPENDENCIES.md](../PER_APP_DEPENDENCIES.md)
 
+### Kit App Streaming
+
+Enable WebRTC streaming for remote browser access to Kit applications.
+
+**When to Use**:
+- Remote development and collaboration
+- Cloud-based GPU rendering
+- Browser-based application demos
+- Headless deployment environments
+- Zero-install user experience
+
+**Create Streaming App** (CLI):
+```bash
+# Create app with streaming enabled
+./repo.sh template new kit_base_editor \
+  --name my.streaming.app \
+  --accept-license
+
+# Manually enable streaming (or use API/UI)
+# Edit source/apps/my.streaming.app/my.streaming.app.kit
+# Add to [dependencies] section:
+[dependencies]
+"omni.services.streaming.webrtc" = {}
+"omni.kit.streamhelper" = {}
+```
+
+**Launch Streaming App**:
+```bash
+# Build the app
+./repo.sh build --app my.streaming.app
+
+# Launch with streaming (auto-detected or forced)
+./repo.sh launch my.streaming.app.kit --streaming
+
+# Custom port
+./repo.sh launch my.streaming.app.kit --streaming --streaming-port 48000
+```
+
+**Expected Output**:
+```
+========================================
+Kit App Streaming (WebRTC) Mode
+========================================
+Port: 47995
+URL:  https://localhost:47995
+========================================
+
+Starting streaming server...
+Waiting for streaming server on port 47995...
+
+========================================
+✓ Streaming Ready!
+========================================
+URL: https://localhost:47995
+========================================
+
+Note: Self-signed SSL certificate warning is normal.
+Accept the certificate in your browser to continue.
+```
+
+**Browser Access**:
+1. Open: `https://localhost:47995`
+2. Accept SSL certificate warning (self-signed)
+3. Your Kit application streams live in the browser! 🎉
+
+**API/UI Creation**:
+```bash
+# Via REST API
+curl -X POST http://localhost:5000/api/templates/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "kit_base_editor",
+    "name": "my.streaming.app",
+    "enableStreaming": true
+  }'
+
+# Via Web UI
+# 1. Navigate to http://localhost:3000/templates
+# 2. Select template
+# 3. Check "Enable Kit App Streaming" in Advanced Options
+# 4. Create project
+```
+
+**Technical Details**:
+- **Protocol**: WebRTC over HTTPS
+- **Default Port**: 47995 (configurable)
+- **Latency**: ~50-100ms (local), ~100-300ms (remote)
+- **Extensions Required**:
+  - `omni.services.streaming.webrtc` - WebRTC streaming server
+  - `omni.kit.streamhelper` - Streaming helper utilities
+- **SSL**: Self-signed certificate by default (override with `--/rtx/webrtc/certificatePath` and `--/rtx/webrtc/privateKeyPath`)
+
+**See**: [KIT_APP_STREAMING_DESIGN.md](../KIT_APP_STREAMING_DESIGN.md), [API_USAGE.md](API_USAGE.md#kit-app-streaming-launch)
+
 ### Standalone Projects
 
 Create self-contained projects that can be distributed without the main repository.

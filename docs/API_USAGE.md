@@ -155,9 +155,45 @@ curl -X POST http://localhost:5000/api/templates/create \
   "displayName": "My Application",    // Optional: display name
   "version": "1.0.0",                 // Optional: version (default: "1.0.0")
   "outputDir": null,                  // Optional: output directory
+  "standalone": false,                // Optional: create as standalone project
+  "perAppDeps": false,                // Optional: use per-app dependencies
+  "enableStreaming": false,           // Optional: enable Kit App Streaming (WebRTC)
   "options": {}                       // Optional: template-specific options
 }
 ```
+
+#### Kit App Streaming Example
+
+Create a streaming-enabled application:
+
+```bash
+curl -X POST http://localhost:5000/api/templates/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "kit_base_editor",
+    "name": "my.streaming.app",
+    "displayName": "My Streaming App",
+    "enableStreaming": true
+  }'
+```
+
+**Response with Streaming**:
+```json
+{
+  "success": true,
+  "projectInfo": {
+    "projectName": "my.streaming.app",
+    "displayName": "My Streaming App",
+    "outputDir": null,
+    "kitFile": "my.streaming.app.kit",
+    "streaming": true
+  }
+}
+```
+
+> **Note**: When `enableStreaming: true`, the API automatically adds streaming extensions to the `.kit` file:
+> - `omni.services.streaming.webrtc`
+> - `omni.kit.streamhelper`
 
 **Response**:
 ```json
@@ -416,15 +452,19 @@ curl -X POST http://localhost:5000/api/projects/build \
 
 ### Launch Application
 
-Launch a built application.
+Launch a built application. The API supports three display modes:
+1. **Kit App Streaming** (WebRTC) - Auto-detected for streaming apps
+2. **Direct Launch** - Traditional X display
+3. **Xpra** - Remote X display streaming
 
 ```bash
-curl -X POST http://localhost:5000/api/projects/launch \
+# Standard launch
+curl -X POST http://localhost:5000/api/projects/run \
   -H "Content-Type: application/json" \
   -d '{
-    "project_name": "my.app",
-    "config": "release",
-    "headless": false
+    "projectName": "my.app",
+    "useXpra": false,
+    "useWebPreview": false
   }'
 ```
 
@@ -432,11 +472,49 @@ curl -X POST http://localhost:5000/api/projects/launch \
 ```json
 {
   "success": true,
-  "job_id": "job_def456",
-  "message": "Application launched",
-  "process_id": 12345
+  "previewUrl": null
 }
 ```
+
+#### Kit App Streaming Launch
+
+For streaming-enabled applications, the API automatically detects streaming extensions and launches in WebRTC mode:
+
+```bash
+curl -X POST http://localhost:5000/api/projects/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectName": "my.streaming.app",
+    "streamingPort": 47995,
+    "useWebPreview": true
+  }'
+```
+
+**Streaming Response**:
+```json
+{
+  "success": true,
+  "previewUrl": "https://localhost:47995",
+  "streamingUrl": "https://localhost:47995",
+  "streaming": true,
+  "port": 47995
+}
+```
+
+**WebSocket Event**: When streaming is ready, the server emits a `streaming_ready` event:
+```json
+{
+  "project": "my.streaming.app",
+  "url": "https://localhost:47995",
+  "port": 47995
+}
+```
+
+> **Note**: 
+> - Streaming apps are auto-detected via `.kit` file analysis
+> - The streaming URL is deterministic: `https://localhost:{port}`
+> - SSL certificate warning is normal (self-signed cert)
+> - Backend waits up to 30 seconds for streaming server ready
 
 ### Stop Application
 
