@@ -1,7 +1,7 @@
 # Standalone Project Design
 
-**Date**: October 24, 2025  
-**Phase**: 5  
+**Date**: October 24, 2025
+**Phase**: 5
 **Status**: 🎯 **DESIGN**
 
 ---
@@ -180,10 +180,10 @@ Optional (skip for minimal):
 ```python
 class StandaloneGenerator:
     """Generate standalone projects from templates."""
-    
+
     def __init__(self, repo_root: Path):
         self.repo_root = repo_root
-        
+
     def generate_standalone(
         self,
         template_output_dir: Path,  # Where template was generated
@@ -193,13 +193,13 @@ class StandaloneGenerator:
     ) -> Path:
         """
         Convert a template-generated project into a standalone project.
-        
+
         Args:
             template_output_dir: Directory where template created the app
             standalone_dir: Target directory for standalone project
             template_name: Name of template used
             app_name: Application name
-            
+
         Returns:
             Path to created standalone project
         """
@@ -210,23 +210,23 @@ class StandaloneGenerator:
         # 5. Generate standalone-specific files
         # 6. Create README with instructions
         pass
-        
+
     def copy_application(self, src: Path, dest: Path):
         """Copy application source files."""
         pass
-        
+
     def copy_build_tools(self, dest: Path):
         """Copy packman and repoman tools."""
         pass
-        
+
     def generate_config_files(self, dest: Path, app_name: str):
         """Generate standalone configuration files."""
         pass
-        
+
     def generate_premake(self, dest: Path, app_name: str):
         """Generate standalone premake5.lua."""
         pass
-        
+
     def generate_readme(self, dest: Path, template_name: str):
         """Generate standalone README.md with usage instructions."""
         pass
@@ -257,16 +257,16 @@ def test_create_standalone_project():
 def test_standalone_structure():
     """Verify all required files are present."""
     project_dir = Path("/tmp/test_standalone")
-    
+
     # Core files
     assert (project_dir / "repo.sh").exists()
     assert (project_dir / "repo.toml").exists()
     assert (project_dir / "premake5.lua").exists()
-    
+
     # Tools
     assert (project_dir / "tools/packman").is_dir()
     assert (project_dir / "tools/repoman").is_dir()
-    
+
     # Application
     assert (project_dir / "source/apps/test_standalone").is_dir()
 ```
@@ -301,7 +301,7 @@ def test_standalone_independence():
     """Verify project works without original repository."""
     # Move project to different location
     shutil.move("/tmp/test_standalone", "/tmp/moved_project")
-    
+
     # Build from new location
     result = subprocess.run(
         ["./repo.sh", "build"],
@@ -330,23 +330,23 @@ def test_standalone_independence():
 ## Edge Cases & Considerations
 
 ### 1. Output Directory Conflicts
-**Problem**: Target directory already exists  
+**Problem**: Target directory already exists
 **Solution**: Add `--force` flag or prompt user
 
 ### 2. Relative vs Absolute Paths
-**Problem**: Paths in config files  
+**Problem**: Paths in config files
 **Solution**: Use relative paths consistently
 
 ### 3. Extensions vs Applications
-**Problem**: Extensions have different structure  
+**Problem**: Extensions have different structure
 **Solution**: Detect type and adjust accordingly
 
 ### 4. Build Dependencies
-**Problem**: Kit SDK download location  
+**Problem**: Kit SDK download location
 **Solution**: Use `_build/` in standalone project root
 
 ### 5. Template Registry
-**Problem**: Standalone project may want to create more apps  
+**Problem**: Standalone project may want to create more apps
 **Solution**: Include template registry or document that it's single-app
 
 ---
@@ -427,4 +427,3 @@ def test_standalone_independence():
 5. ⏳ Document feature
 
 **Status**: Design complete, ready for implementation!
-

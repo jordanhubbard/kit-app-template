@@ -1227,12 +1227,12 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
 
     # Note: When --standalone is used, template is first generated in normal location,
     # then copied to standalone directory. --output-dir specifies standalone target.
-    
+
     try:
         # For standalone projects, generate template in default location first
         # Then standalone generator will copy to --output-dir location
         template_gen_output_dir = None if standalone else output_dir
-        
+
         # Generate template
         playback = engine.generate_template(template_name, config_file, template_gen_output_dir, **kwargs)
 
@@ -1249,16 +1249,16 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
         standalone_path = None
         if standalone:
             app_name = kwargs.get('app_name', kwargs.get('name', 'unknown'))
-            
+
             # Determine template type from template config
             all_templates = engine.list_templates()
             template_config = all_templates.get(template_name, {})
             template_type = template_config.get('metadata', {}).get('type', 'application')
-            
+
             # Add standalone metadata to playback
             if not isinstance(playback, dict):
                 playback = {}
-            
+
             playback['_standalone_project'] = {
                 'enabled': True,
                 'output_directory': str(output_dir) if output_dir else app_name,
@@ -1267,7 +1267,7 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
                 'template_type': template_type,
                 'template_output_path': str(template_output_path)
             }
-            
+
             if verbose:
                 print(f"[VERBOSE] Standalone mode enabled, will be created after replay", file=sys.stderr)
 

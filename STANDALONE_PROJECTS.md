@@ -326,7 +326,7 @@ Packman will download all dependencies automatically.
 
 **Behavior**: Template is created in `source/apps/` but standalone generation is skipped
 
-**Solution**: 
+**Solution**:
 ```bash
 # Remove existing directory
 rm -rf target-directory
@@ -397,7 +397,7 @@ cd ~/projects/my.app
 
 ### Q: How large are standalone projects?
 
-**A**: 
+**A**:
 - Before build: ~15-20 MB (tools + source)
 - After build: ~1-2 GB (includes Kit SDK)
 
@@ -492,11 +492,11 @@ cd /tmp/experiment
 
 **Standalone projects** enable true independence:
 
-✅ Self-contained and portable  
-✅ Include all build tools  
-✅ No repository dependencies  
-✅ Easy to share and distribute  
-✅ Work from any location  
+✅ Self-contained and portable
+✅ Include all build tools
+✅ No repository dependencies
+✅ Easy to share and distribute
+✅ Work from any location
 
 **Perfect for**:
 - Customer deliverables
@@ -511,7 +511,6 @@ cd /tmp/experiment
 
 ---
 
-**Generated**: kit-app-template Phase 5  
-**Version**: 1.0  
+**Generated**: kit-app-template Phase 5
+**Version**: 1.0
 **Status**: Production Ready
-

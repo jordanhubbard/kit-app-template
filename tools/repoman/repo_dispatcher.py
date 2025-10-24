@@ -297,13 +297,13 @@ exit /b %ERRORLEVEL%
             repo_toml_path = repo_root / "repo.toml"
             if repo_toml_path.exists():
                 content = repo_toml_path.read_text()
-                
+
                 # Use regex to clear the apps list without reformatting the file
                 # This preserves comments and formatting
                 pattern = r'^apps\s*=\s*\[.*?\]'
                 replacement = 'apps = []'
                 new_content, count = re.subn(pattern, replacement, content, flags=re.MULTILINE)
-                
+
                 if count > 0:
                     repo_toml_path.write_text(new_content)
                     print(f"✓ Cleared static apps list in repo.toml (using dynamic discovery)")
@@ -393,7 +393,7 @@ def handle_template_command(args: List[str]) -> int:
                     # We need to restructure it as _build/apps/{name}/{name}.kit
                     if result.returncode == 0:
                         _fix_application_structure(repo_root, playback_data)
-                        
+
                         # If this is a standalone project, create it now (after replay)
                         if "_standalone_project" in playback_data:
                             standalone_config = playback_data["_standalone_project"]
@@ -402,7 +402,7 @@ def handle_template_command(args: List[str]) -> int:
                                     # Import standalone generator
                                     sys.path.insert(0, str(repo_root / "tools" / "repoman"))
                                     from standalone_generator import create_standalone_project
-                                    
+
                                     standalone_path = create_standalone_project(
                                         repo_root=repo_root,
                                         template_output_dir=Path(standalone_config['template_output_path']),
@@ -411,7 +411,7 @@ def handle_template_command(args: List[str]) -> int:
                                         app_name=standalone_config['app_name'],
                                         template_type=standalone_config['template_type']
                                     )
-                                    
+
                                     print(f"\n✓ Standalone project created: {standalone_path}", file=sys.stderr)
                                     print(f"  To build: cd {standalone_path} && ./repo.sh build", file=sys.stderr)
                                 except Exception as e:

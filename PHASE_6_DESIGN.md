@@ -1,8 +1,8 @@
 # Phase 6: Per-App Dependencies - Design Document
 
-**Date**: October 24, 2025  
-**Status**: 🎯 **DESIGN PHASE**  
-**Complexity**: High (build system architecture)  
+**Date**: October 24, 2025
+**Status**: 🎯 **DESIGN PHASE**
+**Complexity**: High (build system architecture)
 **Estimated Time**: 4-5 hours
 
 ---
@@ -11,7 +11,7 @@
 
 **Objective**: Enable each application to maintain its own Kit SDK and dependencies, isolated from other applications.
 
-**Critical Need**: 
+**Critical Need**:
 - Apps with custom `.kit` configurations currently break global cache
 - No way to use different Kit versions per app
 - Dependency conflicts between apps
@@ -91,11 +91,11 @@ source/apps/my.app/
 
 ### Benefits
 
-✅ **Isolation**: Each app has its own Kit SDK  
-✅ **Version Freedom**: Different Kit versions per app  
-✅ **No Conflicts**: Custom configs don't affect other apps  
-✅ **Custom Branches**: Track experimental Kit per app  
-✅ **Proper Caching**: Cache is app-specific  
+✅ **Isolation**: Each app has its own Kit SDK
+✅ **Version Freedom**: Different Kit versions per app
+✅ **No Conflicts**: Custom configs don't affect other apps
+✅ **Custom Branches**: Track experimental Kit per app
+✅ **Proper Caching**: Cache is app-specific
 ✅ **Independent Development**: Changes in App A don't break App B
 
 ---
@@ -179,23 +179,23 @@ def pull_app_dependencies(app_path: Path):
     if not deps_config:
         # Use global dependencies (backward compat)
         return pull_global_dependencies()
-    
+
     # Read app-specific config
     config = load_toml(deps_config / "kit-deps.toml")
     kit_path = get_app_kit_path(app_path)
-    
+
     # Set environment for app-specific install
     env = os.environ.copy()
     env['PM_PACKAGES_ROOT'] = str(kit_path)
     env['PM_MODULE_DIR'] = str(kit_path / 'cache')
-    
+
     # Pull using packman with custom path
     packmanapi.pull(
         package=f"kit-sdk-{config['kit_sdk']['version']}",
         path=str(kit_path / 'kit'),
         env=env
     )
-    
+
     # Pull other dependencies
     for dep_name, dep_config in config.get('dependencies', {}).items():
         packmanapi.pull(
@@ -229,7 +229,7 @@ end
 for _, app in ipairs(apps) do
     local appPath = path.join(SOURCE_DIR, "apps", app)
     local kitSdkPath = findAppKitSdk(appPath)
-    
+
     project(app)
         -- Use app-specific Kit SDK
         includedirs { path.join(kitSdkPath, "include") }
@@ -252,24 +252,24 @@ def find_app_kit_executable(app_path: Path) -> Path:
     app_kit = app_path / "_kit" / "kit" / "kit"
     if app_kit.exists():
         return app_kit
-    
+
     # Fallback to global Kit
     global_kit = Path("_build") / PLATFORM / CONFIG / "kit" / "kit"
     if global_kit.exists():
         return global_kit
-    
+
     raise FileNotFoundError("Kit executable not found")
 
 def launch_app(app_name: str, args: list):
     """Launch app with correct Kit SDK."""
     app_path = Path("source/apps") / app_name
     kit_exe = find_app_kit_executable(app_path)
-    
+
     # Set environment for app-specific extensions
     env = os.environ.copy()
     if (app_path / "_kit").exists():
         env['CARB_APP_PATH'] = str(app_path / "_kit")
-    
+
     # Launch Kit with app's .kit file
     subprocess.run([str(kit_exe), str(app_path / f"{app_name}.kit")] + args, env=env)
 ```
@@ -492,13 +492,13 @@ ls source/apps/my.app/_kit/
 
 ## Success Criteria
 
-✅ Apps can specify their own Kit SDK version  
-✅ Apps can use custom Kit branches  
-✅ Configuration changes in one app don't affect others  
-✅ Cache is properly isolated per app  
-✅ Backward compatible (existing apps work unchanged)  
-✅ All tests pass  
-✅ Performance acceptable  
+✅ Apps can specify their own Kit SDK version
+✅ Apps can use custom Kit branches
+✅ Configuration changes in one app don't affect others
+✅ Cache is properly isolated per app
+✅ Backward compatible (existing apps work unchanged)
+✅ All tests pass
+✅ Performance acceptable
 ✅ Well documented
 
 ---
@@ -527,10 +527,9 @@ ls source/apps/my.app/_kit/
 
 ---
 
-**Status**: Design complete, awaiting implementation decision  
-**Estimated Effort**: 5-6 hours  
-**Complexity**: High (but achievable with current approach)  
+**Status**: Design complete, awaiting implementation decision
+**Estimated Effort**: 5-6 hours
+**Complexity**: High (but achievable with current approach)
 **Risk**: Medium (depends on packman capabilities)
 
 **Recommendation**: Prototype packman integration first to validate approach, then proceed with full implementation.
-
