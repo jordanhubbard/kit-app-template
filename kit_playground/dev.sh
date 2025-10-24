@@ -1,6 +1,6 @@
 #!/bin/bash
 # Kit Playground Development Mode
-# Runs backend and frontend with hot-reloading
+# Runs backend API and frontend UI with hot-reloading
 
 set -e
 
@@ -30,11 +30,15 @@ fi
 
 # Check if we have npm packages
 if [ ! -d "$UI_DIR/node_modules" ]; then
-    echo -e "${BLUE}Installing npm dependencies...${NC}"
+    echo -e "${BLUE}Installing UI dependencies...${NC}"
     cd "$UI_DIR"
     npm install
     cd "$SCRIPT_DIR"
 fi
+
+# Fixed ports for simplicity
+BACKEND_PORT=5000
+FRONTEND_PORT=3000
 
 # Determine host based on REMOTE environment variable
 if [ "$REMOTE" = "1" ]; then
@@ -47,19 +51,6 @@ else
     DISPLAY_HOST="localhost"
 fi
 
-# Find available ports dynamically
-echo -e "${BLUE}Finding available ports...${NC}"
-PORTS=$(python3 "$SCRIPT_DIR/find_free_port.py" 2 8000)
-BACKEND_PORT=$(echo $PORTS | cut -d' ' -f1)
-FRONTEND_PORT=$(echo $PORTS | cut -d' ' -f2)
-
-if [ -z "$BACKEND_PORT" ] || [ -z "$FRONTEND_PORT" ]; then
-    echo -e "${RED}✗ Failed to find available ports${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Allocated ports: Backend=$BACKEND_PORT, Frontend=$FRONTEND_PORT${NC}"
-
 # Determine mode
 if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
     MODE="Production"
@@ -70,12 +61,13 @@ else
 fi
 
 echo -e "${MODE_COLOR}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${MODE_COLOR}║  Kit Playground - ${MODE} Mode                             ║${NC}"
+echo -e "${MODE_COLOR}║  Kit App Template Playground - ${MODE} Mode                ║${NC}"
 echo -e "${MODE_COLOR}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${BLUE}Services:${NC}"
 echo -e "  ${GREEN}✓${NC} Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC}"
 echo -e "  ${GREEN}✓${NC} Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC}"
+echo -e "  ${GREEN}✓${NC} API Docs:     ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}/api/docs/ui${NC}"
 if [ "$REMOTE" = "1" ]; then
     echo -e "  ${YELLOW}⚠${NC} Remote mode: Listening on 0.0.0.0 (all interfaces)"
 fi
@@ -85,122 +77,71 @@ if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "tr
 else
     echo -e "${YELLOW}Development mode - hot-reload enabled${NC}"
 fi
-echo -e "${BLUE}Press Ctrl+C to stop servers${NC}"
+echo -e "${BLUE}Press Ctrl+C to stop all services${NC}"
 echo ""
 
 # Function to cleanup on exit
 cleanup() {
     echo ""
-    echo -e "${YELLOW}Shutting down servers...${NC}"
-    kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
-    # Clean up generated proxy config
-    rm -f "$UI_DIR/src/setupProxy.js"
+    echo -e "${YELLOW}Shutting down services...${NC}"
+    [ ! -z "$BACKEND_PID" ] && kill $BACKEND_PID 2>/dev/null
+    [ ! -z "$FRONTEND_PID" ] && kill $FRONTEND_PID 2>/dev/null
+    # Kill any remaining processes on our ports
+    lsof -ti:$BACKEND_PORT 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+    lsof -ti:$FRONTEND_PORT 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+    echo -e "${GREEN}✓ All services stopped${NC}"
     exit 0
 }
 trap cleanup EXIT INT TERM
 
 # Start backend in background
-echo -e "${BLUE}Starting backend...${NC}"
+echo -e "${BLUE}Starting backend API on port ${BACKEND_PORT}...${NC}"
 cd "$BACKEND_DIR"
-# Pass FRONTEND_PORT to backend so it can register it in the PortRegistry
-export FRONTEND_PORT="$FRONTEND_PORT"
 if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
-    python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" > /tmp/playground-backend.log 2>&1 &
+    python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" > /tmp/kit-playground-backend.log 2>&1 &
 else
-    python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" --debug > /tmp/playground-backend.log 2>&1 &
+    python3 web_server.py --port "$BACKEND_PORT" --host "$BACKEND_HOST" --debug > /tmp/kit-playground-backend.log 2>&1 &
 fi
 BACKEND_PID=$!
 
 # Wait for backend to start
 sleep 2
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo -e "${RED}✗ Backend failed to start. Check /tmp/playground-backend.log${NC}"
+    echo -e "${RED}✗ Backend failed to start. Check /tmp/kit-playground-backend.log${NC}"
+    cat /tmp/kit-playground-backend.log
     exit 1
 fi
+echo -e "${GREEN}✓ Backend started (PID: $BACKEND_PID)${NC}"
 
-# Create temporary setupProxy.js with dynamic backend port
-# Important: The proxy must preserve the original Host header so the backend
-# knows what hostname the client used. We do this via X-Forwarded-Host.
-# Also proxy Socket.IO WebSocket connections for real-time log streaming.
-cat > "$UI_DIR/src/setupProxy.js" << EOF
-const { createProxyMiddleware } = require('http-proxy-middleware');
-
-// Determine backend target dynamically based on request
-function getBackendTarget(req) {
-  const requestHost = req.headers.host;
-  if (requestHost && !requestHost.includes('localhost') && !requestHost.includes('127.0.0.1')) {
-    const backendUrl = 'http://' + requestHost.split(':')[0] + ':${BACKEND_PORT}';
-    console.log('[Proxy] Routing to:', backendUrl);
-    return backendUrl;
-  }
-  // Default: localhost (proxy and backend on same machine)
-  return 'http://localhost:${BACKEND_PORT}';
-}
-
-module.exports = function(app) {
-  // Proxy API requests
-  app.use(
-    '/api',
-    createProxyMiddleware({
-      target: 'http://localhost:${BACKEND_PORT}',
-      changeOrigin: false,  // Keep original Host header
-      logLevel: 'warn',
-      timeout: 300000,  // 5 minute timeout for long-running operations
-      proxyTimeout: 300000,  // 5 minute proxy timeout
-      // Preserve original host in X-Forwarded-Host header
-      onProxyReq: function(proxyReq, req, res) {
-        // Set X-Forwarded-Host to the original Host header
-        proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
-      },
-      // When browser accesses via remote hostname, route to backend on same host
-      router: getBackendTarget,
-    })
-  );
-
-  // Proxy Socket.IO WebSocket connections for real-time log streaming
-  // CRITICAL: Must handle both HTTP and WebSocket protocols
-  const socketIOProxy = createProxyMiddleware({
-    target: 'http://localhost:${BACKEND_PORT}',
-    changeOrigin: true,  // Important for WebSocket connections
-    ws: true,  // Enable WebSocket proxying
-    logLevel: 'debug',  // More verbose logging for debugging
-    // When browser accesses via remote hostname, route to backend on same host
-    router: getBackendTarget,
-    // Handle WebSocket errors gracefully
-    onError: (err, req, res) => {
-      console.error('[Proxy] Socket.IO error:', err.message);
-    },
-    onProxyReqWs: (proxyReq, req, socket, options, head) => {
-      console.log('[Proxy] WebSocket upgrade request to:', options.target);
-    },
-  });
-
-  app.use('/socket.io', socketIOProxy);
-
-  // CRITICAL: Attach WebSocket upgrade handler to the server
-  // The 'app' here is actually the Express app, but we need the HTTP server
-  // In Create React App's webpack dev server, this is handled internally if we
-  // return a function that accepts both app and server
-  // However, setupProxy.js only gets the Express app, not the HTTP server
-  // So we rely on http-proxy-middleware to handle it via the 'ws: true' option
-};
-EOF
-
-# Start frontend dev server
-echo -e "${BLUE}Starting frontend...${NC}"
+# Start frontend with Vite
+echo -e "${BLUE}Starting frontend UI on port ${FRONTEND_PORT}...${NC}"
 cd "$UI_DIR"
 
-# Redirect npm output to log file to avoid verbose messages
-if [ "$REMOTE" = "1" ]; then
-    BROWSER=none HOST="$FRONTEND_HOST" PORT="$FRONTEND_PORT" DANGEROUSLY_DISABLE_HOST_CHECK=true npm start > /tmp/playground-frontend.log 2>&1 &
+# Set environment variables for Vite
+export VITE_API_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT}/api"
+export VITE_WS_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT}"
+
+if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
+    # Production mode: build and preview
+    npm run build > /tmp/kit-playground-frontend.log 2>&1
+    if [ "$REMOTE" = "1" ]; then
+        npm run preview -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" > /tmp/kit-playground-frontend.log 2>&1 &
+    else
+        npm run preview -- --port "$FRONTEND_PORT" > /tmp/kit-playground-frontend.log 2>&1 &
+    fi
 else
-    BROWSER=none PORT="$FRONTEND_PORT" npm start > /tmp/playground-frontend.log 2>&1 &
+    # Development mode: hot-reload with Vite
+    if [ "$REMOTE" = "1" ]; then
+        npm run dev -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" > /tmp/kit-playground-frontend.log 2>&1 &
+    else
+        npm run dev -- --port "$FRONTEND_PORT" > /tmp/kit-playground-frontend.log 2>&1 &
+    fi
 fi
 FRONTEND_PID=$!
 
-# Wait for frontend to start (it takes a bit longer than backend)
-echo -e "${BLUE}Waiting for services to be ready...${NC}"
-sleep 5
+# Wait for frontend to start
+echo -e "${BLUE}Waiting for UI to be ready...${NC}"
+sleep 3
 
 # Check if frontend is responding
 MAX_RETRIES=10
@@ -216,11 +157,24 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 if [ $FRONTEND_READY -eq 1 ]; then
-    echo -e "${GREEN}✓ All services ready${NC}"
+    echo -e "${GREEN}✓ Frontend started (PID: $FRONTEND_PID)${NC}"
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║  All services running!                                     ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${BLUE}Access the UI at:${NC}     ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC}"
+    echo -e "${BLUE}API documentation:${NC}    ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}/api/docs/ui${NC}"
+    echo ""
+    echo -e "${YELLOW}Logs:${NC}"
+    echo -e "  Backend:  /tmp/kit-playground-backend.log"
+    echo -e "  Frontend: /tmp/kit-playground-frontend.log"
+    echo ""
 else
-    echo -e "${YELLOW}⚠ Frontend may still be starting (check http://localhost:${FRONTEND_PORT})${NC}"
+    echo -e "${YELLOW}⚠ Frontend may still be starting...${NC}"
+    echo -e "${YELLOW}Check: http://localhost:${FRONTEND_PORT}${NC}"
+    echo -e "${YELLOW}Logs: /tmp/kit-playground-frontend.log${NC}"
 fi
-echo ""
 
-# Wait for both processes
+# Wait for processes (keeps script running)
 wait

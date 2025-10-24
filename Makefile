@@ -53,39 +53,43 @@ BUILD_DIR := $(ROOT_DIR)/_build
 # Default target
 .PHONY: all
 all: check-deps
-	@echo "$(GREEN)Kit App Template - Available Commands:$(NC)"
+	@echo "$(GREEN)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)║  Kit App Template v2.0 - Available Commands               ║$(NC)"
+	@echo "$(GREEN)╚════════════════════════════════════════════════════════════╝$(NC)"
 	@echo ""
-	@echo "$(BLUE)Core Commands:$(NC)"
-	@echo "  make build              - Prepare build environment (fetch dependencies, licensing)"
-	@echo "  make build-apps         - Build Kit applications (via repo.sh)"
-	@echo "  make playground         - Build and launch Kit Playground (Docker)"
-	@echo "  make template-new       - Create new template (CLI)"
-	@echo "  make test              - Run test suite"
-	@echo ""
-	@echo "$(BLUE)Kit Playground (Web-based):$(NC)"
-	@echo "  make playground                      - Development mode (localhost, hot-reload)"
-	@echo "  make playground REMOTE=1             - Development mode with remote access (0.0.0.0)"
-	@echo "  make playground PRODUCTION=1         - Production mode (optimized build)"
-	@echo "  make playground REMOTE=1 PRODUCTION=1 - Production mode with remote access"
-	@echo "  make playground-start                - Start playground processes"
-	@echo "  make playground-stop                 - Stop all running playground processes"
-	@echo "  make playground-build                - Build UI only"
+	@echo "$(BLUE)🎨 Playground (Web UI):$(NC)"
+	@echo "  make playground                      - Start UI + backend (localhost:3000)"
+	@echo "  make playground REMOTE=1             - Start with remote access (0.0.0.0)"
+	@echo "  make playground PRODUCTION=1         - Production build mode"
+	@echo "  make playground-stop                 - Stop all playground processes"
+	@echo "  make playground-build                - Build UI for production"
 	@echo "  make playground-clean                - Remove build artifacts"
 	@echo ""
-	@echo "$(BLUE)Dependencies:$(NC)"
-	@echo "  make deps                  - Check all dependencies"
-	@echo "  make install-deps          - Install missing dependencies"
-	@echo "  make install-python-deps   - Install required Python packages (toml, etc)"
-	@echo "  make install-npm           - Install Node.js and npm"
-	@echo "  make install-python        - Install Python"
-	@echo "  make install-xpra          - Install Xpra for remote X11 display"
-	@echo ""
-	@echo "$(BLUE)Utilities:$(NC)"
+	@echo "$(BLUE)🔧 Core Commands:$(NC)"
+	@echo "  make build                           - Prepare build environment"
+	@echo "  make build-apps                      - Build Kit applications"
+	@echo "  make template-new                    - Create new template (CLI)"
 	@echo "  make clean                           - Clean build artifacts"
-	@echo "  make clean-apps                      - Remove all user-created applications (for testing)"
-	@echo "  make clean-all                       - Clean everything (build + apps + dependencies)"
-	@echo "  make clean-project PROJECT=<name>    - Remove a specific project completely"
-	@echo "  make help                            - Show this help message"
+	@echo "  make clean-all                       - Clean everything"
+	@echo ""
+	@echo "$(BLUE)🧪 Testing:$(NC)"
+	@echo "  make test-compatibility              - Fast compatibility tests (~5 min)"
+	@echo "  make test-compatibility-slow         - Full build/launch tests (~1 hour)"
+	@echo "  make test-compatibility-all          - All compatibility tests"
+	@echo "  make test                            - Run main test suite"
+	@echo ""
+	@echo "$(BLUE)📦 Dependencies:$(NC)"
+	@echo "  make deps                            - Check all dependencies"
+	@echo "  make install-deps                    - Install missing dependencies"
+	@echo "  make install-python-deps             - Install Python packages"
+	@echo "  make install-npm                     - Install Node.js and npm"
+	@echo ""
+	@echo "$(YELLOW)Quick Start:$(NC)"
+	@echo "  1. make playground                   - Start the UI (http://localhost:3000)"
+	@echo "  2. ./repo.sh template list           - List available templates (CLI)"
+	@echo "  3. make test-compatibility           - Run tests"
+	@echo ""
+	@echo "$(BLUE)Documentation:$(NC) docs/README.md, docs/API_USAGE.md, docs/ARCHITECTURE.md"
 
 .PHONY: help
 help: all
@@ -367,16 +371,15 @@ playground-stop:
 	@-pgrep -f "python.*web_server\.py" | xargs -r kill 2>/dev/null || true
 	@sleep 0.5 2>/dev/null || true
 	@-pgrep -f "python.*web_server\.py" | xargs -r kill -9 2>/dev/null || true
-	@# Kill node/npm dev server processes (from kit_playground/ui)
-	@# Must kill both npm and node processes, on all kit_playground ports
-	@-lsof -ti:8000,8001,8002,8003 2>/dev/null | xargs -r kill 2>/dev/null || true
+	@# Kill processes on playground ports (3000 for UI, 5000 for backend)
+	@-lsof -ti:3000,5000 2>/dev/null | xargs -r kill 2>/dev/null || true
 	@sleep 0.5 2>/dev/null || true
-	@-lsof -ti:8000,8001,8002,8003 2>/dev/null | xargs -r kill -9 2>/dev/null || true
-	@# Also kill by process name pattern
-	@-pgrep -f "npm.*kit_playground" | xargs -r kill -9 2>/dev/null || true
+	@-lsof -ti:3000,5000 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+	@# Kill Vite dev server processes
 	@-pgrep -f "vite.*kit_playground" | xargs -r kill -9 2>/dev/null || true
+	@-pgrep -f "npm.*kit_playground.*dev" | xargs -r kill -9 2>/dev/null || true
 	@-pgrep -f "node.*kit_playground" | xargs -r kill -9 2>/dev/null || true
-	@# Kill Xpra processes (for browser preview)
+	@# Kill Xpra processes (if used for remote display)
 	@-pkill -f "xpra.*start" 2>/dev/null || true
 	@sleep 0.5 2>/dev/null || true
 	@-pkill -9 -f "xpra.*start" 2>/dev/null || true
@@ -412,23 +415,27 @@ playground: playground-stop playground-start
 # Build UI (production bundle)
 .PHONY: playground-build
 playground-build:
-	@echo "$(BLUE)Building Kit Playground UI...$(NC)"
+	@echo "$(BLUE)Building Kit Playground UI (production)...$(NC)"
 	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
 		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
 		echo "  Run: make install-npm"; \
 		exit 1; \
 	fi
+	@echo "$(YELLOW)Installing dependencies...$(NC)"
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
+	@echo "$(YELLOW)Building production bundle...$(NC)"
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
-	@echo "$(GREEN)✓ Kit Playground UI built successfully!$(NC)"
+	@echo "$(GREEN)✓ UI built successfully!$(NC)"
+	@echo "$(BLUE)Build output: $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
 
 # Clean build artifacts
 .PHONY: playground-clean
 playground-clean:
 	@echo "$(BLUE)Cleaning Kit Playground artifacts...$(NC)"
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
-	@echo "$(GREEN)Cleanup complete$(NC)"
+	@rm -f $(KIT_PLAYGROUND_DIR)/ui/.env
+	@echo "$(GREEN)✓ Playground cleanup complete$(NC)"
 
 # Create new template (CLI)
 .PHONY: template-new
@@ -498,13 +505,12 @@ test-compatibility-report:
 clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	@rm -rf $(BUILD_DIR)
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/build
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
 	@rm -rf $(ROOT_DIR)/_compiler
 	@rm -rf $(ROOT_DIR)/_repo
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	@echo "$(GREEN)Clean complete!$(NC)"
+	@echo "$(GREEN)✓ Clean complete!$(NC)"
 
 # Clean all user-created applications and extensions (for testing iteration)
 .PHONY: clean-apps
