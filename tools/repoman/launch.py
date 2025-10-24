@@ -471,12 +471,12 @@ def launch_kit(
 ):
     """
     Launch a Kit application with optional streaming or Xpra support.
-    
+
     Supports three display modalities:
     1. Kit App Streaming (WebRTC) - if streaming extensions detected or enable_streaming=True
     2. Direct Launch - if no special options (inherits DISPLAY from environment)
     3. Xpra Display Server - if xpra=True (remote X11 on port 10000)
-    
+
     Args:
         app_name: Name of the .kit file to launch
         target_directory: Build directory containing launch scripts
@@ -487,7 +487,7 @@ def launch_kit(
         xpra_display: Xpra display number (default: 100, port 10000)
         enable_streaming: Force streaming mode even if not auto-detected
         streaming_port: Port for WebRTC server (default: 47995)
-        
+
     Returns:
         Tuple[int, Optional[str]]: (return_code, streaming_url if applicable)
     """
@@ -517,7 +517,7 @@ def launch_kit(
     kit_file = app_source_path / f"{app_name}"
     streaming_url = None
     is_streaming = enable_streaming
-    
+
     try:
         from streaming_utils import (
             is_streaming_app,
@@ -525,35 +525,35 @@ def launch_kit(
             get_streaming_url,
             wait_for_streaming_ready
         )
-        
+
         # Auto-detect streaming apps
         if not is_streaming and kit_file.exists():
             is_streaming = is_streaming_app(kit_file)
-        
+
         if is_streaming:
             # Streaming and Xpra are mutually exclusive
             if xpra:
                 print("Warning: Streaming mode and Xpra mode are mutually exclusive.")
                 print("Disabling Xpra - using Kit App Streaming instead.")
                 xpra = False
-            
+
             print(f"\n{'='*60}")
             print(f"Kit App Streaming (WebRTC) Mode")
             print(f"{'='*60}")
             print(f"Port: {streaming_port}")
-            
+
             # Determine hostname based on REMOTE environment variable
             streaming_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
-            
+
             # Construct streaming URL (deterministic)
             streaming_url = get_streaming_url(port=streaming_port, hostname=streaming_host)
             print(f"URL:  {streaming_url}")
             print(f"{'='*60}\n")
-            
+
             # Add streaming flags to extra_args
             streaming_flags = get_streaming_flags(port=streaming_port)
             extra_args = streaming_flags + extra_args
-            
+
     except ImportError as e:
         print(f"Warning: Could not import streaming_utils: {e}")
         print("Streaming support not available - continuing without it.")
@@ -670,7 +670,7 @@ def launch_kit(
             stderr=sys.stderr,
             env=env_vars if env_vars else None,
         )
-        
+
         # Wait for streaming server to be ready
         print(f"Waiting for streaming server on port {streaming_port}...")
         if wait_for_streaming_ready(streaming_port, streaming_host, timeout=30):
@@ -684,7 +684,7 @@ def launch_kit(
         else:
             print(f"\nWarning: Streaming server did not respond within 30 seconds.")
             print(f"Try connecting anyway: {streaming_url}\n")
-        
+
         # Keep process running and wait for it to complete
         returncode = process.wait()
         return returncode, streaming_url
@@ -856,14 +856,14 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Optional[C
             # Extract xpra options
             xpra_mode = getattr(options, 'xpra', False)
             xpra_display = getattr(options, 'xpra_display', 100)
-            
+
             # Extract streaming options
             enable_streaming = getattr(options, 'enable_streaming', False)
             streaming_port = getattr(options, 'streaming_port', 47995)
 
             if options.from_package:
                 package_path = expand_package(options.from_package)
-                launch_kit(app_name, package_path, config_dict, dev_bundle, options.extra_args, 
+                launch_kit(app_name, package_path, config_dict, dev_bundle, options.extra_args,
                           xpra_mode, xpra_display, enable_streaming, streaming_port)
 
             # Launching a locally built application
@@ -884,7 +884,7 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Optional[C
                     return
 
                 # Launch the thing, or query the user and then launch the thing.
-                launch_kit(app_name, build_path, config_dict, dev_bundle, options.extra_args, 
+                launch_kit(app_name, build_path, config_dict, dev_bundle, options.extra_args,
                           xpra_mode, xpra_display, enable_streaming, streaming_port)
 
         except (KeyboardInterrupt, SystemExit):

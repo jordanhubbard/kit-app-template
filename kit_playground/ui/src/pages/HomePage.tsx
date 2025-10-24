@@ -1,10 +1,105 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../components/common';
+import { websocketService } from '../services/websocket';
 
 export const HomePage: React.FC = () => {
+  const [streamingNotification, setStreamingNotification] = useState<{
+    project: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    // Connect to WebSocket
+    websocketService.connect();
+
+    // Listen for streaming_ready events
+    const unsubscribe = websocketService.onStreamingReady((data) => {
+      console.log('Streaming ready:', data);
+      
+      // Auto-open browser tab
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+      
+      // Show notification
+      setStreamingNotification({
+        project: data.project,
+        url: data.url,
+      });
+
+      // Auto-hide after 10 seconds
+      setTimeout(() => {
+        setStreamingNotification(null);
+      }, 10000);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   return (
     <div className="space-y-8">
+      {/* Streaming Notification */}
+      {streamingNotification && (
+        <div className="fixed top-4 right-4 z-50 max-w-md animate-fade-in">
+          <Card className="bg-nvidia-green/10 border-nvidia-green shadow-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-nvidia-green rounded-full flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-nvidia-green mb-1">
+                  🎉 Streaming Ready!
+                </h3>
+                <p className="text-sm text-gray-300 mb-2">
+                  {streamingNotification.project} is now streaming
+                </p>
+                <a
+                  href={streamingNotification.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-nvidia-green hover:underline"
+                >
+                  {streamingNotification.url}
+                </a>
+                <p className="text-xs text-gray-400 mt-2">
+                  ℹ️ Accept the SSL certificate warning if prompted
+                </p>
+              </div>
+              <button
+                onClick={() => setStreamingNotification(null)}
+                className="flex-shrink-0 text-gray-400 hover:text-white"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
       {/* Hero Section */}
       <div className="text-center space-y-4 py-12">
         <h1 className="text-5xl font-bold text-white">

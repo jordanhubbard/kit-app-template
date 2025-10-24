@@ -2,11 +2,12 @@
 Template management routes for Kit Playground.
 """
 import logging
-from pathlib import Path
 from flask import Blueprint, jsonify, request
 
-from tools.repoman.template_api import TemplateAPI, TemplateGenerationRequest
-from tools.repoman.template_engine import TemplateEngine
+from tools.repoman.template_api import (
+    TemplateAPI,
+    TemplateGenerationRequest
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             display_name = data.get('displayName', project_name)
             # Use None as default to match CLI behavior (source/apps)
             output_dir = data.get('outputDir', None)
+            enable_streaming = data.get('enableStreaming', False)
 
             if not template_name or not project_name:
                 return jsonify({
@@ -104,13 +106,65 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                     logger.warning(f"Failed to fix repo.toml after project creation: {e}")
                     # Continue anyway - this is not critical
 
+                # Enable Kit App Streaming if requested
+                streaming_enabled = False
+                if enable_streaming:
+                    try:
+                        from pathlib import Path
+                        # Find the generated .kit file
+                        repo_root = Path(template_api.repo_root)
+                        kit_file_path = repo_root / "source" / "apps" / project_name / f"{project_name}.kit"
+                        
+                        if kit_file_path.exists():
+                            # Read the .kit file
+                            with open(kit_file_path, 'r') as f:
+                                kit_content = f.read()
+                            
+                            # Check if streaming extensions are already present
+                            streaming_exts = [
+                                'omni.services.streaming.webrtc',
+                                'omni.kit.streamhelper'
+                            ]
+                            
+                            needs_update = False
+                            for ext in streaming_exts:
+                                if ext not in kit_content:
+                                    needs_update = True
+                                    # Add the extension in the [dependencies] section
+                                    # Find the [dependencies] section
+                                    if '[dependencies]' in kit_content:
+                                        # Insert after [dependencies]
+                                        parts = kit_content.split('[dependencies]', 1)
+                                        if len(parts) == 2:
+                                            # Add the extension at the beginning of dependencies
+                                            kit_content = f'{parts[0]}[dependencies]\n"{ext}" = {{}}\n{parts[1]}'
+                                    else:
+                                        # Add dependencies section if it doesn't exist
+                                        kit_content += f'\n\n[dependencies]\n"{ext}" = {{}}\n'
+                            
+                            if needs_update:
+                                # Write back the updated .kit file
+                                with open(kit_file_path, 'w') as f:
+                                    f.write(kit_content)
+                                logger.info(f"Enabled Kit App Streaming extensions in {kit_file_path}")
+                                streaming_enabled = True
+                            else:
+                                logger.info(f"Streaming extensions already present in {kit_file_path}")
+                                streaming_enabled = True
+                        else:
+                            logger.warning(f".kit file not found at {kit_file_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to enable streaming extensions: {e}")
+                        # Continue anyway - not critical
+
                 return jsonify({
                     'success': True,
                     'projectInfo': {
                         'projectName': project_name,
                         'displayName': display_name,
                         'outputDir': output_dir,
-                        'kitFile': f"{project_name}.kit"
+                        'kitFile': f"{project_name}.kit",
+                        'streaming': streaming_enabled
                     }
                 })
             else:

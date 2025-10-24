@@ -257,6 +257,8 @@ def create_project_routes(
             project_path = data.get('projectPath')
             project_name = data.get('projectName')
             use_xpra = data.get('useXpra', False)
+            use_web_preview = data.get('useWebPreview', False)
+            streaming_port = data.get('streamingPort', 47995)
 
             if not project_name:
                 return jsonify({'error': 'projectName required'}), 400
@@ -269,11 +271,241 @@ def create_project_routes(
 
             kit_file = f"{project_name}.kit"
             repo_root = Path(__file__).parent.parent.parent.parent
-            logger.info(f"Launching kit application: {kit_file} (Xpra: {use_xpra})")
+            logger.info(f"Launching kit application: {kit_file} (Xpra: {use_xpra}, Web Preview: {use_web_preview})")
 
             preview_url = None
+            streaming_url = None
+            is_streaming_app = False
 
-            if use_xpra:
+            # Check if this is a streaming app
+            try:
+                from tools.repoman.streaming_utils import is_streaming_app as check_streaming
+                kit_file_path = repo_root / "source" / "apps" / project_name / kit_file
+                if kit_file_path.exists():
+                    is_streaming_app = check_streaming(kit_file_path)
+                    logger.info(f"Streaming app detected: {is_streaming_app}")
+            except Exception as e:
+                logger.warning(f"Could not check if app is streaming: {e}")
+
+            # Determine launch mode
+            # Mode 1: Kit App Streaming (always --no-window, URL on stdout)
+            # Mode 2: Direct Launch (no Xpra, direct DISPLAY)
+            # Mode 3: Xpra Display Server (browser preview of X display)
+
+            if is_streaming_app or (use_web_preview and is_streaming_app):
+                # MODE 1: Kit App Streaming
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': '=== Kit App Streaming Mode ==='
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'Port: {streaming_port}'
+                })
+
+                # Build launch command with --streaming flag
+                launch_cmd = None
+                launch_cwd = None
+
+                if project_path:
+                    app_dir = security_validator._validate_project_path(repo_root, project_path)
+                    if app_dir:
+                        wrapper_script = app_dir / 'repo.sh'
+                        if wrapper_script.exists():
+                            launch_cmd = ['./repo.sh', 'launch', '--name', kit_file, '--streaming', '--streaming-port', str(streaming_port)]
+                            launch_cwd = str(app_dir)
+                            logger.info(f"Using project wrapper for streaming launch in {launch_cwd}")
+
+                # Fallback to repo root
+                if not launch_cmd:
+                    launch_cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file, '--streaming', '--streaming-port', str(streaming_port)]
+                    launch_cwd = str(repo_root)
+
+                # Log the launch command
+                logger.info("=" * 80)
+                logger.info(f"STREAMING LAUNCH COMMAND: {project_name}")
+                logger.info(f"Command: {' '.join(launch_cmd)}")
+                logger.info(f"Working directory: {launch_cwd}")
+                logger.info("=" * 80)
+
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'$ cd {launch_cwd}'
+                })
+                socketio.emit('log', {
+                    'level': 'info',
+                    'source': 'runtime',
+                    'message': f'$ {" ".join(launch_cmd)}'
+                })
+
+                try:
+                    # Set PYTHONUNBUFFERED for real-time output
+                    env = os.environ.copy()
+                    env['PYTHONUNBUFFERED'] = '1'
+
+                    process = subprocess.Popen(
+                        launch_cmd,
+                        cwd=launch_cwd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        env=env,
+                        bufsize=1,
+                        preexec_fn=os.setsid  # Create new process group
+                    )
+
+                    # Store process
+                    processes[project_name] = process
+
+                    # Wait for streaming server to be ready
+                    from tools.repoman.streaming_utils import wait_for_streaming_ready, get_streaming_url
+                    
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': 'Starting streaming server...'
+                    })
+
+                    # Determine hostname
+                    streaming_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+                    
+                    # Get streaming URL
+                    streaming_url = get_streaming_url(port=streaming_port, hostname=streaming_host)
+                    
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': f'Waiting for streaming server on port {streaming_port}...'
+                    })
+
+                    # Wait for server (in a thread to avoid blocking)
+                    def wait_and_notify():
+                        if wait_for_streaming_ready(streaming_port, streaming_host, timeout=30):
+                            socketio.emit('log', {
+                                'level': 'success',
+                                'source': 'runtime',
+                                'message': '=== Streaming Ready! ==='
+                            })
+                            socketio.emit('log', {
+                                'level': 'info',
+                                'source': 'runtime',
+                                'message': f'URL: {streaming_url}'
+                            })
+                            socketio.emit('log', {
+                                'level': 'info',
+                                'source': 'runtime',
+                                'message': (
+                                    'Note: Self-signed SSL certificate '
+                                    'warning is normal. Accept it in your '
+                                    'browser.'
+                                )
+                            })
+                            # Emit streaming ready event
+                            socketio.emit('streaming_ready', {
+                                'project': project_name,
+                                'url': streaming_url,
+                                'port': streaming_port
+                            })
+                        else:
+                            socketio.emit('log', {
+                                'level': 'warning',
+                                'source': 'runtime',
+                                'message': (
+                                    'Streaming server did not respond '
+                                    'within 30 seconds.'
+                                )
+                            })
+                            socketio.emit('log', {
+                                'level': 'info',
+                                'source': 'runtime',
+                                'message': (
+                                    f'Try connecting anyway: {streaming_url}'
+                                )
+                            })
+
+                    threading.Thread(target=wait_and_notify, daemon=True).start()
+
+                    # Stream output from process
+                    def stream_output():
+                        """Stream output from both stdout and stderr."""
+                        while True:
+                            if process.poll() is not None:
+                                # Process finished
+                                remaining_stdout = process.stdout.read()
+                                remaining_stderr = process.stderr.read()
+
+                                if remaining_stdout:
+                                    for line in remaining_stdout.strip().split('\n'):
+                                        if line:
+                                            socketio.emit('log', {
+                                                'level': 'info',
+                                                'source': 'runtime',
+                                                'message': line
+                                            })
+
+                                if remaining_stderr:
+                                    for line in remaining_stderr.strip().split('\n'):
+                                        if line:
+                                            socketio.emit('log', {
+                                                'level': 'error',
+                                                'source': 'runtime',
+                                                'message': line
+                                            })
+
+                                socketio.emit('log', {
+                                    'level': 'info',
+                                    'source': 'runtime',
+                                    'message': f'Process exited with code: {process.returncode}'
+                                })
+                                break
+
+                            # Read stdout
+                            line = process.stdout.readline()
+                            if line:
+                                socketio.emit('log', {
+                                    'level': 'info',
+                                    'source': 'runtime',
+                                    'message': line.rstrip()
+                                })
+
+                            # Read stderr
+                            err_line = process.stderr.readline()
+                            if err_line:
+                                socketio.emit('log', {
+                                    'level': 'error',
+                                    'source': 'runtime',
+                                    'message': err_line.rstrip()
+                                })
+
+                            if not line and not err_line:
+                                time.sleep(0.1)
+
+                    threading.Thread(target=stream_output, daemon=True).start()
+
+                    # Return response immediately with streaming URL
+                    response_data = {
+                        'success': True,
+                        'previewUrl': streaming_url,
+                        'streamingUrl': streaming_url,
+                        'streaming': True,
+                        'port': streaming_port
+                    }
+                    logger.info(f"[STREAMING URL] Returning response: {response_data}")
+                    return jsonify(response_data)
+
+                except Exception as e:
+                    logger.error(f"Failed to launch with streaming: {e}", exc_info=True)
+                    socketio.emit('log', {
+                        'level': 'error',
+                        'source': 'runtime',
+                        'message': f'Launch failed: {str(e)}'
+                    })
+                    return jsonify({'success': False, 'error': str(e)}), 500
+
+            elif use_xpra:
                 # Launch with Xpra using repo.sh --xpra flag
                 # This delegates Xpra management to the CLI tool
                 socketio.emit('log', {

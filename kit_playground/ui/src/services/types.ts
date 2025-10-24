@@ -31,6 +31,7 @@ export interface CreateProjectRequest {
   outputDir?: string;
   standalone?: boolean;
   perAppDeps?: boolean;
+  enableStreaming?: boolean;
 }
 
 export interface CreateProjectResponse {

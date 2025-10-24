@@ -95,6 +95,44 @@ class WebSocketService {
     };
   }
 
+  onStreamingReady(
+    handler: WebSocketEventHandler<{
+      project: string;
+      url: string;
+      port: number;
+    }>
+  ): () => void {
+    if (!this.socket) {
+      console.warn('WebSocket not connected');
+      return () => {};
+    }
+
+    this.socket.on('streaming_ready', handler);
+
+    return () => {
+      this.socket?.off('streaming_ready', handler);
+    };
+  }
+
+  onLogMessage(
+    handler: WebSocketEventHandler<{
+      level: string;
+      source: string;
+      message: string;
+    }>
+  ): () => void {
+    if (!this.socket) {
+      console.warn('WebSocket not connected');
+      return () => {};
+    }
+
+    this.socket.on('log', handler);
+
+    return () => {
+      this.socket?.off('log', handler);
+    };
+  }
+
   // ===== Status =====
 
   isConnected(): boolean {

@@ -135,25 +135,25 @@ from omni.repo.kit_template.backend import read_toml
 def is_streaming_app(kit_file_path: Path) -> bool:
     """
     Detect if a .kit file uses Kit App Streaming.
-    
+
     Checks for:
     - omni.services.streaming.webrtc extension (primary)
     - omni.kit.streamhelper extension
     - omni.kit.livestream.* extensions (legacy)
     - streaming template indicator
-    
+
     Args:
         kit_file_path: Path to .kit file
-        
+
     Returns:
         True if app uses streaming
     """
     if not kit_file_path.exists():
         return False
-    
+
     try:
         content = read_toml(kit_file_path)
-        
+
         # Check dependencies
         dependencies = content.get('dependencies', {})
         streaming_deps = [
@@ -163,18 +163,18 @@ def is_streaming_app(kit_file_path: Path) -> bool:
             'omni.kit.livestream.core',        # Legacy livestream
             'omni.kit.livestream.native',      # Legacy livestream
         ]
-        
+
         for dep in streaming_deps:
             if dep in dependencies:
                 return True
-        
+
         # Check template name
         template_name = content.get('package', {}).get('template_name', '')
         if 'streaming' in template_name.lower():
             return True
-        
+
         return False
-        
+
     except Exception:
         return False
 
@@ -186,15 +186,15 @@ def get_streaming_url(
 ) -> str:
     """
     Construct the streaming URL for a Kit app.
-    
+
     Kit apps host their own HTTPS/WebRTC signaling server on the specified port.
     No stdout parsing needed - the URL is deterministic.
-    
+
     Args:
         port: WebRTC listen port (default 47995)
         hostname: Hostname or IP (default 'localhost', use '0.0.0.0' for remote)
         use_https: Use HTTPS (default True, self-signed cert is normal)
-        
+
     Returns:
         Streaming URL (e.g., 'https://localhost:47995')
     """
@@ -210,19 +210,19 @@ def get_streaming_flags(
 ) -> List[str]:
     """
     Generate command-line flags for Kit App Streaming.
-    
+
     Returns the standard flags needed to enable WebRTC streaming:
     - Enable streaming extensions
     - Set headless/no-window mode
     - Configure WebRTC settings
     - Optional: Custom SSL certificates
-    
+
     Args:
         port: WebRTC listen port (default 47995)
         draw_mouse: Show mouse cursor in stream (default False)
         cert_path: Custom SSL certificate path (optional)
         key_path: Custom SSL private key path (optional)
-        
+
     Returns:
         List of command-line flags
     """
@@ -236,13 +236,13 @@ def get_streaming_flags(
         '--/rtx/webrtc/enable=true',
         f'--/rtx/webrtc/listenPort={port}',
     ]
-    
+
     if cert_path:
         flags.append(f'--/rtx/webrtc/certificatePath={cert_path}')
-    
+
     if key_path:
         flags.append(f'--/rtx/webrtc/privateKeyPath={key_path}')
-    
+
     return flags
 
 
@@ -253,22 +253,22 @@ def wait_for_streaming_ready(
 ) -> bool:
     """
     Wait for Kit streaming server to be ready.
-    
+
     Polls the streaming port until it responds or timeout occurs.
-    
+
     Args:
         port: WebRTC listen port
         hostname: Hostname to check
         timeout: Maximum seconds to wait
-        
+
     Returns:
         True if server is ready, False if timeout
     """
     import socket
     import time
-    
+
     start_time = time.time()
-    
+
     while time.time() - start_time < timeout:
         try:
             # Try to connect to the port
@@ -276,15 +276,15 @@ def wait_for_streaming_ready(
             sock.settimeout(1)
             result = sock.connect_ex((hostname, port))
             sock.close()
-            
+
             if result == 0:
                 # Port is open
                 return True
         except Exception:
             pass
-        
+
         time.sleep(0.5)
-    
+
     return False
 ```
 
@@ -307,7 +307,7 @@ def launch_kit(
 ):
     """
     Launch a Kit application with optional streaming support.
-    
+
     Args:
         app_name: Name of the .kit file
         target_directory: Build directory
@@ -319,58 +319,58 @@ def launch_kit(
         enable_streaming: Enable WebRTC streaming (Mode 1)
         streaming_port: Port for streaming server (default 47995)
         streaming_host: Hostname for streaming URL construction
-        
+
     Returns:
         Tuple[int, Optional[str]]: (return_code, streaming_url)
     """
     from streaming_utils import (
-        is_streaming_app, 
+        is_streaming_app,
         get_streaming_flags,
         get_streaming_url,
         wait_for_streaming_ready
     )
-    
+
     # ... (existing app selection and per-app deps logic) ...
-    
+
     # Detect if this is a streaming app or streaming is explicitly requested
     app_source_path = repo_root / "source" / "apps" / app_name.replace('.kit', '')
     kit_file = app_source_path / f"{app_name}"
     is_streaming = is_streaming_app(kit_file) or enable_streaming
-    
+
     streaming_url = None
-    
+
     if is_streaming:
         print(f"Launching with Kit App Streaming (WebRTC)")
         print(f"Streaming port: {streaming_port}")
-        
+
         # Add streaming flags to extra_args
         streaming_flags = get_streaming_flags(port=streaming_port)
         extra_args = streaming_flags + extra_args
-        
+
         # Construct streaming URL (deterministic, no parsing needed)
         streaming_url = get_streaming_url(
             port=streaming_port,
             hostname=streaming_host
         )
-    
+
     # ... (existing Xpra and per-app Kit SDK logic) ...
     # Note: Streaming and Xpra are mutually exclusive
-    
+
     # Build command
     app_build_path = Path(omni.repo.man.resolve_tokens(
         str(target_directory) + "/" + app_name + "${shell_ext}"
     ))
-    
+
     if not app_build_path.is_file():
         err_msg = f"\nDesired built Kit App: {app_name} is missing the built entrypoint script: {app_build_path}. Have you built your app via `{_get_repo_cmd()} build`?"
         _quiet_error(err_msg)
-    
+
     kit_cmd = [str(app_build_path)]
     if dev_bundle:
         kit_cmd += ["--enable", "omni.kit.developer.bundle"]
     if extra_args:
         kit_cmd += extra_args
-    
+
     # Launch the app
     if is_streaming:
         # Launch in background and wait for streaming server
@@ -380,7 +380,7 @@ def launch_kit(
             stderr=sys.stderr,
             env=env_vars if env_vars else None,
         )
-        
+
         # Wait for streaming server to be ready
         print(f"Waiting for streaming server on port {streaming_port}...")
         if wait_for_streaming_ready(streaming_port, streaming_host, timeout=30):
@@ -393,7 +393,7 @@ def launch_kit(
         else:
             print("Warning: Streaming server did not respond within 30 seconds")
             print(f"Try connecting anyway: {streaming_url}")
-        
+
         # Keep process running
         returncode = process.wait()
         return returncode, streaming_url
@@ -429,7 +429,7 @@ Add flags to enable streaming:
 # ✓ Streaming ready!
 # URL: https://localhost:47995
 # ============================================================
-# 
+#
 # Note: Self-signed SSL certificate warning is normal.
 # Accept the certificate in your browser to continue.
 ```
@@ -712,7 +712,7 @@ With the simplified streaming implementation (no stdout parsing, deterministic U
 
 - **Phase 1** (Backend/CLI): 1-2 days ⬇️ (much simpler!)
 - **Phase 2** (API): 1 day
-- **Phase 3** (UI): 1-2 days  
+- **Phase 3** (UI): 1-2 days
 - **Testing**: 1 day
 - **Documentation**: 1 day
 

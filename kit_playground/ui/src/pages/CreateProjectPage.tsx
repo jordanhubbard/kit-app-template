@@ -20,6 +20,7 @@ export const CreateProjectPage: React.FC = () => {
     version: '1.0.0',
     standalone: false,
     perAppDeps: false,
+    enableStreaming: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -99,6 +100,7 @@ export const CreateProjectPage: React.FC = () => {
         version: formData.version,
         standalone: formData.standalone,
         perAppDeps: formData.perAppDeps,
+        enableStreaming: formData.enableStreaming,
       });
 
       if (response.success) {
@@ -246,6 +248,21 @@ export const CreateProjectPage: React.FC = () => {
                   <div className="text-white font-medium">Use per-app dependencies</div>
                   <div className="text-sm text-gray-400">
                     Isolates Kit SDK for this application to prevent dependency conflicts
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.enableStreaming}
+                  onChange={(e) => handleFieldChange('enableStreaming', e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded bg-dark-bg border-gray-600 text-nvidia-green focus:ring-nvidia-green focus:ring-offset-dark-bg"
+                />
+                <div>
+                  <div className="text-white font-medium">Enable Kit App Streaming</div>
+                  <div className="text-sm text-gray-400">
+                    Enables WebRTC streaming for remote browser access (requires --no-window)
                   </div>
                 </div>
               </label>
