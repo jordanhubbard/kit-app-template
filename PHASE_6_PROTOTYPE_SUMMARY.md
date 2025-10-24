@@ -220,3 +220,241 @@
 **Decision**: Ready for your call on next steps  
 **Quality**: All delivered work is production-ready
 
+---
+
+## Critical Implementation Details (For Next Session)
+
+### Key Files to Modify
+
+**1. Build System**:
+- `tools/repoman/repoman.py` - Core build orchestration
+  - Line 13: `import packmanapi` (already present)
+  - Lines 17-18: `REPO_DEPS_FILE`, `OPT_DEPS_FILE` (XML-based dependencies)
+  - Add: Per-app dependency detection and pull logic
+
+**2. Template Engine** (may need updates):
+- `tools/repoman/template_engine.py`
+  - Add `--per-app-deps` flag to `template new` command
+  - Generate `dependencies/kit-deps.toml` for new apps
+
+**3. Launch System**:
+- `tools/repoman/launch.py`
+  - Modify to detect app-specific `_kit/` directory
+  - Fall back to global Kit if not found
+
+**4. Premake** (if needed):
+- `premake5.lua` - Build configuration
+  - Update Kit SDK path resolution
+
+### Packman Integration Points
+
+**Packman CLI Capabilities Confirmed**:
+```bash
+# Install with custom path
+./tools/packman/packman install <package> <version> --link-path <custom-path>
+
+# Pull from XML with environment variables
+PM_PACKAGES_ROOT=<app-path> ./tools/packman/packman pull <xml-file>
+```
+
+**Packman API in Python** (used in repoman.py):
+```python
+import packmanapi
+
+# Current usage (line 31 in repoman.py):
+deps = packmanapi.pull(file.as_posix())
+
+# Proposed for per-app:
+deps = packmanapi.pull(
+    file.as_posix(),
+    env={'PM_PACKAGES_ROOT': str(app_kit_path)}
+)
+```
+
+### Proposed Directory Structure
+
+```
+source/apps/my.app/
+├── my.app.kit                  # Kit application file
+├── .project-meta.toml          # Existing metadata
+├── dependencies/               # NEW: Per-app config
+│   └── kit-deps.toml          # Kit version, custom deps
+└── _kit/                       # NEW: App-specific SDK
+    ├── kit/                    # Kit SDK installation
+    │   ├── kit                 # Executable
+    │   └── kernel/
+    ├── exts/                   # App-specific extensions
+    └── cache/                  # Packman cache
+```
+
+### Configuration File Format
+
+**`dependencies/kit-deps.toml`**:
+```toml
+[kit_sdk]
+version = "106.0"
+# Optional: branch = "experimental"
+
+[cache]
+strategy = "isolated"  # or "shared" for backward compat
+
+[dependencies]
+# App-specific dependency overrides
+```
+
+### Implementation Sequence
+
+**Phase 6.1: Foundation** (Start Here)
+1. Create `tools/repoman/app_dependencies.py`:
+   ```python
+   def get_app_deps_config(app_path: Path) -> Optional[dict]:
+       """Load app-specific dependency config."""
+       config_file = app_path / "dependencies" / "kit-deps.toml"
+       if config_file.exists():
+           return load_toml(config_file)
+       return None
+   
+   def should_use_per_app_deps(app_path: Path) -> bool:
+       """Check if app uses per-app dependencies."""
+       return (app_path / "dependencies").exists()
+   ```
+
+2. Modify `repoman.py`:
+   ```python
+   from app_dependencies import get_app_deps_config, should_use_per_app_deps
+   
+   def pull_dependencies(app_path: Optional[Path] = None):
+       if app_path and should_use_per_app_deps(app_path):
+           # Pull to app-specific location
+           pull_app_deps(app_path)
+       else:
+           # Pull to global location (current behavior)
+           pull_global_deps()
+   ```
+
+**Phase 6.2: Packman Integration**
+- Test environment variables with packman
+- Implement `pull_app_deps(app_path)` function
+- Verify isolation between apps
+
+**Phase 6.3: Build System**
+- Update premake to detect `_kit/` in app directory
+- Modify build scripts to pass app-specific paths
+
+**Phase 6.4: Launch System**
+- Modify `launch.py` to check for `source/apps/<name>/_kit/kit/kit`
+- Set environment variables for app-specific exts
+
+### Testing Strategy
+
+**Test Files to Create**:
+1. `tests/per_app_deps/test_config_parsing.py`
+2. `tests/per_app_deps/test_dependency_isolation.py`
+3. `tests/per_app_deps/test_build_with_app_deps.py`
+4. `tests/per_app_deps/test_launch_with_app_deps.py`
+
+**Test Pattern** (follow existing compatibility tests):
+```python
+@pytest.fixture
+def test_app_with_deps(tmp_path):
+    """Create test app with per-app dependencies."""
+    app_path = tmp_path / "test_app"
+    app_path.mkdir()
+    (app_path / "dependencies").mkdir()
+    
+    # Create kit-deps.toml
+    config = {
+        "kit_sdk": {"version": "106.0"},
+        "cache": {"strategy": "isolated"}
+    }
+    write_toml(app_path / "dependencies" / "kit-deps.toml", config)
+    
+    return app_path
+
+def test_app_deps_detection(test_app_with_deps):
+    """Test that per-app deps are detected."""
+    assert should_use_per_app_deps(test_app_with_deps)
+```
+
+### Known Issues & Gotchas
+
+1. **Packman XML vs TOML**: Current system uses XML (`repo-deps.packman.xml`), we're proposing TOML
+   - **Solution**: Convert TOML to XML internally or use packman API directly
+
+2. **Disk Space**: Each app will have its own Kit SDK (~1-2 GB)
+   - **Mitigation**: Make opt-in, document requirements
+
+3. **Build Cache**: Premake might cache old paths
+   - **Solution**: Clear build cache when switching modes
+
+4. **Environment Variables**: Must not leak between apps
+   - **Solution**: Use subprocess with clean env for each app
+
+### Backward Compatibility Requirements
+
+**MUST NOT BREAK**:
+- Existing apps without `dependencies/` directory
+- Current build commands (`./repo.sh build`)
+- Current launch commands (`./repo.sh launch`)
+- All existing tests (103 tests must still pass)
+
+**Backward Compat Strategy**:
+```python
+if app has dependencies/:
+    use per-app SDK
+else:
+    use global SDK (current behavior)
+```
+
+### Quick Start for Next Session
+
+**To continue Phase 6 implementation**:
+
+1. Read `PHASE_6_DESIGN.md` for complete architecture
+2. Start with Phase 6.1 (Foundation)
+3. Create `tools/repoman/app_dependencies.py`
+4. Add tests in `tests/per_app_deps/`
+5. Modify `repoman.py` to detect and use per-app deps
+6. Test thoroughly before moving to Phase 6.2
+
+**Commands to validate current state**:
+```bash
+# Check all tests still pass
+make test-compatibility
+
+# View recent commits
+git log --oneline -10
+
+# Check current branch
+git branch
+
+# Review Phase 6 design
+cat PHASE_6_DESIGN.md
+```
+
+### Session Continuity Checklist
+
+**Before starting new session, verify**:
+- ✅ All previous phases committed
+- ✅ No uncommitted changes
+- ✅ Tests are passing
+- ✅ Documentation is current
+- ✅ Design documents exist
+
+**Current Git Status**:
+- Branch: `main`
+- Latest commit: Phase 6 Prototype validation
+- All work committed: Yes
+- Ready for Phase 6 implementation: Yes
+
+**Context for AI Assistant**:
+- Project: kit-app-template enhancement
+- Goal: Add per-app Kit SDK dependencies
+- Approach: Extension-based (no packman core changes)
+- Status: 83% complete (5/6 phases), Phase 6 design validated
+- Estimated remaining: 5-6 hours for full Phase 6
+
+---
+
+**End of State Capture - Ready for New Session** ✅
+
