@@ -1,7 +1,7 @@
 # Kit App Template REST API Usage
 
-**Version**: 2.0  
-**Last Updated**: October 24, 2025  
+**Version**: 2.0
+**Last Updated**: October 24, 2025
 **API Documentation**: http://localhost:5000/api/docs/ui (Swagger UI)
 
 ## Overview
@@ -570,9 +570,9 @@ while true; do
   JOB_STATUS=$(curl -s -X GET ${API_BASE}/jobs/${JOB_ID})
   STATUS=$(echo "$JOB_STATUS" | jq -r '.job.status')
   PROGRESS=$(echo "$JOB_STATUS" | jq -r '.job.progress')
-  
+
   echo "Status: $STATUS, Progress: $PROGRESS%"
-  
+
   if [ "$STATUS" = "completed" ]; then
     echo "✓ Build completed successfully"
     break
@@ -581,7 +581,7 @@ while true; do
     echo "$JOB_STATUS" | jq '.job.logs'
     exit 1
   fi
-  
+
   sleep 5
 done
 
@@ -651,12 +651,12 @@ response = requests.post(f"{API_BASE}/templates/create", json={
 result = response.json()
 if result.get('success'):
     print("✓ Project creation started")
-    
+
     # Wait for job to complete
     print("Waiting for job to complete...")
     while not job_complete:
         time.sleep(0.5)
-    
+
     print(f"✓ Job finished with status: {job_status}")
 else:
     print(f"✗ Failed: {result.get('error')}")
@@ -681,9 +681,9 @@ declare -a projects=(
 # Create each project
 for project in "${projects[@]}"; do
   IFS=':' read -r template name display <<< "$project"
-  
+
   echo "Creating $name from $template..."
-  
+
   curl -s -X POST ${API_BASE}/templates/create \
     -H "Content-Type: application/json" \
     -d "{
@@ -691,7 +691,7 @@ for project in "${projects[@]}"; do
       \"name\": \"$name\",
       \"displayName\": \"$display\"
     }" | jq .
-  
+
   echo "---"
   sleep 1
 done
@@ -757,4 +757,3 @@ echo "✓ Cleanup complete"
 ---
 
 **For complete, up-to-date API specifications, always refer to the Swagger UI at `/api/docs/ui`.**
-

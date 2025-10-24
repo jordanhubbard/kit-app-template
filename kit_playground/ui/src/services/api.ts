@@ -1,128 +1,104 @@
-/**
- * API Service Layer
- * Handles all communication with the backend
- */
+import axios, { AxiosInstance, AxiosError } from 'axios';
+import type {
+  TemplateListResponse,
+  TemplateDetailResponse,
+  CreateProjectRequest,
+  CreateProjectResponse,
+  JobListResponse,
+  JobDetailResponse,
+  JobStatsResponse,
+  JobStatus,
+  JobType,
+} from './types';
 
-import axios, { AxiosInstance } from 'axios';
+// API Base URL - can be configured via environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-let apiClient: AxiosInstance;
+class APIService {
+  private client: AxiosInstance;
 
-export const initializeAPI = async (baseURL: string) => {
-  apiClient = axios.create({
-    baseURL,
-    timeout: 30000,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+  constructor(baseURL: string = API_BASE_URL) {
+    this.client = axios.create({
+      baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000, // 30 second timeout
+    });
 
-  // Add response interceptor for error handling
-  apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      console.error('API Error:', error);
-      return Promise.reject(error);
-    }
-  );
-};
-
-export const getAPI = () => {
-  if (!apiClient) {
-    throw new Error('API not initialized. Call initializeAPI() first.');
+    // Response interceptor for error handling
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        console.error('API Error:', error);
+        return Promise.reject(error);
+      }
+    );
   }
-  return apiClient;
-};
 
-// Template APIs
-export const templateAPI = {
-  getAll: async () => {
-    const response = await getAPI().get('/templates');
-    return response.data;
-  },
+  // ===== Template Management =====
 
-  getCode: async (templateId: string) => {
-    const response = await getAPI().get(`/templates/${templateId}/code`);
+  async listTemplates(): Promise<TemplateListResponse> {
+    const response = await this.client.get<TemplateListResponse>('/templates/list');
     return response.data;
-  },
+  }
 
-  updateCode: async (templateId: string, code: string) => {
-    const response = await getAPI().post(`/templates/${templateId}/update`, { code });
+  async getTemplate(name: string): Promise<TemplateDetailResponse> {
+    const response = await this.client.get<TemplateDetailResponse>(`/templates/get/${name}`);
     return response.data;
-  },
+  }
 
-  build: async (templateId: string, config?: any) => {
-    const response = await getAPI().post(`/templates/${templateId}/build`, config);
+  async createProject(request: CreateProjectRequest): Promise<CreateProjectResponse> {
+    const response = await this.client.post<CreateProjectResponse>('/templates/create', request);
     return response.data;
-  },
+  }
 
-  run: async (templateId: string) => {
-    const response = await getAPI().post(`/templates/${templateId}/run`);
-    return response.data;
-  },
+  // ===== Job Management =====
 
-  stop: async (templateId: string) => {
-    const response = await getAPI().post(`/templates/${templateId}/stop`);
-    return response.data;
-  },
+  async listJobs(filters?: { status?: JobStatus; type?: JobType }): Promise<JobListResponse> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.type) params.append('type', filters.type);
 
-  deploy: async (templateId: string, options: any) => {
-    const response = await getAPI().post(`/templates/${templateId}/deploy`, options);
+    const response = await this.client.get<JobListResponse>('/jobs', { params });
     return response.data;
-  },
-};
+  }
 
-// Project APIs
-export const projectAPI = {
-  create: async (name: string, outputPath: string) => {
-    const response = await getAPI().post('/projects', { name, outputPath });
+  async getJob(jobId: string): Promise<JobDetailResponse> {
+    const response = await this.client.get<JobDetailResponse>(`/jobs/${jobId}`);
     return response.data;
-  },
+  }
 
-  load: async (projectPath: string) => {
-    const response = await getAPI().post('/projects/load', { path: projectPath });
+  async cancelJob(jobId: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post(`/jobs/${jobId}/cancel`);
     return response.data;
-  },
+  }
 
-  save: async (project: any) => {
-    const response = await getAPI().post('/projects/save', project);
+  async deleteJob(jobId: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.delete(`/jobs/${jobId}`);
     return response.data;
-  },
+  }
 
-  build: async (projectId: string) => {
-    const response = await getAPI().post(`/projects/${projectId}/build`);
+  async getJobStats(): Promise<JobStatsResponse> {
+    const response = await this.client.get<JobStatsResponse>('/jobs/stats');
     return response.data;
-  },
+  }
 
-  run: async (projectId: string) => {
-    const response = await getAPI().post(`/projects/${projectId}/run`);
-    return response.data;
-  },
+  // ===== Health Check =====
 
-  stop: async (projectId: string) => {
-    const response = await getAPI().post(`/projects/${projectId}/stop`);
-    return response.data;
-  },
-};
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.client.get('/templates/list');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
 
-// Filesystem APIs
-export const filesystemAPI = {
-  list: async (path: string) => {
-    const response = await getAPI().get(`/filesystem/list?path=${encodeURIComponent(path)}`);
-    return response.data;
-  },
+// Export a singleton instance
+export const apiService = new APIService();
 
-  createDirectory: async (path: string) => {
-    const response = await getAPI().post('/filesystem/mkdir', { path });
-    return response.data;
-  },
+// Export the class for testing
+export { APIService };
 
-  readFile: async (path: string) => {
-    const response = await getAPI().get(`/filesystem/read?path=${encodeURIComponent(path)}`);
-    return response.data;
-  },
-
-  writeFile: async (path: string, content: string) => {
-    const response = await getAPI().post('/filesystem/write', { path, content });
-    return response.data;
-  },
-};

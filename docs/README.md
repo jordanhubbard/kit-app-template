@@ -1,6 +1,6 @@
 # Kit App Template - Getting Started Guide
 
-**Version**: 2.0 (All 6 Phases Complete)  
+**Version**: 2.0 (All 6 Phases Complete)
 **Last Updated**: October 24, 2025
 
 ## Overview
@@ -314,14 +314,14 @@ Options:
   --name <name>             Project name (e.g., com.company.app)
   --display-name <name>     Human-readable name (default: project name)
   --version <version>       Version number (default: 1.0.0)
-  
+
 Automation:
   --accept-license          Accept license without prompt
   --batch-mode              Non-interactive mode with defaults
   --json                    JSON output for scripting
   --verbose                 Verbose output with details
   --quiet                   Minimal output
-  
+
 Advanced:
   --standalone              Create self-contained project
   --output-dir <path>       Output directory (for standalone)
@@ -639,4 +639,3 @@ less _build/logs/build.log
 ---
 
 **Happy Building with Kit App Template!** 🚀
-
