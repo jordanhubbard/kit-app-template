@@ -57,7 +57,8 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             template_name = data.get('template')
             project_name = data.get('name')
             display_name = data.get('displayName', project_name)
-            output_dir = data.get('outputDir', '_build/apps')
+            # Use None as default to match CLI behavior (source/apps)
+            output_dir = data.get('outputDir', None)
 
             if not template_name or not project_name:
                 return jsonify({

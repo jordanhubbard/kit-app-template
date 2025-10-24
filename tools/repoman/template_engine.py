@@ -1291,13 +1291,9 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
         # Save to file
         playback_file = engine.save_playback_file(playback)
 
-        # Always print playback file path first (required for repo_dispatcher)
-        print(playback_file)
-
-        # Output additional information based on mode
+        # Output based on mode
         if json_output:
-            # JSON output mode - print JSON to stderr so repo_dispatcher ignores it
-            # but tests/users can still capture it
+            # JSON output mode - print complete JSON to stdout
             import json as json_module
             result_data = {
                 "status": "success",
@@ -1309,9 +1305,10 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
                 "standalone_path": str(standalone_path) if standalone else None,
                 "per_app_deps": per_app_deps
             }
-            print(json_module.dumps(result_data, indent=2), file=sys.stderr)
+            print(json_module.dumps(result_data, indent=2))
         elif verbose:
-            # Verbose mode - add extra details to stderr
+            # Verbose mode - playback file to stdout, extra details to stderr
+            print(playback_file)
             print(f"[VERBOSE] Template: {template_name}", file=sys.stderr)
             print(f"[VERBOSE] Playback file: {playback_file}", file=sys.stderr)
             if kwargs.get('app_name'):
@@ -1321,7 +1318,9 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
                 print(f"[VERBOSE] Standalone path: {standalone_path}", file=sys.stderr)
             if per_app_deps:
                 print(f"[VERBOSE] Per-app dependencies: enabled", file=sys.stderr)
-        # Quiet mode and normal mode just print playback file (already done above)
+        else:
+            # Quiet mode and normal mode just print playback file path
+            print(playback_file)
 
     except Exception as e:
         # Handle errors

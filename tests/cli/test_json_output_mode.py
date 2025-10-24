@@ -57,9 +57,8 @@ class TestJsonOutputMode:
             # Should succeed
             assert result.returncode == 0, f"Command failed: {result.stderr}"
 
-            # JSON should be in stderr (template creation still prints to stdout)
-            # Look for JSON in stderr
-            json_output = result.stderr
+            # JSON should be in stdout in --json mode
+            json_output = result.stdout
             if "{" in json_output:
                 # Extract JSON from stderr
                 try:
@@ -101,19 +100,19 @@ class TestJsonOutputMode:
 
             assert result.returncode == 0, f"Failed: {result.stderr}"
 
-            # Look for JSON in stderr
+            # Look for JSON in stdout
             try:
-                if "{" in result.stderr:
-                    start = result.stderr.index("{")
-                    end = result.stderr.rindex("}") + 1
-                    json_str = result.stderr[start:end]
+                if "{" in result.stdout:
+                    start = result.stdout.index("{")
+                    end = result.stdout.rindex("}") + 1
+                    json_str = result.stdout[start:end]
                     data = json.loads(json_str)
                     assert "status" in data, "JSON should contain 'status' field"
                     assert data["status"] in ["success", "error", "completed"], \
                         f"Status should be success/error/completed, got: {data.get('status')}"
                     print(f"✅ JSON contains status: {data['status']}")
                 else:
-                    pytest.skip("JSON output not in stderr")
+                    pytest.skip("JSON output not in stdout")
             except json.JSONDecodeError:
                 pytest.skip("JSON output not implemented yet")
 
@@ -141,12 +140,12 @@ class TestJsonOutputMode:
 
             assert result.returncode == 0, f"Failed: {result.stderr}"
 
-            # Look for JSON in stderr
+            # Look for JSON in stdout
             try:
-                if "{" in result.stderr:
-                    start = result.stderr.index("{")
-                    end = result.stderr.rindex("}") + 1
-                    json_str = result.stderr[start:end]
+                if "{" in result.stdout:
+                    start = result.stdout.index("{")
+                    end = result.stdout.rindex("}") + 1
+                    json_str = result.stdout[start:end]
                     data = json.loads(json_str)
                     # Path info may or may not be in template_engine JSON
                     # It's created later by repoman
@@ -155,7 +154,7 @@ class TestJsonOutputMode:
                     else:
                         pytest.skip("JSON doesn't contain path info yet")
                 else:
-                    pytest.skip("JSON output not in stderr")
+                    pytest.skip("JSON output not in stdout")
             except json.JSONDecodeError:
                 pytest.skip("JSON output not implemented yet")
 

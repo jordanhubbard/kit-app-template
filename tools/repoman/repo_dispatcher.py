@@ -105,7 +105,7 @@ def parse_template_new_args(args: List[str]) -> tuple[str, Dict[str, str], List[
 
     return template_name, kwargs, remaining_args
 
-def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], build_config: str = 'release') -> None:
+def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], build_config: str = 'release', quiet: bool = False) -> None:
     """
     Fix application directory structure after template replay.
 
@@ -117,6 +117,7 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], b
         repo_root: Repository root directory
         playback_data: Parsed playback TOML data
         build_config: Build configuration (release or debug), defaults to release
+        quiet: If True, suppress output messages (for JSON mode)
     """
     platform_name, arch = get_platform_info()
 
@@ -142,8 +143,9 @@ def _fix_application_structure(repo_root: Path, playback_data: Dict[str, Any], b
             continue
 
         # Found a .kit FILE that should be restructured into a directory
-        print(f"\nRestructuring application: {app_name}")
-        print(f"Creating directory structure in source/apps/...")
+        if not quiet:
+            print(f"\nRestructuring application: {app_name}")
+            print(f"Creating directory structure in source/apps/...")
 
         # Create new directory structure in source/apps
         # The build system will symlink this to _build/{platform}/{config}/apps
@@ -255,19 +257,20 @@ exit /b %ERRORLEVEL%
 """
         wrapper_bat.write_text(wrapper_bat_content)
 
-        print(f"✓ Application '{app_name}' created successfully in")
-        print(f"  {app_dir}")
-        print("")
-        print(f"Main configuration: {app_name}.kit")
-        print("")
-        print(f"To build (from repository root):")
-        print(f"  cd {repo_root} && ./repo.sh build --config {build_config}")
-        print("")
-        print(f"Or build from app directory:")
-        print(f"  cd {app_dir} && ./repo.sh build --config {build_config}")
-        print("")
-        print(f"Note: Build system will symlink to: _build/{platform_name}-{arch}/{build_config}/apps/{app_name}")
-        print("")
+        if not quiet:
+            print(f"✓ Application '{app_name}' created successfully in")
+            print(f"  {app_dir}")
+            print("")
+            print(f"Main configuration: {app_name}.kit")
+            print("")
+            print(f"To build (from repository root):")
+            print(f"  cd {repo_root} && ./repo.sh build --config {build_config}")
+            print("")
+            print(f"Or build from app directory:")
+            print(f"  cd {app_dir} && ./repo.sh build --config {build_config}")
+            print("")
+            print(f"Note: Build system will symlink to: _build/{platform_name}-{arch}/{build_config}/apps/{app_name}")
+            print("")
 
         # Create the symlink immediately so UI can access files before first build
         # The build system will reuse this symlink if it already exists
@@ -280,11 +283,13 @@ exit /b %ERRORLEVEL%
             symlink_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 symlink_path.symlink_to(symlink_target)
-                print(f"✓ Created symlink: {symlink_path} → {symlink_target}")
+                if not quiet:
+                    print(f"✓ Created symlink: {symlink_path} → {symlink_target}")
             except Exception as e:
                 logger.warning(f"Could not create symlink (build system will create it): {e}")
         elif symlink_path.is_symlink():
-            print(f"✓ Symlink already exists: {symlink_path} → {symlink_path.readlink()}")
+            if not quiet:
+                print(f"✓ Symlink already exists: {symlink_path} → {symlink_path.readlink()}")
         else:
             logger.warning(f"Path exists but is not a symlink: {symlink_path}")
 
@@ -306,7 +311,8 @@ exit /b %ERRORLEVEL%
 
                 if count > 0:
                     repo_toml_path.write_text(new_content)
-                    print(f"✓ Cleared static apps list in repo.toml (using dynamic discovery)")
+                    if not quiet:
+                        print(f"✓ Cleared static apps list in repo.toml (using dynamic discovery)")
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Could not update repo.toml after restructuring: {e}")
             # Continue anyway - this is not critical as dynamic discovery should work
@@ -338,6 +344,9 @@ def handle_template_command(args: List[str]) -> int:
             # Add any remaining arguments
             engine_args.extend(remaining_args)
 
+            # Check if JSON mode is requested
+            json_mode = '--json' in engine_args or '--json' in remaining_args
+
             # Try new engine first, fall back to helper
             template_engine = repo_root / "tools" / "repoman" / "template_engine.py"
             template_helper = repo_root / "tools" / "repoman" / "template_helper.py"
@@ -348,18 +357,42 @@ def handle_template_command(args: List[str]) -> int:
                 python_cmd = get_python_command(repo_root)
 
                 try:
-                    # Run template_engine with stderr passthrough so user sees progress messages
-                    result = subprocess.run([
-                        python_cmd, str(template_engine)
-                    ] + engine_args,
-                    capture_output=False,  # Let stderr passthrough
-                    stdout=subprocess.PIPE,  # But capture stdout (playback file path)
-                    text=True, cwd=str(repo_root))
+                    # In JSON mode, capture all output; otherwise let stderr passthrough
+                    if json_mode:
+                        result = subprocess.run([
+                            python_cmd, str(template_engine)
+                        ] + engine_args,
+                        capture_output=True,  # Capture both stdout and stderr in JSON mode
+                        text=True, cwd=str(repo_root))
+                    else:
+                        result = subprocess.run([
+                            python_cmd, str(template_engine)
+                        ] + engine_args,
+                        capture_output=False,  # Let stderr passthrough
+                        stdout=subprocess.PIPE,  # But capture stdout (playback file path)
+                        text=True, cwd=str(repo_root))
 
                     if result.returncode != 0:
                         return result.returncode
 
-                    playback_file = result.stdout.strip()
+                    # Extract playback file from output
+                    # Could be plain text (just the path) or JSON (with playback_file field)
+                    stdout_text = result.stdout.strip()
+                    json_output_data = None
+                    
+                    try:
+                        # Try parsing as JSON first
+                        import json
+                        output_data = json.loads(stdout_text)
+                        if isinstance(output_data, dict) and 'playback_file' in output_data:
+                            playback_file = output_data['playback_file']
+                            json_output_data = output_data  # Store for later output
+                        else:
+                            # JSON but no playback_file field, treat as plain text
+                            playback_file = stdout_text
+                    except (json.JSONDecodeError, ValueError):
+                        # Not JSON, treat as plain file path
+                        playback_file = stdout_text
 
                     # Check if this is a standalone project by reading the playback file
                     standalone_dir = None
@@ -383,16 +416,19 @@ def handle_template_command(args: List[str]) -> int:
                     # Run template replay in the repo root (normal behavior)
                     # Note: Standalone projects with --output-dir need additional work
                     # to properly relocate files post-replay (future enhancement)
+                    # In JSON mode, capture replay output to avoid mixed output
                     result = subprocess.run([
                         python_cmd, str(repo_root / "tools" / "repoman" / "repoman.py"),
                         "template", "replay", playback_file
-                    ], cwd=str(repo_root))
+                    ], cwd=str(repo_root),
+                    capture_output=json_mode,  # Silence replay in JSON mode
+                    text=True)
 
                     # Post-process: Fix directory structure for applications
                     # The replay creates _build/apps/{name}.kit as a FILE
                     # We need to restructure it as _build/apps/{name}/{name}.kit
                     if result.returncode == 0:
-                        _fix_application_structure(repo_root, playback_data)
+                        _fix_application_structure(repo_root, playback_data, quiet=json_mode)
 
                         # If this is a standalone project, create it now (after replay)
                         if "_standalone_project" in playback_data:
@@ -436,6 +472,10 @@ def handle_template_command(args: List[str]) -> int:
                                             print("Warning: Failed to initialize per-app dependencies", file=sys.stderr)
                                 except Exception as e:
                                     print(f"Warning: Failed to initialize per-app dependencies: {e}", file=sys.stderr)
+
+                    # In JSON mode, output the JSON we captured earlier
+                    if json_mode and json_output_data:
+                        print(json.dumps(json_output_data, indent=2))
 
                     return result.returncode
 
