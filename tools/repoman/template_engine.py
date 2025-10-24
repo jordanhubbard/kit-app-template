@@ -1167,6 +1167,7 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
     json_output = False
     verbose = False
     quiet = False
+    standalone = False
 
     for arg in args:
         if arg.startswith('--config='):
@@ -1187,6 +1188,8 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             verbose = True
         elif arg == '--quiet':
             quiet = True
+        elif arg == '--standalone':
+            standalone = True
         elif arg.startswith('--'):
             if '=' in arg:
                 key, value = arg[2:].split('=', 1)
@@ -1223,11 +1226,45 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
         sys.exit(1)
 
     # Note: --output-dir can be used to create standalone projects
-    # By default (when output_dir is None), templates are created in _build/apps/
+    # By default (when output_dir is None), templates are created in source/apps/
 
     try:
         # Generate template
         playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)
+
+        # Get output path from playback
+        if isinstance(playback, dict) and 'output_path' in playback:
+            template_output_path = Path(playback['output_path'])
+        else:
+            # Fallback: try to determine from app_name
+            app_name = kwargs.get('app_name', kwargs.get('name', 'unknown'))
+            template_output_path = engine.repo_root / "source" / "apps" / app_name
+
+        # If --standalone flag is used, generate standalone project
+        standalone_path = None
+        if standalone:
+            # Import standalone generator
+            from standalone_generator import create_standalone_project
+            
+            app_name = kwargs.get('app_name', kwargs.get('name', 'unknown'))
+            
+            # Determine template type from template config
+            template_config = engine.get_template_config(template_name)
+            template_type = template_config.get('metadata', {}).get('type', 'application')
+            
+            # Create standalone project
+            standalone_path = create_standalone_project(
+                repo_root=engine.repo_root,
+                template_output_dir=template_output_path,
+                output_dir=Path(output_dir) if output_dir else None,
+                template_name=template_name,
+                app_name=app_name,
+                template_type=template_type
+            )
+            
+            if not quiet:
+                print(f"\n✓ Standalone project created: {standalone_path}", file=sys.stderr)
+                print(f"  To build: cd {standalone_path} && ./repo.sh build", file=sys.stderr)
 
         # Save to file
         playback_file = engine.save_playback_file(playback)
@@ -1245,7 +1282,9 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
                 "playback_file": playback_file,
                 "template_name": template_name,
                 "name": kwargs.get('app_name', kwargs.get('name', 'unknown')),
-                "path": str(playback.get('output_path', '')) if isinstance(playback, dict) else ''
+                "path": str(playback.get('output_path', '')) if isinstance(playback, dict) else '',
+                "standalone": standalone,
+                "standalone_path": str(standalone_path) if standalone else None
             }
             print(json_module.dumps(result_data, indent=2), file=sys.stderr)
         elif verbose:
@@ -1254,6 +1293,9 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             print(f"[VERBOSE] Playback file: {playback_file}", file=sys.stderr)
             if kwargs.get('app_name'):
                 print(f"[VERBOSE] Application name: {kwargs['app_name']}", file=sys.stderr)
+            if standalone:
+                print(f"[VERBOSE] Standalone mode: enabled", file=sys.stderr)
+                print(f"[VERBOSE] Standalone path: {standalone_path}", file=sys.stderr)
         # Quiet mode and normal mode just print playback file (already done above)
 
     except Exception as e:
