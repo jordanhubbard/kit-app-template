@@ -459,8 +459,38 @@ def _wait_for_xpra_ready(display: int, port: int, bind_host: str, timeout: int =
 
 
 def launch_kit(
-    app_name, target_directory: Path, config: dict = {}, dev_bundle: bool = False, extra_args: List[str] = [], xpra: bool = False, xpra_display: int = 100
+    app_name,
+    target_directory: Path,
+    config: dict = {},
+    dev_bundle: bool = False,
+    extra_args: List[str] = [],
+    xpra: bool = False,
+    xpra_display: int = 100,
+    enable_streaming: bool = False,
+    streaming_port: int = 47995
 ):
+    """
+    Launch a Kit application with optional streaming or Xpra support.
+    
+    Supports three display modalities:
+    1. Kit App Streaming (WebRTC) - if streaming extensions detected or enable_streaming=True
+    2. Direct Launch - if no special options (inherits DISPLAY from environment)
+    3. Xpra Display Server - if xpra=True (remote X11 on port 10000)
+    
+    Args:
+        app_name: Name of the .kit file to launch
+        target_directory: Build directory containing launch scripts
+        config: Build configuration dict
+        dev_bundle: Enable developer bundle extension
+        extra_args: Additional command-line arguments
+        xpra: Use Xpra display server (Mode 2b: Xpra Display)
+        xpra_display: Xpra display number (default: 100, port 10000)
+        enable_streaming: Force streaming mode even if not auto-detected
+        streaming_port: Port for WebRTC server (default: 47995)
+        
+    Returns:
+        Tuple[int, Optional[str]]: (return_code, streaming_url if applicable)
+    """
     # Some assumptions are being made on the folder structure of target_directory.
     # It should be the `_build/${host_platform}/${config}/` folder which contains entrypoint scripts
     # for the included kit apps.
@@ -481,6 +511,53 @@ def launch_kit(
             app_kit_path = get_app_kit_path(app_source_path)
             if app_kit_path.exists():
                 print(f"Using per-app Kit SDK from: {app_kit_path}")
+
+    # Check for Kit App Streaming (Mode 1)
+    # Detect if this is a streaming app or streaming is explicitly requested
+    kit_file = app_source_path / f"{app_name}"
+    streaming_url = None
+    is_streaming = enable_streaming
+    
+    try:
+        from streaming_utils import (
+            is_streaming_app,
+            get_streaming_flags,
+            get_streaming_url,
+            wait_for_streaming_ready
+        )
+        
+        # Auto-detect streaming apps
+        if not is_streaming and kit_file.exists():
+            is_streaming = is_streaming_app(kit_file)
+        
+        if is_streaming:
+            # Streaming and Xpra are mutually exclusive
+            if xpra:
+                print("Warning: Streaming mode and Xpra mode are mutually exclusive.")
+                print("Disabling Xpra - using Kit App Streaming instead.")
+                xpra = False
+            
+            print(f"\n{'='*60}")
+            print(f"Kit App Streaming (WebRTC) Mode")
+            print(f"{'='*60}")
+            print(f"Port: {streaming_port}")
+            
+            # Determine hostname based on REMOTE environment variable
+            streaming_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+            
+            # Construct streaming URL (deterministic)
+            streaming_url = get_streaming_url(port=streaming_port, hostname=streaming_host)
+            print(f"URL:  {streaming_url}")
+            print(f"{'='*60}\n")
+            
+            # Add streaming flags to extra_args
+            streaming_flags = get_streaming_flags(port=streaming_port)
+            extra_args = streaming_flags + extra_args
+            
+    except ImportError as e:
+        print(f"Warning: Could not import streaming_utils: {e}")
+        print("Streaming support not available - continuing without it.")
+        is_streaming = False
 
     print(f"launching {app_name}!")
 
@@ -583,11 +660,42 @@ def launch_kit(
     if extra_args:
         kit_cmd += extra_args
 
-    _ = _run_process(
-        kit_cmd,
-        exit_on_error=False,
-        env=env_vars if env_vars else None,
-    )
+    # Launch the application
+    if is_streaming:
+        # For streaming apps, launch in background and wait for port
+        print(f"Starting streaming server...")
+        process = subprocess.Popen(
+            kit_cmd,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            env=env_vars if env_vars else None,
+        )
+        
+        # Wait for streaming server to be ready
+        print(f"Waiting for streaming server on port {streaming_port}...")
+        if wait_for_streaming_ready(streaming_port, streaming_host, timeout=30):
+            print(f"\n{'='*60}")
+            print(f"✓ Streaming Ready!")
+            print(f"{'='*60}")
+            print(f"URL: {streaming_url}")
+            print(f"{'='*60}")
+            print(f"\nNote: Self-signed SSL certificate warning is normal.")
+            print(f"Accept the certificate in your browser to continue.\n")
+        else:
+            print(f"\nWarning: Streaming server did not respond within 30 seconds.")
+            print(f"Try connecting anyway: {streaming_url}\n")
+        
+        # Keep process running and wait for it to complete
+        returncode = process.wait()
+        return returncode, streaming_url
+    else:
+        # Normal launch (Direct or Xpra mode)
+        returncode = _run_process(
+            kit_cmd,
+            exit_on_error=False,
+            env=env_vars if env_vars else None,
+        )
+        return returncode, streaming_url
 
 
 def expand_package(package_path: str) -> Path:
@@ -673,6 +781,23 @@ def add_args(parser: argparse.ArgumentParser):
         help="Xpra display number to use (default: 100)",
     )
 
+    parser.add_argument(
+        "--streaming",
+        dest="enable_streaming",
+        required=False,
+        action="store_true",
+        help="Force Kit App Streaming (WebRTC) mode. Automatically detected if .kit file has streaming extensions.",
+    )
+
+    parser.add_argument(
+        "--streaming-port",
+        dest="streaming_port",
+        required=False,
+        type=int,
+        default=47995,
+        help="Port for Kit App Streaming WebRTC server (default: 47995)",
+    )
+
 
 def add_package_arg(parser: argparse.ArgumentParser):
     parser.add_argument(
@@ -731,10 +856,15 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Optional[C
             # Extract xpra options
             xpra_mode = getattr(options, 'xpra', False)
             xpra_display = getattr(options, 'xpra_display', 100)
+            
+            # Extract streaming options
+            enable_streaming = getattr(options, 'enable_streaming', False)
+            streaming_port = getattr(options, 'streaming_port', 47995)
 
             if options.from_package:
                 package_path = expand_package(options.from_package)
-                launch_kit(app_name, package_path, config_dict, dev_bundle, options.extra_args, xpra_mode, xpra_display)
+                launch_kit(app_name, package_path, config_dict, dev_bundle, options.extra_args, 
+                          xpra_mode, xpra_display, enable_streaming, streaming_port)
 
             # Launching a locally built application
             else:
@@ -754,7 +884,8 @@ def setup_repo_tool(parser: argparse.ArgumentParser, config: Dict) -> Optional[C
                     return
 
                 # Launch the thing, or query the user and then launch the thing.
-                launch_kit(app_name, build_path, config_dict, dev_bundle, options.extra_args, xpra_mode, xpra_display)
+                launch_kit(app_name, build_path, config_dict, dev_bundle, options.extra_args, 
+                          xpra_mode, xpra_display, enable_streaming, streaming_port)
 
         except (KeyboardInterrupt, SystemExit):
             console.print("Exiting", style=INFO_COLOR)
