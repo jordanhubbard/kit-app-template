@@ -67,7 +67,7 @@ class TestJsonOutputMode:
                     start = json_output.index("{")
                     end = json_output.rindex("}") + 1
                     json_str = json_output[start:end]
-                    
+
                     data = json.loads(json_str)
                     print(f"Parsed JSON from stderr: {json.dumps(data, indent=2)}")
                     assert isinstance(data, dict), "JSON output should be a dictionary"
@@ -100,7 +100,7 @@ class TestJsonOutputMode:
             )
 
             assert result.returncode == 0, f"Failed: {result.stderr}"
-            
+
             # Look for JSON in stderr
             try:
                 if "{" in result.stderr:
@@ -140,7 +140,7 @@ class TestJsonOutputMode:
             )
 
             assert result.returncode == 0, f"Failed: {result.stderr}"
-            
+
             # Look for JSON in stderr
             try:
                 if "{" in result.stderr:

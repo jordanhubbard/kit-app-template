@@ -34,7 +34,7 @@ class TestVerboseMode:
     def test_verbose_flag_provides_extra_output(self):
         """Verify --verbose provides more detailed output."""
         test_name = "test_verbose"
-        
+
         try:
             result = subprocess.run(
                 [
@@ -47,19 +47,19 @@ class TestVerboseMode:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             print(f"Return code: {result.returncode}")
             print(f"Stderr: {result.stderr[:500]}")
-            
+
             assert result.returncode == 0, f"Failed: {result.stderr}"
-            
+
             # Verbose mode should add [VERBOSE] markers or extra details to stderr
             if "[VERBOSE]" in result.stderr or "VERBOSE" in result.stderr:
                 print("✅ Verbose mode provides extra output")
             else:
                 # Acceptable if verbose just means more output in general
                 print("⚠ Verbose mode may not have distinct markers (acceptable)")
-            
+
         finally:
             app_path = REPO_ROOT / "source" / "apps" / test_name
             if app_path.exists():
@@ -68,7 +68,7 @@ class TestVerboseMode:
     def test_verbose_does_not_break_normal_operation(self):
         """Verify --verbose doesn't break template creation."""
         test_name = "test_verbose_works"
-        
+
         try:
             result = subprocess.run(
                 [
@@ -81,15 +81,15 @@ class TestVerboseMode:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             assert result.returncode == 0, f"Verbose mode broke creation: {result.stderr}"
-            
+
             # Verify template was created
             app_path = REPO_ROOT / "source" / "apps" / test_name
             assert app_path.exists(), "Template not created with --verbose"
-            
+
             print("✅ Verbose mode works correctly")
-            
+
         finally:
             app_path = REPO_ROOT / "source" / "apps" / test_name
             if app_path.exists():
@@ -117,7 +117,7 @@ class TestQuietMode:
     def test_quiet_flag_reduces_output(self):
         """Verify --quiet reduces output volume."""
         test_name = "test_quiet"
-        
+
         try:
             # First, run without --quiet to get baseline
             result_normal = subprocess.run(
@@ -130,12 +130,12 @@ class TestQuietMode:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             # Clean up normal test
             app_path = REPO_ROOT / "source" / "apps" / f"{test_name}_normal"
             if app_path.exists():
                 shutil.rmtree(app_path)
-            
+
             # Now run with --quiet
             result_quiet = subprocess.run(
                 [
@@ -148,22 +148,22 @@ class TestQuietMode:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             print(f"Normal output length: {len(result_normal.stdout) + len(result_normal.stderr)}")
             print(f"Quiet output length: {len(result_quiet.stdout) + len(result_quiet.stderr)}")
-            
+
             assert result_quiet.returncode == 0, f"Quiet mode failed: {result_quiet.stderr}"
-            
+
             # Quiet mode should have less or equal output
             # (May not be strictly less if output is already minimal)
             quiet_total = len(result_quiet.stdout) + len(result_quiet.stderr)
             normal_total = len(result_normal.stdout) + len(result_normal.stderr)
-            
+
             if quiet_total <= normal_total:
                 print(f"✅ Quiet mode has reduced output ({quiet_total} vs {normal_total} chars)")
             else:
                 print(f"⚠ Quiet mode output similar to normal (acceptable)")
-            
+
         finally:
             app_path = REPO_ROOT / "source" / "apps" / test_name
             if app_path.exists():
@@ -172,7 +172,7 @@ class TestQuietMode:
     def test_quiet_does_not_break_normal_operation(self):
         """Verify --quiet doesn't break template creation."""
         test_name = "test_quiet_works"
-        
+
         try:
             result = subprocess.run(
                 [
@@ -185,15 +185,15 @@ class TestQuietMode:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             assert result.returncode == 0, f"Quiet mode broke creation: {result.stderr}"
-            
+
             # Verify template was created
             app_path = REPO_ROOT / "source" / "apps" / test_name
             assert app_path.exists(), "Template not created with --quiet"
-            
+
             print("✅ Quiet mode works correctly")
-            
+
         finally:
             app_path = REPO_ROOT / "source" / "apps" / test_name
             if app_path.exists():
@@ -206,7 +206,7 @@ class TestVerboseQuietBackwardCompatibility:
     def test_without_flags_normal_output(self):
         """Verify normal output works without flags."""
         test_name = "test_no_flags"
-        
+
         try:
             result = subprocess.run(
                 [
@@ -219,14 +219,14 @@ class TestVerboseQuietBackwardCompatibility:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             assert result.returncode == 0, f"Normal mode failed: {result.stderr}"
-            
+
             app_path = REPO_ROOT / "source" / "apps" / test_name
             assert app_path.exists(), "Template not created"
-            
+
             print("✅ Normal mode works (no flags)")
-            
+
         finally:
             app_path = REPO_ROOT / "source" / "apps" / test_name
             if app_path.exists():
@@ -235,4 +235,3 @@ class TestVerboseQuietBackwardCompatibility:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

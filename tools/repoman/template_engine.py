@@ -1234,7 +1234,7 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
 
         # Always print playback file path first (required for repo_dispatcher)
         print(playback_file)
-        
+
         # Output additional information based on mode
         if json_output:
             # JSON output mode - print JSON to stderr so repo_dispatcher ignores it

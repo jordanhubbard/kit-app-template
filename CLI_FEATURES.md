@@ -1,7 +1,7 @@
 # CLI Features and Flags
 
-**Last Updated**: October 23, 2025  
-**Version**: Phase 2 Complete  
+**Last Updated**: October 23, 2025
+**Version**: Phase 2 Complete
 
 ## Overview
 
@@ -13,9 +13,9 @@ The Kit App Template CLI (`repo.sh` / `repo.bat`) supports various flags for aut
 
 ### `--accept-license`
 
-**Purpose**: Accept license terms automatically without interactive prompt.  
-**Status**: ✅ Fully implemented  
-**Use Case**: CI/CD pipelines, automated scripts  
+**Purpose**: Accept license terms automatically without interactive prompt.
+**Status**: ✅ Fully implemented
+**Use Case**: CI/CD pipelines, automated scripts
 
 **Usage**:
 ```bash
@@ -47,9 +47,9 @@ The Kit App Template CLI (`repo.sh` / `repo.bat`) supports various flags for aut
 
 ### `--batch-mode`
 
-**Purpose**: Fully non-interactive operation with sensible defaults.  
-**Status**: ✅ Works (behavior already implemented)  
-**Use Case**: Automated template generation, scripts  
+**Purpose**: Fully non-interactive operation with sensible defaults.
+**Status**: ✅ Works (behavior already implemented)
+**Use Case**: Automated template generation, scripts
 
 **Usage**:
 ```bash
@@ -81,9 +81,9 @@ The Kit App Template CLI (`repo.sh` / `repo.bat`) supports various flags for aut
 
 ### `--json`
 
-**Purpose**: Machine-readable JSON output for CI/CD and automation.  
-**Status**: ✅ Implemented  
-**Use Case**: CI/CD pipelines, programmatic access, API integration  
+**Purpose**: Machine-readable JSON output for CI/CD and automation.
+**Status**: ✅ Implemented
+**Use Case**: CI/CD pipelines, programmatic access, API integration
 
 **Usage**:
 ```bash
@@ -143,7 +143,7 @@ print(f"Found {data['count']} templates")
 
 # Create template
 result = subprocess.run(
-    ["./repo.sh", "template", "new", "kit_base_editor", 
+    ["./repo.sh", "template", "new", "kit_base_editor",
      "--name", "my.app", "--json"],
     capture_output=True,
     text=True
@@ -160,9 +160,9 @@ if "{" in result.stderr:
 
 ### `--verbose`
 
-**Purpose**: Detailed output with extra debugging information.  
-**Status**: ✅ Implemented  
-**Use Case**: Debugging, detailed logs, development  
+**Purpose**: Detailed output with extra debugging information.
+**Status**: ✅ Implemented
+**Use Case**: Debugging, detailed logs, development
 
 **Usage**:
 ```bash
@@ -186,9 +186,9 @@ if "{" in result.stderr:
 
 ### `--quiet`
 
-**Purpose**: Minimal output, only essential information.  
-**Status**: ✅ Implemented  
-**Use Case**: Scripts, logs, when output verbosity should be minimized  
+**Purpose**: Minimal output, only essential information.
+**Status**: ✅ Implemented
+**Use Case**: Scripts, logs, when output verbosity should be minimized
 
 **Usage**:
 ```bash
@@ -396,6 +396,5 @@ result = api.generate_template_simple(
 
 ---
 
-**Questions or Issues?**  
+**Questions or Issues?**
 See the test files in `tests/cli/` for usage examples, or check `PLAN.md` for architectural details.
-
