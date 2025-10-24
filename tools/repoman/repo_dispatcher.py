@@ -416,7 +416,7 @@ def handle_template_command(args: List[str]) -> int:
                                     print(f"  To build: cd {standalone_path} && ./repo.sh build", file=sys.stderr)
                                 except Exception as e:
                                     print(f"Warning: Failed to create standalone project: {e}", file=sys.stderr)
-                        
+
                         # If per-app dependencies were requested, initialize them now (after replay)
                         if "_per_app_deps" in playback_data:
                             per_app_deps_config = playback_data["_per_app_deps"]
@@ -425,7 +425,7 @@ def handle_template_command(args: List[str]) -> int:
                                     # Import app_dependencies module
                                     sys.path.insert(0, str(repo_root / "tools" / "repoman"))
                                     from app_dependencies import initialize_per_app_deps
-                                    
+
                                     template_output_path = Path(per_app_deps_config['template_output_path'])
                                     if template_output_path.exists():
                                         success = initialize_per_app_deps(template_output_path)

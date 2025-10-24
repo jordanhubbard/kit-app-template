@@ -1,7 +1,7 @@
 # Per-Application Dependencies Guide
 
-**Status**: ✅ Implemented  
-**Version**: 1.0  
+**Status**: ✅ Implemented
+**Version**: 1.0
 **Date**: October 24, 2025
 
 ---
@@ -12,11 +12,11 @@ Per-application dependencies allow each Kit application to maintain its own isol
 
 ### Benefits
 
-✅ **Dependency Isolation** - Each app has its own Kit SDK  
-✅ **Version Freedom** - Different Kit versions per app  
-✅ **No Conflicts** - Custom configs don't affect other apps  
-✅ **Custom Branches** - Track experimental Kit builds  
-✅ **Proper Caching** - App-specific packman cache  
+✅ **Dependency Isolation** - Each app has its own Kit SDK
+✅ **Version Freedom** - Different Kit versions per app
+✅ **No Conflicts** - Custom configs don't affect other apps
+✅ **Custom Branches** - Track experimental Kit builds
+✅ **Proper Caching** - App-specific packman cache
 ✅ **Backward Compatible** - Existing apps work unchanged
 
 ---
@@ -350,19 +350,19 @@ initialize_per_app_deps(app_path, kit_version="106.0")
 
 ## FAQ
 
-**Q: Will this increase disk usage?**  
+**Q: Will this increase disk usage?**
 A: Yes, each app with per-app deps downloads its own Kit SDK (~1-2 GB per app). Use shared cache to reduce usage.
 
-**Q: Can I switch between per-app and global deps?**  
+**Q: Can I switch between per-app and global deps?**
 A: Yes, add/remove `dependencies/kit-deps.toml` and rebuild.
 
-**Q: Do I need to modify existing apps?**  
+**Q: Do I need to modify existing apps?**
 A: No, existing apps work unchanged. Per-app deps is opt-in.
 
-**Q: What happens if build fails?**  
+**Q: What happens if build fails?**
 A: App falls back to checking global Kit SDK if per-app SDK is missing.
 
-**Q: Can I use this with standalone projects?**  
+**Q: Can I use this with standalone projects?**
 A: Yes! Use `--per-app-deps --standalone` together.
 
 ---
@@ -376,4 +376,3 @@ A: Yes! Use `--per-app-deps --standalone` together.
 ---
 
 **Questions or Issues?** Check [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) or file an issue.
-

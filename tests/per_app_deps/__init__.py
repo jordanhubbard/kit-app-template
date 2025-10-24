@@ -9,4 +9,3 @@ Tests cover:
 - Template creation with --per-app-deps
 - Backward compatibility
 """
-

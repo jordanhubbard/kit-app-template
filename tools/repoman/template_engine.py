@@ -1279,12 +1279,12 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
         if per_app_deps:
             if not isinstance(playback, dict):
                 playback = {}
-            
+
             playback['_per_app_deps'] = {
                 'enabled': True,
                 'template_output_path': str(template_output_path)
             }
-            
+
             if verbose:
                 print(f"[VERBOSE] Per-app dependencies will be initialized after replay", file=sys.stderr)
 

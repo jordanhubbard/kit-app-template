@@ -33,7 +33,7 @@ def test_app_with_deps_config(test_app_path):
     """Create a test app with per-app dependencies configured."""
     deps_dir = test_app_path / "dependencies"
     deps_dir.mkdir()
-    
+
     config_file = deps_dir / "kit-deps.toml"
     config_content = """
 [kit_sdk]
@@ -45,7 +45,7 @@ strategy = "isolated"
 [dependencies]
 """
     config_file.write_text(config_content)
-    
+
     return test_app_path
 
 
@@ -54,4 +54,3 @@ def test_app_without_deps(test_app_path):
     """Create a test app without per-app dependencies (global deps)."""
     # Just return the empty app path - no dependencies/ directory
     return test_app_path
-

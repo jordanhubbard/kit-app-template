@@ -410,21 +410,21 @@ def select_kit(target_directory: Path, config: dict) -> str:
 
 def _wait_for_xpra_ready(display: int, port: int, bind_host: str, timeout: int = 30) -> bool:
     """Wait for Xpra to be ready to accept connections.
-    
+
     Args:
         display: Xpra display number
         port: Xpra TCP port
         bind_host: Host to bind to
         timeout: Maximum time to wait in seconds
-        
+
     Returns:
         True if Xpra is ready, False if timeout
     """
     import time
     import socket
-    
+
     print(f"Waiting for Xpra display :{display} to be ready...")
-    
+
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
@@ -451,9 +451,9 @@ def _wait_for_xpra_ready(display: int, port: int, bind_host: str, timeout: int =
                     sock.close()
         except Exception:
             pass
-        
+
         time.sleep(0.5)
-    
+
     print(f"Timeout waiting for Xpra display :{display} to be ready")
     return False
 
@@ -474,7 +474,7 @@ def launch_kit(
     repo_root = Path(__file__).parent.parent.parent
     app_source_path = repo_root / "source" / "apps" / app_name.replace('.kit', '')
     app_kit_path = None
-    
+
     if app_source_path.exists():
         from app_dependencies import should_use_per_app_deps, get_app_kit_path
         if should_use_per_app_deps(app_source_path):
@@ -486,7 +486,7 @@ def launch_kit(
 
     # Handle Xpra mode and per-app Kit SDK
     env_vars = None
-    
+
     # Set up environment for per-app Kit SDK if present
     if app_kit_path and app_kit_path.exists():
         env_vars = os.environ.copy()
@@ -496,7 +496,7 @@ def launch_kit(
         kit_bin = app_kit_path / "kit"
         if kit_bin.exists():
             env_vars['PATH'] = f"{kit_bin}:{env_vars.get('PATH', '')}"
-    
+
     if xpra:
         print(f"Xpra mode enabled - will launch on display :{xpra_display}")
 
@@ -537,11 +537,11 @@ def launch_kit(
                 )
                 print(f"Xpra started on port {xpra_port}")
                 print(f"Browser preview: http://{bind_host}:{xpra_port}")
-                
+
                 # Wait for Xpra to be ready before continuing
                 if not _wait_for_xpra_ready(xpra_display, xpra_port, bind_host, timeout=30):
                     print("Warning: Xpra may not be fully ready, but continuing...")
-                    
+
             except Exception as e:
                 print(f"Failed to start Xpra: {e}")
                 print("Continuing anyway - Xpra might already be running")

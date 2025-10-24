@@ -1,7 +1,7 @@
 # Migration Guide: Per-Application Dependencies
 
-**Audience**: Existing kit-app-template users  
-**Goal**: Migrate existing apps to use per-app dependencies  
+**Audience**: Existing kit-app-template users
+**Goal**: Migrate existing apps to use per-app dependencies
 **Time**: 5-15 minutes per app
 
 ---
@@ -49,7 +49,7 @@ source/apps/app1/
     └── kit-deps.toml
 
 source/apps/app2/
-├── _kit/               # App2's own Kit SDK  
+├── _kit/               # App2's own Kit SDK
 └── dependencies/
     └── kit-deps.toml
 ```
@@ -473,22 +473,22 @@ rm -rf _build/*/kit/
 
 ## FAQ
 
-**Q: Will this break my existing builds?**  
+**Q: Will this break my existing builds?**
 A: No, apps without `dependencies/kit-deps.toml` continue using global Kit.
 
-**Q: Can I migrate incrementally?**  
+**Q: Can I migrate incrementally?**
 A: Yes! Apps can mix per-app and global dependencies.
 
-**Q: How long does migration take?**  
+**Q: How long does migration take?**
 A: 5-15 minutes per app (mostly download time).
 
-**Q: Can I revert if something breaks?**  
+**Q: Can I revert if something breaks?**
 A: Yes, delete `dependencies/` and `_kit/` directories and rebuild.
 
-**Q: Do I need to modify my code?**  
+**Q: Do I need to modify my code?**
 A: No code changes needed. Only configuration changes.
 
-**Q: What about CI/CD pipelines?**  
+**Q: What about CI/CD pipelines?**
 A: No changes needed. Apps auto-detect per-app deps during build.
 
 ---
@@ -508,4 +508,3 @@ If you encounter issues during migration:
 ---
 
 **Ready to migrate?** Follow Step 3 above or use the automated script!
-
