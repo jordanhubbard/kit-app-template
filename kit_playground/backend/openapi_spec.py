@@ -11,11 +11,11 @@ from typing import Dict, Any
 def get_openapi_spec() -> Dict[str, Any]:
     """
     Generate OpenAPI 3.0 specification for all API endpoints.
-    
+
     Returns:
         OpenAPI specification dictionary
     """
-    
+
     spec = {
         "openapi": "3.0.0",
         "info": {
@@ -428,6 +428,5 @@ def get_openapi_spec() -> Dict[str, Any]:
             }
         }
     }
-    
-    return spec
 
+    return spec

@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 def create_docs_routes() -> Blueprint:
     """Create and configure documentation routes."""
-    
+
     docs_bp = Blueprint('docs', __name__, url_prefix='/api')
-    
+
     @docs_bp.route('/openapi.json', methods=['GET'])
     def get_openapi():
         """
         Get OpenAPI 3.0 specification in JSON format.
-        
+
         Returns the complete API specification that can be used with
         Swagger UI, Postman, or other OpenAPI-compatible tools.
         """
@@ -32,12 +32,12 @@ def create_docs_routes() -> Blueprint:
         except Exception as e:
             logger.error(f"Error generating OpenAPI spec: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
-    
+
     @docs_bp.route('/docs', methods=['GET'])
     def swagger_ui():
         """
         Serve Swagger UI for interactive API documentation.
-        
+
         Provides an interactive interface to explore and test API endpoints.
         """
         # Embedded Swagger UI HTML
@@ -80,6 +80,5 @@ def create_docs_routes() -> Blueprint:
 </html>
         """
         return render_template_string(html)
-    
-    return docs_bp
 
+    return docs_bp

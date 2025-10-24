@@ -1,0 +1,47 @@
+In this directory is a project called kit-app-template.  It was forked from commit 7da9c44
+
+In commit 7da9c44 this repository is fully working, with an interactive command line shell called repo.sh on linux and repo.bat on windows
+
+The architecture before the fork works but has some limitations:
+    repo.sh / repo.bat interact with the user to establish the parameters for building and launching a template - they cannot be scripted or called from batch scripts because they will enter interactive mode
+
+    Creating a new template edits the files in this source directory, including the premake.lua files and other toml metadata rather than copying the templates and modifying the copy in a separate directory for every application created
+
+    There is no API wrapper for the shell commands and the python code they call, making this a shell script driven application rather than one that can be driven by external REST calls.
+
+    This is a critical limitation since the actions of this application cannot be driven as part of a pipeline where the command line may not be directly available since the machine that creates, builds and launches application must have a GPU but the user may not have a GPU on the calling machine.  We want this template system to be used in CICD workflows as well.
+
+    There is no user interface for making what is now a purely command line experience easy to use for novices who do not understand what kit application, extension and microservice templates are.
+
+    There is no way of creating applications that can be built elsewhere with their own copies of the build scripts and everything necessary in their own dependency lists to build stand-alone.
+
+    Kit dependencies are stored and cached globally rather than per application
+
+
+At the top of tree in this application is a first attempt to fix all of these problems, but it needs to be thoroughly analyzed and reconceived with the following principle goals:
+
+   Preserve the existing CLI behavior and do not break the existing documentation which points to this repo.
+
+   There were no tests written which were capable of driving the creation, building and launching with --no-window all of the existing templates and capturing the output for cross-referencing.  These tests should be considered the "compatibility tests"
+
+   There were too many changes made to the CLI and intermediate python code before those tests were written and could be used as a reference
+
+   The changes to the CLI were not made in a backwards compatible fashion.  It is entirely reasonable to add new command line flags and new features to the system in order to facilitate non-interaction, new data flags for passing company name, application name, launch name, and other fields which are currently collected non-interactively, and any other new features required so long as the old features are not broken.
+
+   The changes were not made methodically in the following stages:
+
+       Basic CLI enhancements to support the new non-interactive workflow
+
+       Tests for these new flags
+
+       An API wrapper which allows a background daemon to execute all combinations of primary CLI behaviors non-interactively with complete, highly structured logging of all commands executed, the return values, and the API call that invoked those commands
+       
+       A web UI, called a "playground", running as a separate process and talking to the back-end daemon which fulfills all of the requests, updating the UI in real-time and also displaying all logs and allowing the application to be launched both as a kit app streaming app with its own UI window or as a local X application proxied to an Xpra server.
+
+Having read this PLAN.txt file, create a highly detailed and structured PLAN.md file as a series of programming steps and best practices instructions to implement all of these features after a thorough review of the entire application as it exists at top of tree.  The playground UI application largely works and the API works as well, but there were many regressions introduced in the CLI and the application build and launch because of the way the application was vibe-coded without the design listed in this document.  Create a new plan that will add these features layer by layer with checkpoints at each feature stage to:
+
+     Write and run tests to validate that everything is working, running all previous tests as well
+     Audit the code against this updated PLAN.md file
+     Proceed to the next step
+
+    

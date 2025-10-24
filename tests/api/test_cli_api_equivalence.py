@@ -24,7 +24,7 @@ class TestTemplateListEquivalence:
         api_data = response.get_json()
         api_templates = api_data.get('templates', [])
         api_count = len(api_templates)
-        
+
         # Get from CLI with --json
         result = subprocess.run(
             ["./repo.sh", "template", "list", "--json"],
@@ -33,12 +33,12 @@ class TestTemplateListEquivalence:
             cwd=REPO_ROOT,
             timeout=30
         )
-        
+
         if result.returncode == 0 and result.stdout.strip():
             try:
                 cli_data = json.loads(result.stdout)
                 cli_count = cli_data.get('count', 0)
-                
+
                 # Should match
                 assert api_count == cli_count, \
                     f"API count ({api_count}) should match CLI count ({cli_count})"
@@ -58,7 +58,7 @@ class TestTemplateListEquivalence:
         api_data = response.get_json()
         api_templates = api_data.get('templates', [])
         api_names = sorted([t['name'] for t in api_templates])
-        
+
         # Get from CLI (non-JSON for now, just verify it works)
         result = subprocess.run(
             ["./repo.sh", "template", "list"],
@@ -67,13 +67,13 @@ class TestTemplateListEquivalence:
             cwd=REPO_ROOT,
             timeout=30
         )
-        
+
         assert result.returncode == 0, "CLI should work"
-        
+
         # Check that known templates appear in CLI output
         for name in api_names[:5]:  # Check first 5
             assert name in result.stdout, f"Template {name} should appear in CLI output"
-        
+
         print(f"✅ API templates match CLI output")
 
 
@@ -83,10 +83,10 @@ class TestTemplateCreationEquivalence:
     def test_api_creates_same_structure_as_cli(self, api_client, repo_root):
         """Verify API and CLI create equivalent directory structures."""
         import shutil
-        
+
         api_test_name = "equivalence_api_test"
         cli_test_name = "equivalence_cli_test"
-        
+
         try:
             # Create via API
             api_response = api_client.post('/api/templates/create',
@@ -97,7 +97,7 @@ class TestTemplateCreationEquivalence:
                                               'version': '1.0.0'
                                           },
                                           content_type='application/json')
-            
+
             # Create via CLI
             cli_result = subprocess.run(
                 ["./repo.sh", "template", "new", "kit_base_editor",
@@ -110,29 +110,29 @@ class TestTemplateCreationEquivalence:
                 cwd=REPO_ROOT,
                 timeout=60
             )
-            
+
             # Both should succeed
             api_success = api_response.status_code in [200, 201]
             cli_success = cli_result.returncode == 0
-            
+
             if api_success and cli_success:
                 # Check that both created directories
                 api_path = repo_root / "source" / "apps" / api_test_name
                 cli_path = repo_root / "source" / "apps" / cli_test_name
-                
+
                 # May also be in _build/apps
                 if not api_path.exists():
                     api_path = repo_root / "_build" / "apps" / api_test_name
                 if not cli_path.exists():
                     cli_path = repo_root / "_build" / "apps" / cli_test_name
-                
+
                 assert api_path.exists(), f"API should create directory"
                 assert cli_path.exists(), f"CLI should create directory"
-                
+
                 # Both should have similar structure (compare file counts as proxy)
                 api_files = list(api_path.rglob('*')) if api_path.exists() else []
                 cli_files = list(cli_path.rglob('*')) if cli_path.exists() else []
-                
+
                 # File counts should be similar (within 10%)
                 if len(api_files) > 0 and len(cli_files) > 0:
                     ratio = len(api_files) / len(cli_files)
@@ -148,7 +148,7 @@ class TestTemplateCreationEquivalence:
                     print(f"   API response: {api_response.get_json()}")
                 if not cli_success:
                     print(f"   CLI output: {cli_result.stderr[:200]}")
-            
+
         finally:
             # Cleanup
             for test_name in [api_test_name, cli_test_name]:
@@ -165,21 +165,21 @@ class TestAPIResponseFormat:
     def test_api_uses_json_format(self, api_client):
         """Verify API returns proper JSON (not just strings)."""
         response = api_client.get('/api/templates/list')
-        
+
         assert response.is_json, "API should return JSON"
         assert response.content_type.startswith('application/json'), \
             f"Content-Type should be application/json, got {response.content_type}"
-        
+
         print("✅ API uses proper JSON format")
 
     def test_api_error_responses_are_json(self, api_client):
         """Verify API errors are also JSON formatted."""
         response = api_client.get('/api/templates/get/nonexistent')
-        
+
         assert response.is_json, "Error responses should be JSON"
         data = response.get_json()
         assert 'error' in data, "Error response should have 'error' field"
-        
+
         print("✅ API errors are properly formatted")
 
 
@@ -189,12 +189,12 @@ class TestAPIVsCLIPerformance:
     def test_api_performance_vs_cli(self, api_client):
         """Compare API and CLI execution time (informational)."""
         import time
-        
+
         # Time API call
         start = time.time()
         response = api_client.get('/api/templates/list')
         api_time = time.time() - start
-        
+
         # Time CLI call
         start = time.time()
         subprocess.run(
@@ -204,11 +204,11 @@ class TestAPIVsCLIPerformance:
             timeout=30
         )
         cli_time = time.time() - start
-        
+
         print(f"API time: {api_time:.3f}s")
         print(f"CLI time: {cli_time:.3f}s")
         print(f"Ratio: {api_time/cli_time:.2f}x")
-        
+
         # No assertion - just informational
         # API should generally be faster (no subprocess overhead)
         print(f"✅ Performance measured (API typically faster)")
@@ -216,4 +216,3 @@ class TestAPIVsCLIPerformance:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

@@ -306,7 +306,7 @@ class PlaygroundWebServer:
         def handle_log(data):
             """Handle log messages from clients."""
             logger.info(f"Client log: {data}")
-        
+
         # Register Phase 3b WebSocket handlers (job management, streaming)
         register_websocket_handlers(self.socketio)
 
