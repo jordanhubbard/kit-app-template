@@ -40,6 +40,9 @@ from kit_playground.backend.routes.project_routes import create_project_routes
 from kit_playground.backend.routes.filesystem_routes import create_filesystem_routes
 from kit_playground.backend.routes.xpra_routes import create_xpra_routes
 from kit_playground.backend.routes.port_routes import port_bp
+from kit_playground.backend.routes.job_routes import create_job_routes
+from kit_playground.backend.routes.websocket_routes import register_websocket_handlers
+from kit_playground.backend.routes.docs_routes import create_docs_routes
 
 # Import PortRegistry for centralized port management
 from kit_playground.backend.source.port_registry import PortRegistry
@@ -239,6 +242,14 @@ class PlaygroundWebServer:
         # Register port configuration routes
         self.app.register_blueprint(port_bp)
 
+        # Register job management routes
+        job_bp = create_job_routes()
+        self.app.register_blueprint(job_bp)
+
+        # Register API documentation routes
+        docs_bp = create_docs_routes()
+        self.app.register_blueprint(docs_bp)
+
         # Configuration routes (keep in main file as they're simple)
         @self.app.route('/api/config/paths', methods=['GET'])
         def get_default_paths():
@@ -295,6 +306,9 @@ class PlaygroundWebServer:
         def handle_log(data):
             """Handle log messages from clients."""
             logger.info(f"Client log: {data}")
+        
+        # Register Phase 3b WebSocket handlers (job management, streaming)
+        register_websocket_handlers(self.socketio)
 
     def run(self, host: str = 'localhost', port: int = 8200, debug: bool = False):
         """
