@@ -24,19 +24,19 @@ project_bp = Blueprint('projects', __name__, url_prefix='/api/projects')
 
 def _wait_for_xpra_ready(display: int, port: int, timeout: int = 30) -> bool:
     """Wait for Xpra to be ready to accept connections.
-    
+
     Args:
         display: Xpra display number
         port: Xpra TCP port
         timeout: Maximum time to wait in seconds
-        
+
     Returns:
         True if Xpra is ready, False if timeout
     """
     import socket
-    
+
     logger.info(f"Waiting for Xpra display :{display} to be ready...")
-    
+
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
@@ -64,9 +64,9 @@ def _wait_for_xpra_ready(display: int, port: int, timeout: int = 30) -> bool:
                     sock.close()
         except Exception:
             pass
-        
+
         time.sleep(0.5)
-    
+
     logger.warning(f"Timeout waiting for Xpra display :{display} to be ready")
     return False
 
@@ -362,7 +362,7 @@ def create_project_routes(
 
                     # Wait for streaming server to be ready
                     from tools.repoman.streaming_utils import wait_for_streaming_ready, get_streaming_url
-                    
+
                     socketio.emit('log', {
                         'level': 'info',
                         'source': 'runtime',
@@ -371,10 +371,10 @@ def create_project_routes(
 
                     # Determine hostname
                     streaming_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
-                    
+
                     # Get streaming URL
                     streaming_url = get_streaming_url(port=streaming_port, hostname=streaming_host)
-                    
+
                     socketio.emit('log', {
                         'level': 'info',
                         'source': 'runtime',
@@ -584,10 +584,10 @@ def create_project_routes(
                         'source': 'runtime',
                         'message': f'Waiting for Xpra display :{xpra_display} to be ready...'
                     })
-                    
+
                     # Check if Xpra is ready
                     xpra_ready = _wait_for_xpra_ready(xpra_display, xpra_port, timeout=30)
-                    
+
                     if not xpra_ready:
                         socketio.emit('log', {
                             'level': 'warning',

@@ -1,0 +1,758 @@
+# Kit App Template - Cursor AI Rules
+# Version: 2.0
+# Last Updated: October 24, 2025
+# Based on: 6 phases of development (PHASE_*.md)
+
+## 🎯 PROJECT MISSION
+
+Kit App Template is a production-grade, GPU-accelerated application framework for 
+NVIDIA Omniverse. This project prioritizes backward compatibility, test-driven 
+development, and comprehensive documentation.
+
+---
+
+## 🏗️ ARCHITECTURAL PRINCIPLES
+
+### 1. Separation of Concerns
+- **CLI Layer** (`tools/repoman/`) - Command-line interface and utilities
+- **API Layer** (`kit_playground/backend/`) - REST API and WebSocket services
+- **UI Layer** (`kit_playground/ui/`) - React TypeScript frontend
+- **Tests** (`tests/`) - Comprehensive test coverage (unit, integration, compatibility)
+- **Documentation** (`docs/`, `*.md`) - Always up-to-date
+
+### 2. Backward Compatibility (CRITICAL)
+- **NEVER break existing CLI behavior** without explicit user approval
+- All new features MUST be opt-in via flags (e.g., `--streaming`, `--per-app-deps`)
+- Existing templates must continue to work without modification
+- Default behavior remains unchanged unless explicitly overridden
+- Run compatibility tests (`make test-compatibility`) before ANY CLI changes
+
+### 3. Test-First Development
+- Write tests BEFORE implementing features
+- Establish baseline tests for existing behavior
+- Use pytest markers: `@pytest.mark.slow`, `@pytest.mark.quick`
+- Target: >95% test coverage for new code
+- All tests must pass before merging
+
+### 4. Phase-Based Development
+- Break large features into phases (see PLAN.md for template)
+- Each phase has: Design → Tests → Implementation → Validation → Documentation
+- Create checkpoint documents (e.g., PHASE_X_COMPLETE.md)
+- Validate at checkpoints before proceeding
+
+---
+
+## 📝 CODE STYLE & QUALITY
+
+### Python (Backend & CLI)
+```python
+# File headers for new files
+#!/usr/bin/env python3
+"""
+Module description here.
+
+Usage examples, key functions, etc.
+"""
+
+# Imports order
+import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional
+
+# Third-party imports
+import toml
+
+# Local imports
+from tools.repoman.module import function
+
+# Constants
+DEFAULT_PORT = 47995
+STREAMING_EXTENSIONS = [
+    "omni.services.streaming.webrtc",
+    "omni.kit.streamhelper"
+]
+
+# Docstrings for all public functions
+def my_function(arg: str, optional: Optional[int] = None) -> bool:
+    """
+    One-line summary.
+    
+    Detailed description if needed.
+    
+    Args:
+        arg: Description of arg
+        optional: Description of optional arg
+        
+    Returns:
+        Description of return value
+        
+    Raises:
+        ValueError: When something is wrong
+    """
+    pass
+```
+
+**Linting Rules:**
+- Line length: 79 characters (PEP 8)
+- Use f-strings for formatting (not %)
+- Type hints for all function signatures
+- No unused imports or variables
+- Specific exception catching (not bare `except Exception`)
+- Use lazy % formatting in logging: `logger.info("Message: %s", var)`
+
+### TypeScript/React (Frontend)
+```typescript
+// Type-safe interfaces
+interface StreamingConfig {
+  enabled: boolean;
+  port: number;
+  url: string;
+}
+
+// React components with types
+interface Props {
+  projectName: string;
+  onComplete?: () => void;
+}
+
+export const MyComponent: React.FC<Props> = ({ projectName, onComplete }) => {
+  // Use hooks
+  const [state, setState] = useState<StreamingConfig | null>(null);
+  
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      cleanup();
+    };
+  }, []);
+  
+  return <div>{projectName}</div>;
+};
+```
+
+**Frontend Rules:**
+- Always use TypeScript (no `.jsx`)
+- Type all props, state, API responses
+- Use Tailwind CSS for styling (utility-first)
+- WebSocket cleanup in useEffect return
+- Error boundaries for production
+- Accessibility: semantic HTML, ARIA labels
+
+---
+
+## 🧪 TESTING GUIDELINES
+
+### Test Structure
+```python
+# tests/feature/__init__.py (always create)
+# tests/feature/conftest.py (shared fixtures)
+# tests/feature/test_unit.py (unit tests)
+# tests/feature/test_integration.py (integration tests)
+
+# Test naming
+def test_feature_does_expected_behavior():
+    """Test description."""
+    # Arrange
+    setup_data = prepare_test()
+    
+    # Act
+    result = function_under_test(setup_data)
+    
+    # Assert
+    assert result.success
+    assert result.data == expected_data
+```
+
+### Test Categories
+1. **Compatibility Tests** (`tests/compatibility/`)
+   - Baseline for existing behavior
+   - Run before ANY CLI changes
+   - Mark slow tests: `@pytest.mark.slow`
+
+2. **Unit Tests** (`tests/*/test_*.py`)
+   - Test individual functions/classes
+   - Fast, isolated, no external dependencies
+   - Mock file I/O, network calls
+
+3. **Integration Tests** (`tests/*/test_integration.py`)
+   - Test component interactions
+   - Use real subprocess calls
+   - Clean up resources (processes, files)
+
+### Process Management in Tests
+```python
+import os
+import signal
+import subprocess
+
+# ALWAYS use process groups for Kit applications
+process = subprocess.Popen(
+    cmd,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    preexec_fn=os.setsid  # Create new process group
+)
+
+# ALWAYS clean up entire process tree
+try:
+    pgid = os.getpgid(process.pid)
+    os.killpg(pgid, signal.SIGTERM)
+    process.wait(timeout=5)
+except subprocess.TimeoutExpired:
+    os.killpg(pgid, signal.SIGKILL)
+    process.wait(timeout=2)
+```
+
+**Why?** Kit applications spawn child processes. Without process group 
+management, orphaned processes consume CPU and hold file locks, causing 
+tool timeouts and test failures.
+
+### Test Execution
+```bash
+# Fast tests (default)
+pytest tests/ -v -m "not slow"
+
+# Slow tests (builds + launches)
+pytest tests/ -v -m "slow"
+
+# Specific test
+pytest tests/streaming/test_streaming_utils.py::test_streaming_detection -v
+
+# With coverage
+pytest tests/ --cov=tools/repoman --cov-report=html
+```
+
+---
+
+## 🔧 FEATURE DEVELOPMENT WORKFLOW
+
+### 1. Planning Phase
+- [ ] Read existing PHASE_*.md documents for patterns
+- [ ] Create feature design document (e.g., FEATURE_NAME_DESIGN.md)
+- [ ] Break feature into phases (if complex)
+- [ ] Identify affected components (CLI, API, UI, docs)
+- [ ] Plan backward compatibility strategy
+
+### 2. Test Phase (FIRST!)
+- [ ] Write compatibility tests if touching existing features
+- [ ] Create `tests/feature_name/` directory structure
+- [ ] Write unit tests for core functionality
+- [ ] Write integration tests for component interactions
+- [ ] All tests should FAIL initially (not implemented yet)
+
+### 3. Implementation Phase
+- [ ] Implement smallest possible increment
+- [ ] Make tests pass one at a time
+- [ ] Run linter continuously: `flake8 tools/repoman/`
+- [ ] Keep commits small and focused
+- [ ] Update docstrings and type hints
+
+### 4. Integration Phase
+- [ ] Ensure CLI, API, and UI work together
+- [ ] Test all three interfaces for the feature
+- [ ] Verify WebSocket events (if applicable)
+- [ ] Check error handling and edge cases
+
+### 5. Documentation Phase
+- [ ] Update docs/README.md with CLI examples
+- [ ] Update docs/API_USAGE.md with API examples
+- [ ] Update docs/ARCHITECTURE.md if structure changed
+- [ ] Create feature-specific .md if complex
+- [ ] Add inline code comments for tricky logic
+
+### 6. Validation Phase
+- [ ] Run full test suite: `make test`
+- [ ] Run compatibility tests: `make test-compatibility`
+- [ ] Test manually in all three interfaces
+- [ ] Check for linting errors
+- [ ] Verify documentation accuracy
+
+### 7. Commit Phase
+- [ ] Use clear, structured commit messages (see below)
+- [ ] One logical change per commit
+- [ ] Squash WIP commits before pushing
+- [ ] Create checkpoint document for major features
+
+---
+
+## 📦 GIT COMMIT GUIDELINES
+
+### Commit Message Format
+```
+Category: Brief summary (50 chars max)
+
+Detailed description of changes. Explain WHAT changed and WHY,
+not HOW (the code shows how).
+
+Key Changes:
+• Point 1
+• Point 2
+• Point 3
+
+Files Modified:
+• path/to/file1.py
+• path/to/file2.tsx
+
+Test Coverage:
+• Test suite: X/Y tests passing
+• New tests: Z added
+
+Breaking Changes: None (or describe if any)
+
+Closes #issue_number (if applicable)
+```
+
+### Commit Categories
+- `Feat:` - New feature
+- `Fix:` - Bug fix
+- `Refactor:` - Code restructure (no behavior change)
+- `Test:` - Add or update tests
+- `Docs:` - Documentation only
+- `Style:` - Code style (linting, formatting)
+- `Perf:` - Performance improvement
+- `Build:` - Build system changes
+- `CI:` - CI/CD changes
+- `Chore:` - Maintenance tasks
+
+### Examples (from this project)
+```
+Tests: Phase 1 Kit App Streaming verification
+
+Comprehensive test suite for streaming_utils.py and CLI integration.
+
+Test Coverage:
+• 21 unit tests for streaming_utils.py (all passing)
+• 7 CLI integration tests (6 passing, 1 expected skip)
+• Found 5 streaming templates in repository
+
+Key Findings:
+✓ All streaming utility functions working correctly
+✓ CLI flags recognized properly
+✓ URL construction: https://localhost:47995
+✓ Flag generation: 10+ WebRTC flags
+
+Phase 1: VERIFIED ✓
+```
+
+---
+
+## 🔒 SECURITY GUIDELINES
+
+### Input Validation
+```python
+def validate_project_name(name: str) -> bool:
+    """Validate project name to prevent injection attacks."""
+    # Only allow safe characters
+    import re
+    if not re.match(r'^[a-z0-9._-]+$', name):
+        raise ValueError(f"Invalid project name: {name}")
+    return True
+
+def validate_path(path: str, base_dir: Path) -> Path:
+    """Validate path to prevent directory traversal."""
+    # Resolve to absolute path
+    resolved = Path(path).resolve()
+    base_resolved = base_dir.resolve()
+    
+    # Ensure path is within base directory
+    if not str(resolved).startswith(str(base_resolved)):
+        raise ValueError(f"Path outside base directory: {path}")
+    
+    return resolved
+```
+
+### Security Checklist
+- [ ] Validate ALL user input (CLI args, API params, form fields)
+- [ ] Prevent path traversal (use `Path.resolve()` + prefix check)
+- [ ] Sanitize shell commands (avoid `shell=True`, use list form)
+- [ ] Never trust client-provided file paths
+- [ ] Rate limit API endpoints (prevent DoS)
+- [ ] Validate file uploads (type, size, content)
+- [ ] Use HTTPS for streaming URLs (self-signed cert OK)
+
+---
+
+## 🌐 API DEVELOPMENT
+
+### REST API Principles
+1. **Consistency**: Use consistent naming, response formats
+2. **Versioning**: Include version in URL or header
+3. **HTTP Status Codes**: Use correctly (200, 201, 400, 404, 500)
+4. **Error Responses**: Always include `{"error": "message"}`
+5. **Documentation**: Update OpenAPI spec immediately
+
+### API Response Format
+```python
+# Success
+{
+    "success": true,
+    "data": { ... },
+    "metadata": { "timestamp": "...", "version": "..." }
+}
+
+# Error
+{
+    "success": false,
+    "error": "Human-readable error message",
+    "code": "ERROR_CODE",
+    "details": { "field": "context" }
+}
+```
+
+### WebSocket Events
+```python
+# Emit events with consistent structure
+socketio.emit('event_name', {
+    'id': 'unique_id',
+    'type': 'event_type',
+    'data': { ... },
+    'timestamp': datetime.utcnow().isoformat()
+})
+
+# Document all events in docs/API_USAGE.md
+```
+
+---
+
+## 🎨 UI DEVELOPMENT
+
+### Component Structure
+```
+ui/src/
+├── components/
+│   ├── common/          # Reusable components (Button, Card, Input)
+│   ├── layout/          # Layout components (Header, Sidebar)
+│   └── feature/         # Feature-specific components
+├── pages/               # Route components
+├── services/            # API, WebSocket, utilities
+│   ├── api.ts          # REST API client
+│   ├── websocket.ts    # WebSocket client
+│   └── types.ts        # TypeScript types
+└── hooks/              # Custom React hooks
+```
+
+### Design System
+- **Colors**: NVIDIA Green (#76b900), Dark background (#0a0a0a)
+- **Typography**: System fonts, clear hierarchy
+- **Spacing**: Tailwind spacing scale (4px base)
+- **Components**: Shadcn/Radix UI patterns
+- **Icons**: Heroicons or similar
+- **Animations**: Subtle, purposeful (fade-in, slide)
+
+### Accessibility
+- Use semantic HTML (`<button>`, `<nav>`, `<main>`)
+- Add ARIA labels for icons and interactive elements
+- Ensure keyboard navigation works
+- Test with screen readers
+- Color contrast ratios: WCAG AA minimum
+
+---
+
+## 📚 DOCUMENTATION STANDARDS
+
+### File Structure
+```
+docs/
+├── README.md           # Getting started guide
+├── API_USAGE.md        # REST API + curl examples
+├── ARCHITECTURE.md     # System architecture
+├── DIAGRAMS.md         # Mermaid diagrams
+└── TROUBLESHOOTING.md  # Common issues + solutions
+```
+
+### Documentation Checklist for New Features
+- [ ] CLI usage in docs/README.md (with examples)
+- [ ] API endpoints in docs/API_USAGE.md (with curl)
+- [ ] Architecture updates in docs/ARCHITECTURE.md
+- [ ] Add to Table of Contents
+- [ ] Include code examples
+- [ ] Describe common errors and solutions
+- [ ] Link related documents
+
+### Code Comments
+```python
+# Good: Explains WHY
+# Use process groups to ensure child processes are killed
+# when the parent terminates. Kit apps spawn multiple children.
+process = subprocess.Popen(cmd, preexec_fn=os.setsid)
+
+# Bad: Explains WHAT (code already shows this)
+# Create a subprocess
+process = subprocess.Popen(cmd)
+```
+
+**Comment When:**
+- Non-obvious logic or algorithms
+- Workarounds for bugs or limitations
+- Performance optimizations
+- Security considerations
+- Business logic rationale
+
+**Don't Comment When:**
+- Code is self-explanatory
+- Repeating what the code says
+- Obvious statements
+
+---
+
+## 🚀 DEPLOYMENT & OPERATIONS
+
+### Pre-Deployment Checklist
+- [ ] All tests passing (`make test`)
+- [ ] Compatibility tests passing (`make test-compatibility`)
+- [ ] No linting errors (`flake8`, `eslint`)
+- [ ] Documentation updated
+- [ ] CHANGELOG.md updated
+- [ ] Version bumped (if applicable)
+- [ ] Commit messages clear and descriptive
+
+### Performance Guidelines
+- Profile before optimizing
+- Use `cProfile` for Python, Chrome DevTools for frontend
+- Cache expensive operations (template parsing, file reads)
+- Use WebSockets for real-time updates (not polling)
+- Lazy-load heavy dependencies
+- Set timeouts for all external calls
+
+### Monitoring & Logging
+```python
+import logging
+
+# Use structured logging
+logger = logging.getLogger(__name__)
+
+# Log levels
+logger.debug("Detailed diagnostic information")
+logger.info("General informational messages")
+logger.warning("Warning messages")
+logger.error("Error messages")
+logger.critical("Critical issues")
+
+# Include context
+logger.info("Streaming server ready", extra={
+    'project': project_name,
+    'url': streaming_url,
+    'port': port
+})
+```
+
+---
+
+## 🐛 DEBUGGING GUIDELINES
+
+### Common Issues & Solutions
+
+#### 1. Orphaned Kit Processes
+**Symptom**: Tests hang, tool timeouts, high CPU usage
+**Solution**: Use process groups (see Testing Guidelines above)
+
+#### 2. Path Issues
+**Symptom**: FileNotFoundError, permission errors
+**Solution**: Always use `Path.resolve()` and validate paths
+
+#### 3. WebSocket Not Connecting
+**Symptom**: UI not receiving real-time updates
+**Solution**: Check CORS settings, ensure WebSocket route registered
+
+#### 4. JSON Output Corrupted
+**Symptom**: Cannot parse JSON from CLI
+**Solution**: Ensure ALL output goes to correct stream (stdout vs stderr)
+
+### Debug Tools
+```bash
+# Python debugger
+python -m pdb script.py
+
+# Pytest with pdb on failure
+pytest tests/ --pdb
+
+# Verbose logging
+LOGLEVEL=DEBUG ./repo.sh launch app.kit
+
+# Network debugging
+curl -v http://localhost:5000/api/endpoint
+
+# WebSocket debugging (browser console)
+socket.on('*', (event, data) => console.log(event, data));
+```
+
+---
+
+## 📋 CHECKLIST TEMPLATES
+
+### New Feature Checklist
+```markdown
+## Feature: [Feature Name]
+
+### Planning
+- [ ] Design document created
+- [ ] Phases identified
+- [ ] Backward compatibility verified
+- [ ] Affected components identified
+
+### Testing
+- [ ] Unit tests written (X tests)
+- [ ] Integration tests written (Y tests)
+- [ ] Compatibility tests pass
+- [ ] Manual testing complete
+
+### Implementation
+- [ ] CLI implementation
+- [ ] API implementation
+- [ ] UI implementation
+- [ ] Linting clean
+- [ ] Type hints complete
+
+### Documentation
+- [ ] docs/README.md updated
+- [ ] docs/API_USAGE.md updated
+- [ ] Inline comments added
+- [ ] Examples included
+
+### Validation
+- [ ] All tests passing
+- [ ] No performance regression
+- [ ] Security review complete
+- [ ] Code review approved
+```
+
+### Pull Request Template
+```markdown
+## Description
+Brief description of changes.
+
+## Type of Change
+- [ ] New feature
+- [ ] Bug fix
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Compatibility tests pass
+- [ ] Manual testing complete
+
+## Checklist
+- [ ] Code follows style guidelines
+- [ ] Self-review completed
+- [ ] Comments added for complex logic
+- [ ] Documentation updated
+- [ ] No new warnings/errors
+- [ ] Backward compatible (or documented)
+
+## Related Issues
+Closes #issue_number
+```
+
+---
+
+## 🎓 LEARNING RESOURCES
+
+### Project-Specific
+- Read all PHASE_*.md documents (phases 1-6)
+- Study PLAN.md for feature development template
+- Review ARCHITECTURE.md for system design
+- Check TROUBLESHOOTING.md for common issues
+
+### External Resources
+- [Python Testing with Pytest](https://docs.pytest.org/)
+- [React TypeScript Cheatsheet](https://react-typescript-cheatsheet.netlify.app/)
+- [Flask Best Practices](https://flask.palletsprojects.com/)
+- [WebSocket Integration](https://socket.io/docs/)
+- [Tailwind CSS](https://tailwindcss.com/docs)
+
+---
+
+## ⚠️ CRITICAL RULES (NEVER VIOLATE)
+
+1. **NEVER break backward compatibility without explicit approval**
+2. **ALWAYS write tests before implementation**
+3. **ALWAYS use process groups for Kit application launches**
+4. **ALWAYS validate and sanitize user input**
+5. **ALWAYS update documentation with code changes**
+6. **ALWAYS run compatibility tests before CLI changes**
+7. **NEVER commit without running tests**
+8. **NEVER use bare `except Exception` (be specific)**
+9. **NEVER trust client-provided paths**
+10. **ALWAYS clean up resources (files, processes, connections)**
+
+---
+
+## 🎯 SUCCESS METRICS
+
+### Code Quality
+- Test coverage: >95% for new code
+- Linting: 0 errors, <10 warnings
+- Type coverage: 100% for new code
+- Documentation: All public APIs documented
+
+### Performance
+- CLI response: <100ms for simple commands
+- API response: <500ms for most endpoints
+- UI load time: <2s initial, <100ms interactions
+- WebSocket latency: <50ms local, <200ms remote
+
+### Reliability
+- Test pass rate: 100%
+- No regression in existing features
+- Graceful error handling
+- Clean resource cleanup
+
+---
+
+## 📞 GETTING HELP
+
+### When Stuck
+1. Review relevant PHASE_*.md documents
+2. Check TROUBLESHOOTING.md
+3. Search existing issues
+4. Review similar features in codebase
+5. Ask for clarification with context
+
+### Asking Good Questions
+```markdown
+**Context**: What feature/component are you working on?
+**Goal**: What are you trying to achieve?
+**Current State**: What have you tried?
+**Error**: Exact error message (if applicable)
+**Environment**: OS, Python version, etc.
+```
+
+---
+
+## 🔄 CONTINUOUS IMPROVEMENT
+
+This `.cursorrules` document should evolve with the project. Update when:
+- New patterns emerge
+- Best practices change
+- Common mistakes identified
+- Architecture evolves
+
+**Last Updated**: October 24, 2025
+**Next Review**: When starting Phase 7+ or major refactor
+
+---
+
+## 🙏 ACKNOWLEDGMENTS
+
+This rules document is based on 6 phases of iterative development:
+- Phase 1: CLI Enhancement & Compatibility Testing
+- Phase 2: Batch Mode & JSON Output
+- Phase 3: REST API & Job Management
+- Phase 4: Web UI Enhancement
+- Phase 5: Standalone Projects
+- Phase 6: Per-App Dependencies
+- Kit App Streaming: Phases 1-3
+
+All patterns, principles, and guidelines emerged from real implementation
+challenges and solutions. Follow these rules to maintain consistency and
+quality as the project grows.
+
+**Remember**: These rules exist to help you write better code faster.
+If a rule doesn't make sense for your specific case, document why and
+proceed thoughtfully. Use judgment, not blind adherence.
+
+Happy coding! 🚀
+

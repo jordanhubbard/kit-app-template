@@ -16,10 +16,10 @@ export const HomePage: React.FC = () => {
     // Listen for streaming_ready events
     const unsubscribe = websocketService.onStreamingReady((data) => {
       console.log('Streaming ready:', data);
-      
+
       // Auto-open browser tab
       window.open(data.url, '_blank', 'noopener,noreferrer');
-      
+
       // Show notification
       setStreamingNotification({
         project: data.project,

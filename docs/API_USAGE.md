@@ -510,7 +510,7 @@ curl -X POST http://localhost:5000/api/projects/run \
 }
 ```
 
-> **Note**: 
+> **Note**:
 > - Streaming apps are auto-detected via `.kit` file analysis
 > - The streaming URL is deterministic: `https://localhost:{port}`
 > - SSL certificate warning is normal (self-signed cert)

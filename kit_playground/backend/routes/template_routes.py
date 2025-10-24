@@ -114,18 +114,18 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                         # Find the generated .kit file
                         repo_root = Path(template_api.repo_root)
                         kit_file_path = repo_root / "source" / "apps" / project_name / f"{project_name}.kit"
-                        
+
                         if kit_file_path.exists():
                             # Read the .kit file
                             with open(kit_file_path, 'r') as f:
                                 kit_content = f.read()
-                            
+
                             # Check if streaming extensions are already present
                             streaming_exts = [
                                 'omni.services.streaming.webrtc',
                                 'omni.kit.streamhelper'
                             ]
-                            
+
                             needs_update = False
                             for ext in streaming_exts:
                                 if ext not in kit_content:
@@ -141,7 +141,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                                     else:
                                         # Add dependencies section if it doesn't exist
                                         kit_content += f'\n\n[dependencies]\n"{ext}" = {{}}\n'
-                            
+
                             if needs_update:
                                 # Write back the updated .kit file
                                 with open(kit_file_path, 'w') as f:
