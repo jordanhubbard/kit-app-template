@@ -96,4 +96,3 @@ export interface JobStatusEvent {
   status: JobStatus;
   timestamp: string;
 }
-

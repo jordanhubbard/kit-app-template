@@ -17,7 +17,7 @@ class WebSocketService {
     }
 
     console.log('Connecting to WebSocket:', WS_BASE_URL);
-    
+
     this.socket = io(WS_BASE_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -38,7 +38,7 @@ class WebSocketService {
     this.socket.on('connect_error', (error) => {
       console.error('WebSocket connection error:', error);
       this.reconnectAttempts++;
-      
+
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         console.error('Max reconnection attempts reached');
       }
@@ -62,7 +62,7 @@ class WebSocketService {
     }
 
     this.socket.on('job_log', handler);
-    
+
     // Return unsubscribe function
     return () => {
       this.socket?.off('job_log', handler);
@@ -76,7 +76,7 @@ class WebSocketService {
     }
 
     this.socket.on('job_progress', handler);
-    
+
     return () => {
       this.socket?.off('job_progress', handler);
     };
@@ -89,7 +89,7 @@ class WebSocketService {
     }
 
     this.socket.on('job_status', handler);
-    
+
     return () => {
       this.socket?.off('job_status', handler);
     };
@@ -107,4 +107,3 @@ export const websocketService = new WebSocketService();
 
 // Export class for testing
 export { WebSocketService };
-

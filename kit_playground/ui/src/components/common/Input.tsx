@@ -24,7 +24,7 @@ export const Input: React.FC<InputProps> = ({
       <input
         className={`
           w-full px-4 py-2 rounded-lg
-          bg-dark-bg border 
+          bg-dark-bg border
           ${error ? 'border-red-500' : 'border-gray-600 focus:border-nvidia-green'}
           text-white placeholder-gray-500
           focus:outline-none focus:ring-2 focus:ring-nvidia-green focus:ring-opacity-50
@@ -45,4 +45,3 @@ export const Input: React.FC<InputProps> = ({
 };
 
 export default Input;
-

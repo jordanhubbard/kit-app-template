@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card } from '../components/common';
+import { Card } from '../components/common';
 
 export const HomePage: React.FC = () => {
   return (
@@ -121,4 +121,3 @@ export const HomePage: React.FC = () => {
 };
 
 export default HomePage;
-

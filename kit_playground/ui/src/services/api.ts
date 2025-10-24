@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { type AxiosInstance, AxiosError } from 'axios';
 import type {
   TemplateListResponse,
   TemplateDetailResponse,
@@ -101,4 +101,3 @@ export const apiService = new APIService();
 
 // Export the class for testing
 export { APIService };
-

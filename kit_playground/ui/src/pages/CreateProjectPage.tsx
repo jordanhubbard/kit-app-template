@@ -60,7 +60,7 @@ export const CreateProjectPage: React.FC = () => {
 
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     if (typeof value === 'string') {
       const error = validateField(field, value);
       setErrors(prev => ({
@@ -72,10 +72,10 @@ export const CreateProjectPage: React.FC = () => {
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     const nameError = validateField('name', formData.name);
     if (nameError) newErrors.name = nameError;
-    
+
     const versionError = validateField('version', formData.version);
     if (versionError) newErrors.version = versionError;
 
@@ -85,7 +85,7 @@ export const CreateProjectPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm() || !template) return;
 
     try {
@@ -168,7 +168,7 @@ export const CreateProjectPage: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <h2 className="text-xl font-semibold text-white mb-4">Project Details</h2>
-          
+
           <div className="space-y-4">
             <Input
               label="Project Name"
@@ -292,4 +292,3 @@ export const CreateProjectPage: React.FC = () => {
 };
 
 export default CreateProjectPage;
-
