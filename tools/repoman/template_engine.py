@@ -1274,16 +1274,19 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             if verbose:
                 print(f"[VERBOSE] Standalone mode enabled, will be created after replay", file=sys.stderr)
 
-        # Initialize per-app dependencies if requested
+        # If --per-app-deps flag is used, add metadata to playback for repo_dispatcher
+        # repo_dispatcher will initialize per-app deps after template replay
         if per_app_deps:
-            from app_dependencies import initialize_per_app_deps
-            if template_output_path and template_output_path.exists():
-                success = initialize_per_app_deps(template_output_path)
-                if success and verbose:
-                    deps_path = template_output_path / "dependencies"
-                    print(f"[VERBOSE] Per-app dependencies initialized: {deps_path}", file=sys.stderr)
-                elif not success:
-                    print("Warning: Failed to initialize per-app dependencies", file=sys.stderr)
+            if not isinstance(playback, dict):
+                playback = {}
+            
+            playback['_per_app_deps'] = {
+                'enabled': True,
+                'template_output_path': str(template_output_path)
+            }
+            
+            if verbose:
+                print(f"[VERBOSE] Per-app dependencies will be initialized after replay", file=sys.stderr)
 
         # Save to file
         playback_file = engine.save_playback_file(playback)
