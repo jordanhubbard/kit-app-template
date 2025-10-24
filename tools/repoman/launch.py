@@ -469,10 +469,34 @@ def launch_kit(
         # Select the kit App from the apps sub-dir.
         app_name = select_kit(target_directory / "apps", config)
 
+    # Check if this app has per-app dependencies (isolated Kit SDK)
+    # If so, we'll need to set environment variables to use app-specific Kit
+    repo_root = Path(__file__).parent.parent.parent
+    app_source_path = repo_root / "source" / "apps" / app_name.replace('.kit', '')
+    app_kit_path = None
+    
+    if app_source_path.exists():
+        from app_dependencies import should_use_per_app_deps, get_app_kit_path
+        if should_use_per_app_deps(app_source_path):
+            app_kit_path = get_app_kit_path(app_source_path)
+            if app_kit_path.exists():
+                print(f"Using per-app Kit SDK from: {app_kit_path}")
+
     print(f"launching {app_name}!")
 
-    # Handle Xpra mode
+    # Handle Xpra mode and per-app Kit SDK
     env_vars = None
+    
+    # Set up environment for per-app Kit SDK if present
+    if app_kit_path and app_kit_path.exists():
+        env_vars = os.environ.copy()
+        # Point to app-specific Kit SDK
+        env_vars['CARB_APP_PATH'] = str(app_kit_path)
+        # Add app-specific Kit binaries to PATH
+        kit_bin = app_kit_path / "kit"
+        if kit_bin.exists():
+            env_vars['PATH'] = f"{kit_bin}:{env_vars.get('PATH', '')}"
+    
     if xpra:
         print(f"Xpra mode enabled - will launch on display :{xpra_display}")
 
@@ -531,7 +555,8 @@ def launch_kit(
         # Create environment with current environment variables plus DISPLAY
         # Important: We must MERGE with os.environ, not replace it, or the app
         # will lose PATH, HOME, XAUTHORITY, and other critical variables
-        env_vars = os.environ.copy()
+        if env_vars is None:
+            env_vars = os.environ.copy()
         env_vars['DISPLAY'] = f':{xpra_display}'
 
         # Ensure XAUTHORITY is set for X11 authentication

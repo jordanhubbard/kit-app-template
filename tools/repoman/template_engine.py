@@ -1168,6 +1168,7 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
     verbose = False
     quiet = False
     standalone = False
+    per_app_deps = False
 
     for arg in args:
         if arg.startswith('--config='):
@@ -1190,6 +1191,8 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             quiet = True
         elif arg == '--standalone':
             standalone = True
+        elif arg == '--per-app-deps':
+            per_app_deps = True
         elif arg.startswith('--'):
             if '=' in arg:
                 key, value = arg[2:].split('=', 1)
@@ -1271,6 +1274,17 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             if verbose:
                 print(f"[VERBOSE] Standalone mode enabled, will be created after replay", file=sys.stderr)
 
+        # Initialize per-app dependencies if requested
+        if per_app_deps:
+            from app_dependencies import initialize_per_app_deps
+            if template_output_path and template_output_path.exists():
+                success = initialize_per_app_deps(template_output_path)
+                if success and verbose:
+                    deps_path = template_output_path / "dependencies"
+                    print(f"[VERBOSE] Per-app dependencies initialized: {deps_path}", file=sys.stderr)
+                elif not success:
+                    print("Warning: Failed to initialize per-app dependencies", file=sys.stderr)
+
         # Save to file
         playback_file = engine.save_playback_file(playback)
 
@@ -1289,7 +1303,8 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
                 "name": kwargs.get('app_name', kwargs.get('name', 'unknown')),
                 "path": str(playback.get('output_path', '')) if isinstance(playback, dict) else '',
                 "standalone": standalone,
-                "standalone_path": str(standalone_path) if standalone else None
+                "standalone_path": str(standalone_path) if standalone else None,
+                "per_app_deps": per_app_deps
             }
             print(json_module.dumps(result_data, indent=2), file=sys.stderr)
         elif verbose:
@@ -1301,6 +1316,8 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             if standalone:
                 print(f"[VERBOSE] Standalone mode: enabled", file=sys.stderr)
                 print(f"[VERBOSE] Standalone path: {standalone_path}", file=sys.stderr)
+            if per_app_deps:
+                print(f"[VERBOSE] Per-app dependencies: enabled", file=sys.stderr)
         # Quiet mode and normal mode just print playback file (already done above)
 
     except Exception as e:
