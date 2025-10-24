@@ -336,7 +336,8 @@ class TestTemplateBuildAndLaunch:
                 stderr=subprocess.PIPE,
                 text=True,
                 cwd=REPO_ROOT,
-                env=env
+                env=env,
+                preexec_fn=os.setsid  # Start in new process group for proper cleanup
             )
 
             # Wait for startup (max 60 seconds)
@@ -361,22 +362,40 @@ class TestTemplateBuildAndLaunch:
             print(f"{'='*60}")
 
             try:
-                proc.terminate()
-                proc.wait(timeout=10)
-                print(f"✓ Stopped {project_name} gracefully")
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-                print(f"⚠ Killed {project_name} (did not stop gracefully)")
+                # Kill entire process group to ensure all child processes are terminated
+                import signal
+                if proc.poll() is None:  # If still running
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                        proc.wait(timeout=5)
+                        print(f"✓ Stopped {project_name} gracefully")
+                    except (subprocess.TimeoutExpired, ProcessLookupError):
+                        try:
+                            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                            proc.wait(timeout=2)
+                            print(f"⚠ Killed {project_name} (did not stop gracefully)")
+                        except:
+                            print(f"⚠ Failed to kill {project_name}, may still be running")
+            except Exception as e:
+                print(f"⚠ Error stopping process: {e}")
 
             print(f"\n{'='*60}")
             print(f"✓ COMPLETE: {template_name} passed all steps")
             print(f"{'='*60}\n")
 
         finally:
-            # Ensure process is dead
+            # Ensure cleanup even if test fails
             try:
-                proc.kill()
+                import signal
+                if 'proc' in locals() and proc.poll() is None:
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    except:
+                        pass
+                    try:
+                        proc.kill()
+                    except:
+                        pass
             except:
                 pass
 
@@ -453,7 +472,8 @@ class TestTemplateBuildAndLaunch:
                 stderr=subprocess.PIPE,
                 text=True,
                 cwd=REPO_ROOT,
-                env=env
+                env=env,
+                preexec_fn=os.setsid  # Start in new process group for proper cleanup
             )
 
             # Wait for startup
@@ -473,19 +493,38 @@ class TestTemplateBuildAndLaunch:
 
             # Step 4: Stop
             try:
-                proc.terminate()
-                proc.wait(timeout=10)
-                print(f"✓ Stopped {project_name}")
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-                print(f"⚠ Killed {project_name}")
+                # Kill entire process group to ensure all child processes are terminated
+                import signal
+                if proc.poll() is None:  # If still running
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                        proc.wait(timeout=5)
+                        print(f"✓ Stopped {project_name}")
+                    except (subprocess.TimeoutExpired, ProcessLookupError):
+                        try:
+                            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                            proc.wait(timeout=2)
+                            print(f"⚠ Killed {project_name}")
+                        except:
+                            print(f"⚠ Failed to kill {project_name}, may still be running")
+            except Exception as e:
+                print(f"⚠ Error stopping process: {e}")
 
             print(f"\n✓ COMPLETE: {template_name} passed all steps\n")
 
         finally:
+            # Ensure cleanup even if test fails
             try:
-                proc.kill()
+                import signal
+                if 'proc' in locals() and proc.poll() is None:
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    except:
+                        pass
+                    try:
+                        proc.kill()
+                    except:
+                        pass
             except:
                 pass
             cleanup_test_project(project_name)
