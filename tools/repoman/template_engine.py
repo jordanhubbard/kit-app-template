@@ -1225,46 +1225,51 @@ def handle_generate_command(engine: TemplateEngine, template_name: str, args: Li
             print("Error: License terms must be accepted to use templates.", file=sys.stderr)
         sys.exit(1)
 
-    # Note: --output-dir can be used to create standalone projects
-    # By default (when output_dir is None), templates are created in source/apps/
-
+    # Note: When --standalone is used, template is first generated in normal location,
+    # then copied to standalone directory. --output-dir specifies standalone target.
+    
     try:
+        # For standalone projects, generate template in default location first
+        # Then standalone generator will copy to --output-dir location
+        template_gen_output_dir = None if standalone else output_dir
+        
         # Generate template
-        playback = engine.generate_template(template_name, config_file, output_dir, **kwargs)
+        playback = engine.generate_template(template_name, config_file, template_gen_output_dir, **kwargs)
 
         # Get output path from playback
         if isinstance(playback, dict) and 'output_path' in playback:
             template_output_path = Path(playback['output_path'])
         else:
-            # Fallback: try to determine from app_name
+            # Fallback: determine from app_name and location
             app_name = kwargs.get('app_name', kwargs.get('name', 'unknown'))
             template_output_path = engine.repo_root / "source" / "apps" / app_name
 
-        # If --standalone flag is used, generate standalone project
+        # If --standalone flag is used, add metadata to playback for repo_dispatcher
+        # repo_dispatcher will call standalone generator after template replay
         standalone_path = None
         if standalone:
-            # Import standalone generator
-            from standalone_generator import create_standalone_project
-            
             app_name = kwargs.get('app_name', kwargs.get('name', 'unknown'))
             
             # Determine template type from template config
-            template_config = engine.get_template_config(template_name)
+            all_templates = engine.list_templates()
+            template_config = all_templates.get(template_name, {})
             template_type = template_config.get('metadata', {}).get('type', 'application')
             
-            # Create standalone project
-            standalone_path = create_standalone_project(
-                repo_root=engine.repo_root,
-                template_output_dir=template_output_path,
-                output_dir=Path(output_dir) if output_dir else None,
-                template_name=template_name,
-                app_name=app_name,
-                template_type=template_type
-            )
+            # Add standalone metadata to playback
+            if not isinstance(playback, dict):
+                playback = {}
             
-            if not quiet:
-                print(f"\n✓ Standalone project created: {standalone_path}", file=sys.stderr)
-                print(f"  To build: cd {standalone_path} && ./repo.sh build", file=sys.stderr)
+            playback['_standalone_project'] = {
+                'enabled': True,
+                'output_directory': str(output_dir) if output_dir else app_name,
+                'template_name': template_name,
+                'app_name': app_name,
+                'template_type': template_type,
+                'template_output_path': str(template_output_path)
+            }
+            
+            if verbose:
+                print(f"[VERBOSE] Standalone mode enabled, will be created after replay", file=sys.stderr)
 
         # Save to file
         playback_file = engine.save_playback_file(playback)
