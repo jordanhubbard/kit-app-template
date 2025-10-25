@@ -11,11 +11,28 @@ export default defineConfig({
     // In Vite 7, explicitly disable host checking for remote development
     allowedHosts: true,
     strictPort: false,
+    // Force browsers to not cache in dev mode
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
   },
   preview: {
     port: 3000,
     host: '0.0.0.0',
     allowedHosts: true,
     strictPort: false,
+  },
+  build: {
+    // Generate hashed filenames for cache busting in production
+    rollupOptions: {
+      output: {
+        // Use content hash for cache busting
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
   },
 })
