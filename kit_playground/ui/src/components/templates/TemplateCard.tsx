@@ -95,7 +95,8 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
     <button
       onClick={onClick}
       className={`
-        w-full rounded-lg overflow-hidden
+        w-full h-full min-h-[320px] flex flex-col
+        rounded-lg overflow-hidden
         bg-gradient-to-br ${gradient}
         border border-border-subtle
         hover:border-nvidia-green
@@ -108,7 +109,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
       aria-label={`Open ${title} template`}
     >
       {/* Thumbnail or Icon Area */}
-      <div className="relative h-32 bg-bg-card overflow-hidden">
+      <div className="relative h-48 bg-bg-card overflow-hidden flex-shrink-0">
         {thumbnail ? (
           <img
             src={thumbnail}
@@ -151,7 +152,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 flex-1 flex flex-col">
         {/* Title */}
         <h3 className="
           text-base font-semibold text-text-primary mb-2
@@ -196,7 +197,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         )}
 
         {/* Quick Action */}
-        <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
+        <div className="flex items-center justify-between pt-2 mt-auto border-t border-border-subtle">
           <span className="text-xs text-text-muted">
             Click to view details
           </span>
@@ -219,12 +220,13 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 export const TemplateCardSkeleton: React.FC = () => {
   return (
     <div className="
-      w-full rounded-lg overflow-hidden
+      w-full h-full min-h-[320px] flex flex-col
+      rounded-lg overflow-hidden
       bg-bg-card border border-border-subtle
       animate-pulse
     ">
       {/* Thumbnail skeleton */}
-      <div className="h-32 bg-bg-panel" />
+      <div className="h-48 bg-bg-panel flex-shrink-0" />
 
       {/* Content skeleton */}
       <div className="p-4 space-y-3">
