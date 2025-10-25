@@ -325,14 +325,14 @@ export const TemplateBrowser: React.FC = () => {
         )}
       </div>
 
-      {/* Phase indicator */}
+      {/* Status indicator */}
       <div className="p-3 border-t border-border-subtle bg-bg-dark">
         <div className="flex items-center gap-2 text-xs text-text-muted">
           <span className="px-2 py-0.5 rounded bg-nvidia-green/20 text-nvidia-green font-mono">
-            PHASE 2
+            v2.0
           </span>
           <span>
-            Visual cards • Real API data • Filtering & Search
+            Kit Playground • Visual Template Browser
           </span>
         </div>
       </div>

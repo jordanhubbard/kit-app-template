@@ -5,6 +5,7 @@ import { TemplateDetail } from './components/panels/TemplateDetail';
 import { ProjectConfig } from './components/panels/ProjectConfig';
 import { BuildOutput } from './components/panels/BuildOutput';
 import { CodeEditor } from './components/panels/CodeEditor';
+import { Preview } from './components/panels/Preview';
 
 /**
  * Main App Component
@@ -41,7 +42,7 @@ function App() {
         return <BuildOutput {...panelData} />;
 
       case 'preview':
-        return <PanelPlaceholder type="preview" message="Preview panel coming soon!" />;
+        return <Preview {...panelData} />;
 
       default:
         return <PanelPlaceholder type={panelType} message={`Unknown panel type: ${panelType}`} />;
