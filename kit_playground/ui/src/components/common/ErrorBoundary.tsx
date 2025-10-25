@@ -14,7 +14,7 @@ interface ErrorBoundaryState {
 
 /**
  * ErrorBoundary
- * 
+ *
  * React error boundary component to catch and display errors gracefully.
  * Prevents the entire app from crashing when a component fails.
  */
@@ -107,7 +107,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   <RefreshCw className="w-4 h-4" />
                   Try Again
                 </button>
-                
+
                 <button
                   onClick={() => window.location.reload()}
                   className="
@@ -130,4 +130,3 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return this.props.children;
   }
 }
-

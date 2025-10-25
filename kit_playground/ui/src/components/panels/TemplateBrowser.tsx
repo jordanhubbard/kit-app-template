@@ -30,7 +30,7 @@ export const TemplateBrowser: React.FC = () => {
 
   // Fetch templates from API
   const { templates, loading, error, refetch } = useTemplates();
-  
+
   // Fetch user projects
   const { projects, loading: projectsLoading, error: projectsError } = useProjects();
 

@@ -11,13 +11,13 @@ interface PreviewProps {
 
 /**
  * Preview
- * 
+ *
  * Preview panel for viewing running applications (Panel 6/7).
  * Supports three display modes:
  * - Kit App Streaming (WebRTC): iframe with streaming URL
  * - Xpra Display Server: iframe to port 10000
  * - Direct Launch: informational panel (no preview)
- * 
+ *
  * Features:
  * - Embedded iframe preview
  * - External link option
@@ -134,7 +134,7 @@ export const Preview: React.FC<PreviewProps> = ({
               >
                 <RefreshCw className="w-4 h-4" />
               </button>
-              
+
               <button
                 onClick={handleOpenExternal}
                 className="
@@ -147,11 +147,11 @@ export const Preview: React.FC<PreviewProps> = ({
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
-              
+
               <div className="w-px h-6 bg-border-subtle mx-1" />
             </>
           )}
-          
+
           <button
             onClick={handleClose}
             className="
@@ -295,4 +295,3 @@ export const Preview: React.FC<PreviewProps> = ({
     </div>
   );
 };
-
