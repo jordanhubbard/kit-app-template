@@ -2,7 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // Check if REMOTE mode is enabled (allows connections from any host)
-const isRemote = process.env.REMOTE === '1'
+// Also check if host is 0.0.0.0 (indicates remote mode from dev.sh)
+const isRemote = process.env.REMOTE === '1' || process.env.VITE_HOST === '0.0.0.0'
+
+// For development flexibility, especially in NVIDIA environments,
+// we allow all hosts by default. This can be restricted by setting
+// REMOTE=0 explicitly if needed.
+// 
+// Why 'all'? NVIDIA developers often work from various internal hosts
+// (*.hrd.nvidia.com, *.nvidia.com, VPN IPs, etc.) and maintaining a
+// whitelist is impractical and creates friction.
+const allowedHosts = 'all'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -10,23 +20,11 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    // REMOTE=1: Allow all hosts
-    // REMOTE=0: Allow only specific hosts
-    allowedHosts: isRemote ? 'all' : [
-      'localhost',
-      '.nvidia.com',
-      '.hrd.nvidia.com',
-      'jordanh-dev.hrd.nvidia.com',
-    ],
+    allowedHosts: allowedHosts,
   },
   preview: {
     port: 3000,
     host: true,
-    allowedHosts: isRemote ? 'all' : [
-      'localhost',
-      '.nvidia.com',
-      '.hrd.nvidia.com',
-      'jordanh-dev.hrd.nvidia.com',
-    ],
+    allowedHosts: allowedHosts,
   },
 })
