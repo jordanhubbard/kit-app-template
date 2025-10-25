@@ -198,10 +198,9 @@ make playground REMOTE=1
 
 ## Summary
 
-✅ **Development** = No build, HMR, no cache  
-✅ **Production** = Build to dist/, hashed files, cache-safe  
-✅ **`make clean`** = Cleans everything  
-✅ **Cache busting** = Automatic in both modes  
+✅ **Development** = No build, HMR, no cache
+✅ **Production** = Build to dist/, hashed files, cache-safe
+✅ **`make clean`** = Cleans everything
+✅ **Cache busting** = Automatic in both modes
 
 **You should never need to manually clear browser cache in dev mode!**
-

@@ -2,13 +2,13 @@
 
 **Version**: 2.0
 **Last Updated**: October 24, 2025
-**API Documentation**: http://localhost:5000/api/docs/ui (Swagger UI)
+**API Documentation**: http://localhost:5000/api/docs (Swagger UI)
 
 ## Overview
 
 The Kit App Template REST API provides programmatic access to template management, job execution, and project operations. This guide covers practical usage with `curl` examples.
 
-> **📚 Complete API Reference**: For detailed API specifications, schemas, and interactive testing, see the Swagger UI at `http://localhost:5000/api/docs/ui` when the server is running.
+> **📚 Complete API Reference**: For detailed API specifications, schemas, and interactive testing, see the Swagger UI at `http://localhost:5000/api/docs` when the server is running.
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ cd kit-app-template
 ./playground.sh
 
 # API available at: http://localhost:5000
-# Swagger UI at: http://localhost:5000/api/docs/ui
+# Swagger UI at: http://localhost:5000/api/docs
 ```
 
 ### Test the API
@@ -47,7 +47,7 @@ cd kit-app-template
 curl http://localhost:5000/api/templates/list
 
 # View API documentation
-open http://localhost:5000/api/docs/ui
+open http://localhost:5000/api/docs
 ```
 
 ### Base URL
@@ -821,17 +821,17 @@ echo "✓ Cleanup complete"
 | `/api/projects/launch` | POST | Launch application |
 | `/api/projects/stop` | POST | Stop application |
 | `/api/docs` | GET | OpenAPI spec (JSON) |
-| `/api/docs/ui` | GET | Swagger UI |
+| `/api/docs` | GET | Swagger UI |
 
 ---
 
 ## Additional Resources
 
-- **Swagger UI**: http://localhost:5000/api/docs/ui (interactive API documentation)
+- **Swagger UI**: http://localhost:5000/api/docs (interactive API documentation)
 - **OpenAPI Spec**: http://localhost:5000/api/docs (JSON)
 - **CLI Documentation**: [docs/README.md](README.md)
 - **Architecture**: [docs/ARCHITECTURE.md](ARCHITECTURE.md)
 
 ---
 
-**For complete, up-to-date API specifications, always refer to the Swagger UI at `/api/docs/ui`.**
+**For complete, up-to-date API specifications, always refer to the Swagger UI at `/api/docs`.**

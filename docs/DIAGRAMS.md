@@ -357,7 +357,7 @@ graph LR
 
     subgraph "Documentation"
         D1[GET /api/docs]
-        D2[GET /api/docs/ui]
+        D2[GET /api/docs]
     end
 
     subgraph "WebSocket Events"

@@ -436,7 +436,7 @@ kit_playground/backend/
 │   │
 │   └── docs_routes.py             # API documentation
 │       ├── GET /api/docs          # OpenAPI spec (JSON)
-│       └── GET /api/docs/ui       # Swagger UI
+│       └── GET /api/docs       # Swagger UI
 │
 ├── openapi_spec.py                # OpenAPI 3.0 specification
 └── web_server.py                  # Enhanced with new routes
@@ -517,7 +517,7 @@ Events:
 
 **Access**:
 - JSON: \`http://localhost:5000/api/docs\`
-- UI: \`http://localhost:5000/api/docs/ui\`
+- UI: \`http://localhost:5000/api/docs\`
 
 ### Results
 
@@ -1181,7 +1181,7 @@ python3 web_server.py
 curl http://localhost:5000/api/templates/list
 
 # View Swagger docs
-open http://localhost:5000/api/docs/ui
+open http://localhost:5000/api/docs
 \`\`\`
 
 ### Production Considerations

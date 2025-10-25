@@ -618,7 +618,7 @@ cd kit_playground/backend
 python3 web_server.py
 
 # API available at http://localhost:5000
-# Swagger UI at http://localhost:5000/api/docs/ui
+# Swagger UI at http://localhost:5000/api/docs
 
 # Use with curl (see docs/API_USAGE.md)
 curl http://localhost:5000/api/templates/list

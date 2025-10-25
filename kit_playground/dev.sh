@@ -77,7 +77,7 @@ echo ""
 echo -e "${BLUE}Services:${NC}"
 echo -e "  ${GREEN}✓${NC} Backend API:  ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}${NC}"
 echo -e "  ${GREEN}✓${NC} Frontend UI:  ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC}"
-echo -e "  ${GREEN}✓${NC} API Docs:     ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}/api/docs/ui${NC}"
+echo -e "  ${GREEN}✓${NC} API Docs:     ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}/api/docs${NC}"
 if [ "$REMOTE" = "1" ]; then
     echo -e "  ${YELLOW}⚠${NC} Remote mode: Listening on 0.0.0.0 (all interfaces)"
 fi
