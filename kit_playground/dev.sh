@@ -42,10 +42,12 @@ FRONTEND_PORT=3000
 
 # Determine host based on REMOTE environment variable
 if [ "$REMOTE" = "1" ]; then
+    export REMOTE=1  # Ensure REMOTE is exported for child processes (Vite)
     BACKEND_HOST="0.0.0.0"
     FRONTEND_HOST="0.0.0.0"
     DISPLAY_HOST="0.0.0.0"
 else
+    export REMOTE=0  # Explicitly set to 0 for local mode
     BACKEND_HOST="localhost"
     FRONTEND_HOST="localhost"
     DISPLAY_HOST="localhost"
