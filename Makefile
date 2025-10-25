@@ -439,6 +439,7 @@ playground-build:
 playground-clean:
 	@echo "$(BLUE)Cleaning Kit Playground artifacts...$(NC)"
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules/.vite
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
 	@rm -f $(KIT_PLAYGROUND_DIR)/ui/.env
 	@echo "$(GREEN)✓ Playground cleanup complete$(NC)"
@@ -512,6 +513,7 @@ clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules/.vite
 	@rm -rf $(ROOT_DIR)/_compiler
 	@rm -rf $(ROOT_DIR)/_repo
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
