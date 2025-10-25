@@ -7,9 +7,22 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    // Allow access from NVIDIA dev hosts
+    allowedHosts: [
+      'localhost',
+      '.nvidia.com',
+      '.hrd.nvidia.com',
+      'jordanh-dev.hrd.nvidia.com',
+    ],
   },
   preview: {
     port: 3000,
     host: true,
+    allowedHosts: [
+      'localhost',
+      '.nvidia.com',
+      '.hrd.nvidia.com',
+      'jordanh-dev.hrd.nvidia.com',
+    ],
   },
 })
