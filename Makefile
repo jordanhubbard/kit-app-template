@@ -48,6 +48,12 @@ MIN_NPM_VERSION := 7.0.0
 ROOT_DIR := $(shell pwd)
 KIT_PLAYGROUND_DIR := $(ROOT_DIR)/kit_playground
 TOOLS_DIR := $(ROOT_DIR)/tools
+
+# Playground configuration
+# REMOTE=1 is the PRIMARY mode (cloud/dev servers)
+# REMOTE=0 for local development only
+REMOTE ?= 1
+PRODUCTION ?= 0
 BUILD_DIR := $(ROOT_DIR)/_build
 
 # Default target
