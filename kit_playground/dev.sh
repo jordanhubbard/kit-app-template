@@ -45,11 +45,14 @@ if [ "$REMOTE" = "1" ]; then
     export REMOTE=1  # Ensure REMOTE is exported for child processes (Vite)
     BACKEND_HOST="0.0.0.0"  # Bind to all interfaces
     FRONTEND_HOST="0.0.0.0"  # Bind to all interfaces
-    # For remote mode, use the actual hostname for client connections
-    ACTUAL_HOSTNAME=$(hostname -f 2>/dev/null || hostname)
-    DISPLAY_HOST="${ACTUAL_HOSTNAME}"
-    # For API URLs, use the actual hostname so browser can connect
-    API_HOST="${ACTUAL_HOSTNAME}"
+    
+    # For remote mode, use the actual IP address for client connections
+    # Try to get the IP address used for external connections
+    ACTUAL_IP=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K[0-9.]+' || hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+    
+    DISPLAY_HOST="${ACTUAL_IP}"
+    # For API URLs, use the actual IP so browser can connect remotely
+    API_HOST="${ACTUAL_IP}"
 else
     export REMOTE=0  # Explicitly set to 0 for local mode
     BACKEND_HOST="localhost"
