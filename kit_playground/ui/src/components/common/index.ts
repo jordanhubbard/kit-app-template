@@ -12,3 +12,5 @@ export type { LoadingSpinnerProps } from './LoadingSpinner';
 
 export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps } from './ProgressBar';
+
+export { ErrorBoundary } from './ErrorBoundary';

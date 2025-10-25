@@ -43,14 +43,19 @@ FRONTEND_PORT=3000
 # Determine host based on REMOTE environment variable
 if [ "$REMOTE" = "1" ]; then
     export REMOTE=1  # Ensure REMOTE is exported for child processes (Vite)
-    BACKEND_HOST="0.0.0.0"
-    FRONTEND_HOST="0.0.0.0"
-    DISPLAY_HOST="0.0.0.0"
+    BACKEND_HOST="0.0.0.0"  # Bind to all interfaces
+    FRONTEND_HOST="0.0.0.0"  # Bind to all interfaces
+    # For remote mode, use the actual hostname for client connections
+    ACTUAL_HOSTNAME=$(hostname -f 2>/dev/null || hostname)
+    DISPLAY_HOST="${ACTUAL_HOSTNAME}"
+    # For API URLs, use the actual hostname so browser can connect
+    API_HOST="${ACTUAL_HOSTNAME}"
 else
     export REMOTE=0  # Explicitly set to 0 for local mode
     BACKEND_HOST="localhost"
     FRONTEND_HOST="localhost"
     DISPLAY_HOST="localhost"
+    API_HOST="localhost"
 fi
 
 # Determine mode
@@ -120,8 +125,9 @@ echo -e "${BLUE}Starting frontend UI on port ${FRONTEND_PORT}...${NC}"
 cd "$UI_DIR"
 
 # Set environment variables for Vite
-export VITE_API_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT}/api"
-export VITE_WS_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT}"
+# Use API_HOST (actual hostname) for client connections, not BACKEND_HOST (bind address)
+export VITE_API_BASE_URL="http://${API_HOST}:${BACKEND_PORT}/api"
+export VITE_WS_BASE_URL="http://${API_HOST}:${BACKEND_PORT}"
 
 if [ "$PRODUCTION" = "1" ] || [ "$PRODUCTION" = "yes" ] || [ "$PRODUCTION" = "true" ]; then
     # Production mode: build and preview

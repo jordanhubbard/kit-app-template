@@ -1,53 +1,34 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
 
+/**
+ * Header
+ * 
+ * Application header with branding and title.
+ * Simplified for panel-based UI (no routing needed).
+ */
 export const Header: React.FC = () => {
-  const location = useLocation();
-
-  const navigation = [
-    { name: 'Home', path: '/' },
-    { name: 'Templates', path: '/templates' },
-    { name: 'Jobs', path: '/jobs' },
-  ];
-
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-
   return (
-    <header className="bg-dark-card border-b border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo and Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-nvidia-green rounded flex items-center justify-center font-bold text-white text-lg">
-              K
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Kit App Template</h1>
-              <p className="text-xs text-gray-400">NVIDIA Omniverse</p>
-            </div>
+    <header className="bg-bg-dark border-b border-border-subtle">
+      <div className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          {/* Logo */}
+          <div className="w-10 h-10 bg-nvidia-green rounded flex items-center justify-center font-bold text-white text-xl">
+            K
+          </div>
+          
+          {/* Title */}
+          <div>
+            <h1 className="text-xl font-bold text-text-primary">Kit Playground</h1>
+            <p className="text-xs text-text-muted">NVIDIA Omniverse • Template Development Environment</p>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex gap-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`
-                  px-4 py-2 rounded-lg font-medium transition-all duration-200
-                  ${
-                    isActive(item.path)
-                      ? 'bg-nvidia-green text-white'
-                      : 'text-gray-300 hover:bg-dark-hover hover:text-white'
-                  }
-                `}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Version Badge */}
+          <div className="px-3 py-1 rounded bg-nvidia-green/10 border border-nvidia-green/30">
+            <span className="text-xs font-mono text-nvidia-green">v2.0</span>
+          </div>
         </div>
       </div>
     </header>

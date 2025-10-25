@@ -1,21 +1,64 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { MainLayout } from './components/layout';
-import { HomePage, TemplatesPage, CreateProjectPage, JobsPage } from './pages';
+import { Header } from './components/layout';
+import { PanelContainer, PanelPlaceholder } from './components/layout';
+import { TemplateBrowser } from './components/panels/TemplateBrowser';
+import { TemplateDetail } from './components/panels/TemplateDetail';
+import { ProjectConfig } from './components/panels/ProjectConfig';
+import { BuildOutput } from './components/panels/BuildOutput';
+import { CodeEditor } from './components/panels/CodeEditor';
+import { Preview } from './components/panels/Preview';
 
+/**
+ * Main App Component
+ *
+ * Uses a panel-based layout system instead of traditional routing.
+ * Panels progressively reveal as the user interacts with the application.
+ */
 function App() {
+  /**
+   * Render the appropriate component for each panel type
+   */
+  const renderPanel = (_panelId: string, panelType: string, panelData: any) => {
+    switch (panelType) {
+      case 'template-browser':
+        return <TemplateBrowser />;
+
+      case 'template-detail':
+        return panelData?.template
+          ? <TemplateDetail template={panelData.template} />
+          : <PanelPlaceholder type="template-detail" message="No template selected" />;
+
+      case 'project-detail':
+        return <PanelPlaceholder type="project-detail" message="Project detail view coming soon!" />;
+
+      case 'project-config':
+        return panelData?.template
+          ? <ProjectConfig template={panelData.template} />
+          : <PanelPlaceholder type="project-config" message="No template selected" />;
+
+      case 'code-editor':
+        return <CodeEditor {...panelData} />;
+
+      case 'build-output':
+        return <BuildOutput {...panelData} />;
+
+      case 'preview':
+        return <Preview {...panelData} />;
+
+      default:
+        return <PanelPlaceholder type={panelType} message={`Unknown panel type: ${panelType}`} />;
+    }
+  };
+
   return (
-    <Router>
-      <MainLayout>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/templates" element={<TemplatesPage />} />
-          <Route path="/templates/create" element={<CreateProjectPage />} />
-          <Route path="/templates/create/:templateName" element={<CreateProjectPage />} />
-          <Route path="/jobs" element={<JobsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </MainLayout>
-    </Router>
+    <div className="app-container flex flex-col w-screen h-screen bg-bg-dark overflow-hidden">
+      {/* Header */}
+      <Header />
+
+      {/* Panel Container */}
+      <div className="flex-1 overflow-hidden">
+        <PanelContainer renderPanel={renderPanel} />
+      </div>
+    </div>
   );
 }
 
