@@ -9,7 +9,7 @@ type SortOption = 'alphabetical' | 'recent' | 'popular';
 
 /**
  * TemplateBrowser
- * 
+ *
  * The main template browsing interface (Panel 1 - Always visible).
  * Features:
  * - NVIDIA NIM-style visual card layout
@@ -25,7 +25,7 @@ export const TemplateBrowser: React.FC = () => {
   const [activeType, setActiveType] = useState<TemplateType>('all');
   const [sortBy, setSortBy] = useState<SortOption>('alphabetical');
   const { openPanel } = usePanelStore();
-  
+
   // Fetch templates from API
   const { templates, loading, error, refetch } = useTemplates();
 
@@ -48,7 +48,7 @@ export const TemplateBrowser: React.FC = () => {
           t.description || '',
           ...(t.tags || [])
         ].join(' ').toLowerCase();
-        
+
         return searchableText.includes(query);
       });
     }
@@ -161,7 +161,7 @@ export const TemplateBrowser: React.FC = () => {
                   </button>
                 ))}
               </div>
-              
+
               {/* Sort Options */}
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-xs text-text-muted">Sort by:</span>
@@ -242,7 +242,7 @@ export const TemplateBrowser: React.FC = () => {
                       ))}
                     </div>
                   )}
-                  
+
                   {/* Results count */}
                   <div className="mt-4 text-center text-xs text-text-muted">
                     Showing {filteredTemplates.length} of {templates.length} templates

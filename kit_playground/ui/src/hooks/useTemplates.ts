@@ -26,7 +26,7 @@ interface UseTemplatesResult {
 
 /**
  * useTemplates
- * 
+ *
  * Custom hook to fetch templates from the API.
  * Handles loading states, errors, and data transformation.
  */
@@ -39,9 +39,9 @@ export const useTemplates = (): UseTemplatesResult => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await apiService.listTemplates();
-      
+
       // Transform API response to TemplateModel interface
       const transformedTemplates = Object.values(response.templates).map((t): TemplateModel => ({
         id: t.name, // Use name as ID
@@ -54,7 +54,7 @@ export const useTemplates = (): UseTemplatesResult => {
         _original: t,
         // usageCount and lastUsed would come from backend tracking
       }));
-      
+
       setTemplates(transformedTemplates);
     } catch (err) {
       console.error('Failed to fetch templates:', err);
@@ -94,7 +94,7 @@ function mapTemplateType(name: string): TemplateModel['type'] {
  */
 function extractTags(name: string, description?: string): string[] {
   const tags: string[] = [];
-  
+
   // Extract from name
   if (name.includes('usd')) tags.push('usd');
   if (name.includes('editor')) tags.push('editor');
@@ -104,7 +104,7 @@ function extractTags(name: string, description?: string): string[] {
   if (name.includes('service')) tags.push('service');
   if (name.includes('python')) tags.push('python');
   if (name.includes('cpp') || name.includes('c++')) tags.push('c++');
-  
+
   // Extract from description (if available)
   if (description) {
     const lowerDesc = description.toLowerCase();
@@ -113,7 +113,7 @@ function extractTags(name: string, description?: string): string[] {
     if (lowerDesc.includes('streaming')) tags.push('streaming');
     if (lowerDesc.includes('microservice')) tags.push('microservice');
   }
-  
+
   // Remove duplicates
   return [...new Set(tags)];
 }
@@ -131,4 +131,3 @@ function getIconForTemplate(name: string): string {
   if (name.includes('cpp') || name.includes('c++')) return '⚙️';
   return '📦';
 }
-

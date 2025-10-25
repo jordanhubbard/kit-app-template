@@ -9,11 +9,11 @@ interface TemplateDetailProps {
 
 /**
  * TemplateDetail
- * 
+ *
  * Enhanced template detail view (Panel 2).
  * Shows comprehensive information about a template and allows
  * quick project creation.
- * 
+ *
  * Features:
  * - Large preview image
  * - Detailed description
@@ -88,7 +88,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
                   </div>
                 </div>
               )}
-              
+
               {/* Type Badge (Large) */}
               <div className="absolute top-4 right-4">
                 <div className={`
@@ -261,7 +261,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
               <Sparkles className="w-5 h-5" />
             Create Application
           </button>
-          
+
           <button
             onClick={() => {
               // Copy template name to clipboard
@@ -287,4 +287,3 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
     </div>
   );
 };
-

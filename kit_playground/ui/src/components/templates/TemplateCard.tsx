@@ -65,7 +65,7 @@ const getTypeColor = (type: TemplateCardProps['type']): string => {
 
 /**
  * TemplateCard
- * 
+ *
  * NVIDIA NIM-style visual card for template browsing.
  * Features:
  * - Gradient background per template type
@@ -122,7 +122,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             </div>
           </div>
         )}
-        
+
         {/* Type Badge */}
         <div className="absolute top-2 right-2">
           <div className={`
@@ -213,7 +213,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
 /**
  * TemplateCardSkeleton
- * 
+ *
  * Loading skeleton for TemplateCard during data fetch.
  */
 export const TemplateCardSkeleton: React.FC = () => {
@@ -225,18 +225,18 @@ export const TemplateCardSkeleton: React.FC = () => {
     ">
       {/* Thumbnail skeleton */}
       <div className="h-32 bg-bg-panel" />
-      
+
       {/* Content skeleton */}
       <div className="p-4 space-y-3">
         {/* Title */}
         <div className="h-5 bg-bg-panel rounded w-3/4" />
-        
+
         {/* Description */}
         <div className="space-y-2">
           <div className="h-4 bg-bg-panel rounded w-full" />
           <div className="h-4 bg-bg-panel rounded w-2/3" />
         </div>
-        
+
         {/* Tags */}
         <div className="flex gap-1">
           <div className="h-5 bg-bg-panel rounded w-16" />
@@ -247,4 +247,3 @@ export const TemplateCardSkeleton: React.FC = () => {
     </div>
   );
 };
-

@@ -2,10 +2,11 @@ import { Header } from './components/layout';
 import { PanelContainer, PanelPlaceholder } from './components/layout';
 import { TemplateBrowser } from './components/panels/TemplateBrowser';
 import { TemplateDetail } from './components/panels/TemplateDetail';
+import { ProjectConfig } from './components/panels/ProjectConfig';
 
 /**
  * Main App Component
- * 
+ *
  * Uses a panel-based layout system instead of traditional routing.
  * Panels progressively reveal as the user interacts with the application.
  */
@@ -17,17 +18,19 @@ function App() {
     switch (panelType) {
       case 'template-browser':
         return <TemplateBrowser />;
-      
+
       case 'template-detail':
         return panelData?.template
           ? <TemplateDetail template={panelData.template} />
           : <PanelPlaceholder type="template-detail" message="No template selected" />;
-      
+
       case 'project-detail':
         return <PanelPlaceholder type="project-detail" message="Project detail view coming soon!" />;
 
       case 'project-config':
-        return <PanelPlaceholder type="project-config" message="Project configuration coming soon!" />;
+        return panelData?.template
+          ? <ProjectConfig template={panelData.template} />
+          : <PanelPlaceholder type="project-config" message="No template selected" />;
 
       case 'code-editor':
         return <PanelPlaceholder type="code-editor" message="Code editor coming soon!" />;
