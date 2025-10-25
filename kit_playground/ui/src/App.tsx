@@ -1,26 +1,39 @@
 import { Header } from './components/layout';
 import { PanelContainer, PanelPlaceholder } from './components/layout';
-import { TemplateBrowser } from './components/panels/TemplateBrowser';
+import { TemplateSidebar } from './components/panels/TemplateSidebar';
+import { TemplateGrid } from './components/panels/TemplateGrid';
 import { TemplateDetail } from './components/panels/TemplateDetail';
 import { ProjectConfig } from './components/panels/ProjectConfig';
 import { BuildOutput } from './components/panels/BuildOutput';
 import { CodeEditor } from './components/panels/CodeEditor';
 import { Preview } from './components/panels/Preview';
+import { useTemplates } from './hooks/useTemplates';
 
 /**
  * Main App Component
  *
- * Uses a panel-based layout system instead of traditional routing.
- * Panels progressively reveal as the user interacts with the application.
+ * Uses a panel-based layout system with:
+ * - Compact sidebar (left) for navigation
+ * - Main content area (center/right) for templates grid and details
+ * - Progressive disclosure of additional panels as needed
  */
 function App() {
+  // Fetch templates for the grid
+  const { templates } = useTemplates();
+
   /**
    * Render the appropriate component for each panel type
    */
   const renderPanel = (_panelId: string, panelType: string, panelData: any) => {
     switch (panelType) {
-      case 'template-browser':
-        return <TemplateBrowser />;
+      case 'template-sidebar':
+        return <TemplateSidebar />;
+
+      case 'template-grid':
+        // Use data if provided, otherwise show all templates
+        const gridTemplates = panelData?.templates || templates;
+        const filterType = panelData?.filterType || 'all';
+        return <TemplateGrid templates={gridTemplates} filterType={filterType} />;
 
       case 'template-detail':
         return panelData?.template

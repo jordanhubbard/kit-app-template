@@ -5,7 +5,8 @@ import { create } from 'zustand';
  * Each panel type corresponds to a specific view/functionality
  */
 export type PanelType =
-  | 'template-browser'      // Always visible - browse templates
+  | 'template-sidebar'      // Always visible - compact sidebar navigation
+  | 'template-grid'         // Main content - 2D grid of templates
   | 'template-detail'       // Show template details and create form
   | 'project-detail'        // Show project details and actions
   | 'project-config'        // Configure/create project
@@ -52,13 +53,20 @@ interface PanelStoreState {
  * Default panel configurations
  */
 const defaultPanelConfig: Record<PanelType, Partial<PanelState>> = {
-  'template-browser': {
+  'template-sidebar': {
     title: 'Templates',
-    width: 280,
-    minWidth: 240,
-    maxWidth: 400,
+    width: 260,
+    minWidth: 200,
+    maxWidth: 350,
     canClose: false,
     canResize: true,
+  },
+  'template-grid': {
+    title: 'Templates',
+    width: 0, // Takes remaining space
+    minWidth: 600,
+    canClose: false,
+    canResize: false,
   },
   'template-detail': {
     title: 'Template Details',
@@ -122,16 +130,24 @@ const generatePanelId = (type: PanelType): string => {
  */
 export const usePanelStore = create<PanelStoreState>((set, get) => ({
   panels: [
-    // Template browser is always visible by default
+    // Template sidebar is always visible on the left
     {
-      id: 'panel-template-browser-0',
-      type: 'template-browser',
+      id: 'panel-template-sidebar-0',
+      type: 'template-sidebar',
       isVisible: true,
       data: {},
-      ...defaultPanelConfig['template-browser'],
+      ...defaultPanelConfig['template-sidebar'],
+    } as PanelState,
+    // Template grid is the main content area
+    {
+      id: 'panel-template-grid-0',
+      type: 'template-grid',
+      isVisible: true,
+      data: {},
+      ...defaultPanelConfig['template-grid'],
     } as PanelState,
   ],
-  activePanel: 'panel-template-browser-0',
+  activePanel: 'panel-template-grid-0',
 
   openPanel: (type, data = {}, options = {}) => {
     const id = generatePanelId(type);
