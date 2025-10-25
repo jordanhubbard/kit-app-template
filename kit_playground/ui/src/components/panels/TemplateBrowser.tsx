@@ -2,7 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { Search, Plus, FolderOpen, AlertCircle, RefreshCw } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { useTemplates, type TemplateModel } from '../../hooks/useTemplates';
+import { useProjects } from '../../hooks/useProjects';
 import { TemplateCard, TemplateCardSkeleton } from '../templates/TemplateCard';
+import { ProjectCard } from '../projects/ProjectCard';
 
 type TemplateType = 'all' | 'application' | 'extension' | 'microservice';
 type SortOption = 'alphabetical' | 'recent' | 'popular';
@@ -28,6 +30,9 @@ export const TemplateBrowser: React.FC = () => {
 
   // Fetch templates from API
   const { templates, loading, error, refetch } = useTemplates();
+  
+  // Fetch user projects
+  const { projects, loading: projectsLoading, error: projectsError } = useProjects();
 
   // Filter and sort templates
   const filteredTemplates = useMemo(() => {
@@ -252,26 +257,70 @@ export const TemplateBrowser: React.FC = () => {
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <FolderOpen className="w-16 h-16 text-text-muted mb-4" />
-            <h3 className="text-lg font-semibold text-text-primary mb-2">
-              No Projects Yet
-            </h3>
-            <p className="text-text-secondary text-sm mb-6">
-              Create your first project from a template to get started.
-            </p>
-            <button
-              onClick={() => setActiveTab('templates')}
-              className="
-                flex items-center gap-2 px-4 py-2 rounded
-                bg-nvidia-green hover:bg-nvidia-green-dark
-                text-white font-medium text-sm
-                transition-colors
-              "
-            >
-              <Plus className="w-4 h-4" />
-              Browse Templates
-            </button>
+          <div className="p-4">
+            {/* Loading State */}
+            {projectsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-nvidia-green border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-text-secondary">Loading projects...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Error State */}
+            {projectsError && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertCircle className="w-12 h-12 text-status-error mb-4" />
+                <h3 className="text-lg font-semibold text-text-primary mb-2">
+                  Failed to Load Projects
+                </h3>
+                <p className="text-text-secondary text-sm mb-4">
+                  {projectsError}
+                </p>
+              </div>
+            )}
+
+            {/* Projects List */}
+            {!projectsLoading && !projectsError && projects.length > 0 && (
+              <div className="space-y-4">
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onBuild={(proj) => console.log('Build:', proj)}
+                    onLaunch={(proj) => console.log('Launch:', proj)}
+                    onEdit={(proj) => console.log('Edit:', proj)}
+                    onDelete={(proj) => console.log('Delete:', proj)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!projectsLoading && !projectsError && projects.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                <FolderOpen className="w-16 h-16 text-text-muted mb-4" />
+                <h3 className="text-lg font-semibold text-text-primary mb-2">
+                  No Projects Yet
+                </h3>
+                <p className="text-text-secondary text-sm mb-6">
+                  Create your first project from a template to get started.
+                </p>
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className="
+                    flex items-center gap-2 px-4 py-2 rounded
+                    bg-nvidia-green hover:bg-nvidia-green-dark
+                    text-white font-medium text-sm
+                    transition-colors
+                  "
+                >
+                  <Plus className="w-4 h-4" />
+                  Browse Templates
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
