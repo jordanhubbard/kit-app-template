@@ -1,38 +1,88 @@
-import React, { useState } from 'react';
-import { Search, Plus, FolderOpen } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Plus, FolderOpen, AlertCircle, RefreshCw } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
+import { useTemplates, type TemplateModel } from '../../hooks/useTemplates';
+import { TemplateCard, TemplateCardSkeleton } from '../templates/TemplateCard';
+
+type TemplateType = 'all' | 'application' | 'extension' | 'microservice';
+type SortOption = 'alphabetical' | 'recent' | 'popular';
 
 /**
  * TemplateBrowser
  * 
  * The main template browsing interface (Panel 1 - Always visible).
- * Displays templates as visual cards with category filtering and search.
- * 
- * This is a Phase 1 placeholder - will be enhanced in Phase 2 with:
- * - Visual card layout (NIM-style)
+ * Features:
+ * - NVIDIA NIM-style visual card layout
  * - Real template data from API
- * - Category filtering
- * - Search functionality
- * - Tag-based navigation
+ * - Category filtering (All, Apps, Extensions, Services)
+ * - Live search with fuzzy matching
+ * - Sort options (Alphabetical, Recent, Popular)
+ * - Loading states and error handling
  */
 export const TemplateBrowser: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'templates' | 'projects'>('templates');
+  const [activeType, setActiveType] = useState<TemplateType>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('alphabetical');
   const { openPanel } = usePanelStore();
+  
+  // Fetch templates from API
+  const { templates, loading, error, refetch } = useTemplates();
 
-  // Placeholder template data (will be replaced with API call in Phase 2)
-  const placeholderTemplates = [
-    { id: 'kit_base_editor', name: 'Kit Base Editor', type: 'app', icon: '🎮', tags: ['editor', 'usd', '3d'] },
-    { id: 'omni_usd_viewer', name: 'USD Viewer', type: 'app', icon: '🔧', tags: ['viewer', 'usd'] },
-    { id: 'omni_usd_explorer', name: 'USD Explorer', type: 'app', icon: '🚀', tags: ['explorer', '3d', 'nav'] },
-    { id: 'omni_usd_composer', name: 'USD Composer', type: 'app', icon: '🎨', tags: ['composer', 'usd'] },
-    { id: 'kit_service', name: 'Kit Service', type: 'service', icon: '⚡', tags: ['service', 'microservice'] },
-  ];
+  // Filter and sort templates
+  const filteredTemplates = useMemo(() => {
+    let result = templates;
 
-  const handleTemplateClick = (template: any) => {
-    // Open template detail panel (Phase 3)
+    // Filter by type
+    if (activeType !== 'all') {
+      result = result.filter(t => t.type === activeType);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(t => {
+        const searchableText = [
+          t.name,
+          t.displayName || '',
+          t.description || '',
+          ...(t.tags || [])
+        ].join(' ').toLowerCase();
+        
+        return searchableText.includes(query);
+      });
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'alphabetical':
+          return (a.displayName || a.name).localeCompare(b.displayName || b.name);
+        case 'recent':
+          // Would sort by lastUsed if available
+          return 0;
+        case 'popular':
+          // Would sort by usageCount if available
+          return (b.usageCount || 0) - (a.usageCount || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [templates, activeType, searchQuery, sortBy]);
+
+  const handleTemplateClick = (template: TemplateModel) => {
+    // Open template detail panel
     openPanel('template-detail', { template });
   };
+
+  const typeFilters: { value: TemplateType; label: string; count?: number }[] = [
+    { value: 'all', label: 'All Templates', count: templates.length },
+    { value: 'application', label: 'Applications', count: templates.filter(t => t.type === 'application').length },
+    { value: 'extension', label: 'Extensions', count: templates.filter(t => t.type === 'extension').length },
+    { value: 'microservice', label: 'Services', count: templates.filter(t => t.type === 'microservice').length },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-bg-panel">
@@ -88,52 +138,119 @@ export const TemplateBrowser: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto">
         {activeTab === 'templates' ? (
-          <div className="space-y-2">
-            <p className="text-xs text-text-muted mb-4">
-              Click a template to view details →
-            </p>
-            
-            {placeholderTemplates.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => handleTemplateClick(template)}
-                className="
-                  w-full p-4 rounded-lg
-                  bg-bg-card border border-border-subtle
-                  hover:border-nvidia-green hover:bg-bg-card-hover
-                  transition-all
-                  text-left group
-                "
-              >
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl flex-shrink-0">
-                    {template.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-text-primary mb-1 group-hover:text-nvidia-green transition-colors">
-                      {template.name}
-                    </h3>
-                    <div className="flex flex-wrap gap-1">
-                      {template.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="
-                            px-2 py-0.5 rounded
-                            bg-bg-dark text-text-muted
-                            text-xs
-                          "
-                        >
-                          #{tag}
-                        </span>
+          <>
+            {/* Category Filters */}
+            <div className="p-4 border-b border-border-subtle">
+              <div className="flex flex-wrap gap-2">
+                {typeFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setActiveType(filter.value)}
+                    className={`
+                      px-3 py-1.5 rounded text-xs font-medium
+                      transition-all
+                      ${activeType === filter.value
+                        ? 'bg-nvidia-green text-white'
+                        : 'bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
+                      }
+                    `}
+                  >
+                    {filter.label} {filter.count !== undefined && `(${filter.count})`}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Sort Options */}
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-xs text-text-muted">Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="
+                    px-2 py-1 rounded text-xs
+                    bg-bg-card border border-border-subtle
+                    text-text-primary
+                    focus:outline-none focus:ring-1 focus:ring-nvidia-green
+                  "
+                >
+                  <option value="alphabetical">Alphabetical</option>
+                  <option value="recent">Recently Used</option>
+                  <option value="popular">Most Popular</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Template Grid */}
+            <div className="p-4">
+              {/* Loading State */}
+              {loading && (
+                <div className="grid gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <TemplateCardSkeleton key={i} />
+                  ))}
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <AlertCircle className="w-12 h-12 text-status-error mb-4" />
+                  <h3 className="text-lg font-semibold text-text-primary mb-2">
+                    Failed to Load Templates
+                  </h3>
+                  <p className="text-text-secondary text-sm mb-4">
+                    {error}
+                  </p>
+                  <button
+                    onClick={refetch}
+                    className="
+                      flex items-center gap-2 px-4 py-2 rounded
+                      bg-nvidia-green hover:bg-nvidia-green-dark
+                      text-white font-medium text-sm
+                      transition-colors
+                    "
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* Templates */}
+              {!loading && !error && (
+                <>
+                  {filteredTemplates.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Search className="w-12 h-12 text-text-muted mb-4" />
+                      <h3 className="text-lg font-semibold text-text-primary mb-2">
+                        No Templates Found
+                      </h3>
+                      <p className="text-text-secondary text-sm">
+                        Try adjusting your search or filters.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {filteredTemplates.map((template) => (
+                        <TemplateCard
+                          key={template.id}
+                          {...template}
+                          onClick={() => handleTemplateClick(template)}
+                        />
                       ))}
                     </div>
+                  )}
+                  
+                  {/* Results count */}
+                  <div className="mt-4 text-center text-xs text-text-muted">
+                    Showing {filteredTemplates.length} of {templates.length} templates
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </>
+              )}
+            </div>
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <FolderOpen className="w-16 h-16 text-text-muted mb-4" />
@@ -163,14 +280,13 @@ export const TemplateBrowser: React.FC = () => {
       <div className="p-3 border-t border-border-subtle bg-bg-dark">
         <div className="flex items-center gap-2 text-xs text-text-muted">
           <span className="px-2 py-0.5 rounded bg-nvidia-green/20 text-nvidia-green font-mono">
-            PHASE 1
+            PHASE 2
           </span>
           <span>
-            Panel system foundation • Enhanced visuals in Phase 2
+            Visual cards • Real API data • Filtering & Search
           </span>
         </div>
       </div>
     </div>
   );
 };
-

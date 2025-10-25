@@ -7,9 +7,9 @@ interface PanelResizerProps {
 
 /**
  * PanelResizer
- * 
+ *
  * A draggable vertical divider between panels that allows resizing.
- * 
+ *
  * Usage:
  * <PanelResizer onResize={(delta) => handleResize(panelId, delta)} />
  */
@@ -28,7 +28,7 @@ export const PanelResizer: React.FC<PanelResizerProps> = ({ onResize, className 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isDragging) return;
-      
+
       const delta = e.clientX - startX;
       onResize(delta);
       setStartX(e.clientX);
@@ -46,7 +46,7 @@ export const PanelResizer: React.FC<PanelResizerProps> = ({ onResize, className 
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -69,7 +69,7 @@ export const PanelResizer: React.FC<PanelResizerProps> = ({ onResize, className 
       aria-label="Panel resizer"
     >
       {/* Visual handle indicator (shows on hover) */}
-      <div 
+      <div
         className="
           absolute inset-y-0 left-1/2 -translate-x-1/2
           w-1 h-full
@@ -80,10 +80,9 @@ export const PanelResizer: React.FC<PanelResizerProps> = ({ onResize, className 
       >
         <div className="w-full h-full bg-nvidia-green/50" />
       </div>
-      
+
       {/* Hit area for easier grabbing */}
       <div className="absolute inset-y-0 -left-2 w-5" />
     </div>
   );
 };
-

@@ -13,12 +13,12 @@ interface PanelHeaderProps {
 
 /**
  * PanelHeader
- * 
+ *
  * Header component for panels with title, actions, and close button.
- * 
+ *
  * Usage:
- * <PanelHeader 
- *   title="Templates" 
+ * <PanelHeader
+ *   title="Templates"
  *   icon={<IconComponent />}
  *   canClose={true}
  *   onClose={() => handleClose()}
@@ -52,7 +52,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
             {icon}
           </div>
         )}
-        <h2 
+        <h2
           className="text-sm font-semibold text-text-primary truncate"
           title={title}
         >
@@ -68,7 +68,7 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
             {actions}
           </div>
         )}
-        
+
         {/* Close button */}
         {canClose && onClose && (
           <button
@@ -93,9 +93,9 @@ export const PanelHeader: React.FC<PanelHeaderProps> = ({
 
 /**
  * HeaderActionButton
- * 
+ *
  * A styled button for panel header actions.
- * 
+ *
  * Usage:
  * <HeaderActionButton icon={<IconComponent />} onClick={handleClick} title="Action" />
  */
@@ -132,4 +132,3 @@ export const HeaderActionButton: React.FC<HeaderActionButtonProps> = ({
     </button>
   );
 };
-

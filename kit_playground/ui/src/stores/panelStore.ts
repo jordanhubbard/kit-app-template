@@ -4,7 +4,7 @@ import { create } from 'zustand';
  * Panel Types
  * Each panel type corresponds to a specific view/functionality
  */
-export type PanelType = 
+export type PanelType =
   | 'template-browser'      // Always visible - browse templates
   | 'template-detail'       // Show template details and create form
   | 'project-detail'        // Show project details and actions
@@ -35,7 +35,7 @@ export interface PanelState {
 interface PanelStoreState {
   panels: PanelState[];
   activePanel: string | null;
-  
+
   // Actions
   openPanel: (type: PanelType, data?: any, options?: Partial<PanelState>) => void;
   closePanel: (id: string) => void;
@@ -132,11 +132,11 @@ export const usePanelStore = create<PanelStoreState>((set, get) => ({
     } as PanelState,
   ],
   activePanel: 'panel-template-browser-0',
-  
+
   openPanel: (type, data = {}, options = {}) => {
     const id = generatePanelId(type);
     const config = defaultPanelConfig[type];
-    
+
     const newPanel: PanelState = {
       id,
       type,
@@ -145,69 +145,69 @@ export const usePanelStore = create<PanelStoreState>((set, get) => ({
       ...config,
       ...options,
     } as PanelState;
-    
+
     set((state) => ({
       panels: [...state.panels, newPanel],
       activePanel: id,
     }));
   },
-  
+
   closePanel: (id) => {
     const panel = get().getPanelById(id);
     if (panel && !panel.canClose) {
       console.warn(`Panel ${id} cannot be closed`);
       return;
     }
-    
+
     set((state) => {
       const newPanels = state.panels.filter((p) => p.id !== id);
       const newActivePanel = state.activePanel === id
         ? (newPanels[newPanels.length - 1]?.id || null)
         : state.activePanel;
-      
+
       return {
         panels: newPanels,
         activePanel: newActivePanel,
       };
     });
   },
-  
+
   closeAllPanels: (except = []) => {
     set((state) => {
       const newPanels = state.panels.filter(
         (p) => !p.canClose || except.includes(p.id)
       );
-      
+
       const newActivePanel = newPanels.find((p) => p.id === state.activePanel)
         ? state.activePanel
         : (newPanels[newPanels.length - 1]?.id || null);
-      
+
       return {
         panels: newPanels,
         activePanel: newActivePanel,
       };
     });
   },
-  
+
   resizePanel: (id, width) => {
     set((state) => ({
       panels: state.panels.map((p) => {
         if (p.id !== id) return p;
-        
+
         const newWidth = Math.max(
           p.minWidth,
           Math.min(width, p.maxWidth || Infinity)
         );
-        
+
         return { ...p, width: newWidth };
       }),
     }));
   },
-  
+
   setActivePanel: (id) => {
     set({ activePanel: id });
   },
-  
+
   updatePanelData: (id, data) => {
     set((state) => ({
       panels: state.panels.map((p) =>
@@ -215,7 +215,7 @@ export const usePanelStore = create<PanelStoreState>((set, get) => ({
       ),
     }));
   },
-  
+
   updatePanelTitle: (id, title) => {
     set((state) => ({
       panels: state.panels.map((p) =>
@@ -223,13 +223,12 @@ export const usePanelStore = create<PanelStoreState>((set, get) => ({
       ),
     }));
   },
-  
+
   getPanelById: (id) => {
     return get().panels.find((p) => p.id === id);
   },
-  
+
   getPanelsByType: (type) => {
     return get().panels.filter((p) => p.type === type);
   },
 }));
-

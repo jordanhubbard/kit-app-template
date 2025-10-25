@@ -9,12 +9,12 @@ interface PanelContainerProps {
 
 /**
  * PanelContainer
- * 
+ *
  * Main container for the panel-based layout system.
  * Manages the rendering and layout of all panels.
- * 
+ *
  * Usage:
- * <PanelContainer 
+ * <PanelContainer
  *   renderPanel={(id, type, data) => {
  *     switch(type) {
  *       case 'template-browser': return <TemplateBrowser {...data} />;
@@ -34,7 +34,7 @@ export const PanelContainer: React.FC<PanelContainerProps> = ({
   const visiblePanels = panels.filter(p => p.isVisible);
 
   return (
-    <div 
+    <div
       className={`
         panel-container
         flex flex-row
@@ -71,9 +71,9 @@ export const PanelContainer: React.FC<PanelContainerProps> = ({
 
 /**
  * PanelPlaceholder
- * 
+ *
  * A placeholder component for when a panel type is not yet implemented.
- * 
+ *
  * Usage:
  * <PanelPlaceholder type="template-detail" />
  */
@@ -101,4 +101,3 @@ export const PanelPlaceholder: React.FC<PanelPlaceholderProps> = ({
     </div>
   );
 };
-

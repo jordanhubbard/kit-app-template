@@ -13,10 +13,10 @@ interface PanelProps {
 
 /**
  * Panel
- * 
+ *
  * A resizable panel that can be opened, closed, and resized.
  * Contains a header and content area.
- * 
+ *
  * Usage:
  * <Panel panel={panelState} isActive={true} isLast={false}>
  *   <PanelContent />
@@ -91,4 +91,3 @@ export const Panel: React.FC<PanelProps> = ({
     </div>
   );
 };
-
