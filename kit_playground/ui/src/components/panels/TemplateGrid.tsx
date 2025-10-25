@@ -29,6 +29,12 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { openPanel } = usePanelStore();
 
+  // Debug logging - remove after testing
+  if (typeof window !== 'undefined' && !(window as any).__TEMPLATE_GRID_LOGGED) {
+    console.log('🎛️ TemplateGrid v2.0-redesign: MULTI-COLUMN GRID (grid-cols-1 sm:2 md:2 lg:3 xl:4)');
+    (window as any).__TEMPLATE_GRID_LOGGED = true;
+  }
+
   // Get title based on filter type
   const displayTitle = title || (
     filterType === 'all' ? 'All Templates' :

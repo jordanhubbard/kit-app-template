@@ -91,6 +91,12 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
   const typeColor = getTypeColor(type);
   const title = displayName || name;
 
+  // Debug logging - remove after testing
+  if (typeof window !== 'undefined' && !(window as any).__TEMPLATE_CARD_LOGGED) {
+    console.log('🃏 TemplateCard v2.0-redesign: SQUARE CARDS (min-h-[320px])');
+    (window as any).__TEMPLATE_CARD_LOGGED = true;
+  }
+
   return (
     <button
       onClick={onClick}

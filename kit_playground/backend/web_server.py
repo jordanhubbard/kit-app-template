@@ -250,6 +250,11 @@ class PlaygroundWebServer:
         docs_bp = create_docs_routes()
         self.app.register_blueprint(docs_bp)
 
+        # Register debug routes (for development/debugging only)
+        from kit_playground.backend.routes.debug_routes import create_debug_routes
+        debug_bp = create_debug_routes()
+        self.app.register_blueprint(debug_bp)
+
         # Configuration routes (keep in main file as they're simple)
         @self.app.route('/api/config/paths', methods=['GET'])
         def get_default_paths():
