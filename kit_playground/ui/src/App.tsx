@@ -3,6 +3,8 @@ import { PanelContainer, PanelPlaceholder } from './components/layout';
 import { TemplateBrowser } from './components/panels/TemplateBrowser';
 import { TemplateDetail } from './components/panels/TemplateDetail';
 import { ProjectConfig } from './components/panels/ProjectConfig';
+import { BuildOutput } from './components/panels/BuildOutput';
+import { CodeEditor } from './components/panels/CodeEditor';
 
 /**
  * Main App Component
@@ -33,10 +35,10 @@ function App() {
           : <PanelPlaceholder type="project-config" message="No template selected" />;
 
       case 'code-editor':
-        return <PanelPlaceholder type="code-editor" message="Code editor coming soon!" />;
+        return <CodeEditor {...panelData} />;
 
       case 'build-output':
-        return <PanelPlaceholder type="build-output" message="Build output view coming soon!" />;
+        return <BuildOutput {...panelData} />;
 
       case 'preview':
         return <PanelPlaceholder type="preview" message="Preview panel coming soon!" />;
