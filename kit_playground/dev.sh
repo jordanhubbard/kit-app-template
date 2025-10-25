@@ -175,7 +175,7 @@ if [ $FRONTEND_READY -eq 1 ]; then
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "${BLUE}Access the UI at:${NC}     ${GREEN}http://${DISPLAY_HOST}:${FRONTEND_PORT}${NC}"
-    echo -e "${BLUE}API documentation:${NC}    ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}/api/docs/ui${NC}"
+    echo -e "${BLUE}API documentation:${NC}    ${GREEN}http://${DISPLAY_HOST}:${BACKEND_PORT}/api/docs${NC}"
     echo ""
     echo -e "${YELLOW}Logs:${NC}"
     echo -e "  Backend:  /tmp/kit-playground-backend.log"
