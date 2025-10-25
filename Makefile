@@ -69,14 +69,13 @@ all: check-deps
 	@echo "  make playground PRODUCTION=1         - Production build mode"
 	@echo "  make playground-stop                 - Stop all playground processes"
 	@echo "  make playground-build                - Build UI for production"
-	@echo "  make playground-clean                - Remove build artifacts"
 	@echo ""
 	@echo "$(BLUE)🔧 Core Commands:$(NC)"
 	@echo "  make build                           - Prepare build environment"
 	@echo "  make build-apps                      - Build Kit applications"
 	@echo "  make template-new                    - Create new template (CLI)"
-	@echo "  make clean                           - Clean build artifacts"
-	@echo "  make clean-all                       - Clean everything"
+	@echo "  make clean                           - Clean build + playground artifacts"
+	@echo "  make clean-all                       - Clean everything (incl. user apps)"
 	@echo ""
 	@echo "$(BLUE)🧪 Testing:$(NC)"
 	@echo "  make test-compatibility              - Fast compatibility tests (~5 min)"
@@ -507,13 +506,11 @@ test-compatibility-report:
 	@echo "$(GREEN)✓ Report saved to tests/compatibility/$(NC)"
 
 
-# Clean build artifacts
+# Clean build artifacts (includes playground cleanup)
 .PHONY: clean
-clean:
+clean: playground-clean
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	@rm -rf $(BUILD_DIR)
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
-	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules/.vite
 	@rm -rf $(ROOT_DIR)/_compiler
 	@rm -rf $(ROOT_DIR)/_repo
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
