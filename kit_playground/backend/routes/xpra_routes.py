@@ -111,31 +111,36 @@ def create_xpra_routes(xpra_manager):
             
             # Check if port is listening
             port = 10000 + (display - 100)
-            bind_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
             
+            # Always use localhost for internal health checks
             port_listening = False
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(1)
-                result = sock.connect_ex((bind_host, port))
+                result = sock.connect_ex(('localhost', port))
                 sock.close()
                 port_listening = result == 0
             except Exception:
                 pass
             
             # Check if we can get a response from the web interface
+            # Use localhost for internal HTTP request
             web_ready = False
             if port_listening:
                 try:
                     import urllib.request
                     import urllib.error
-                    url = f"http://{bind_host}:{port}"
+                    url = f"http://localhost:{port}"
                     req = urllib.request.Request(url)
                     req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36')
                     with urllib.request.urlopen(req, timeout=2) as response:
                         web_ready = response.status == 200
                 except Exception:
                     pass
+            
+            # Get the hostname for the client-facing URL
+            from kit_playground.backend.utils.network import get_hostname_for_client
+            client_hostname = get_hostname_for_client()
             
             return jsonify({
                 'display': display,
@@ -144,7 +149,7 @@ def create_xpra_routes(xpra_manager):
                 'port_listening': port_listening,
                 'web_ready': web_ready,
                 'ready': process_running and port_listening and web_ready,
-                'url': f"http://{bind_host}:{port}" if port_listening else None
+                'url': f"http://{client_hostname}:{port}" if port_listening else None
             })
             
         except Exception as e:

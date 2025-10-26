@@ -20,6 +20,9 @@ import logging
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
+# Import network utilities for consistent hostname handling
+from kit_playground.backend.utils.network import get_hostname_for_client, get_hostname_for_internal
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,30 +95,12 @@ class PortRegistry:
 
         Returns the actual hostname/IP that can be used to reach this
         machine from remote clients.
+        
+        Uses the centralized network utility to ensure consistent hostname detection.
         """
-        # Check if REMOTE mode is enabled
-        if os.environ.get('REMOTE') == '1':
-            # Try to get the actual hostname
-            try:
-                hostname = socket.gethostname()
-                # Validate hostname is reasonable (not empty, not localhost, looks like a valid hostname)
-                if (hostname and
-                    hostname not in ('localhost', 'localhost.localdomain') and
-                    not hostname.startswith('127.') and
-                    len(hostname) < 256 and  # Reasonable length
-                    hostname.isprintable() and  # No weird characters
-                    not hostname.isupper() and  # Hostnames shouldn't be all caps
-                    ('.' in hostname or '-' in hostname or '_' in hostname)):  # Should have domain separators
-                    return hostname
-            except Exception as e:
-                logger.warning(f"Failed to detect hostname: {e}")
-
-            # Fallback to 0.0.0.0 in remote mode (client must provide host)
-            logger.info(f"Using 0.0.0.0 for REMOTE mode (hostname: {socket.gethostname() if hasattr(socket, 'gethostname') else 'unknown'})")
-            return "0.0.0.0"
-        else:
-            # Local mode - use localhost
-            return "localhost"
+        hostname = get_hostname_for_client()
+        logger.info(f"Using hostname for URLs: {hostname} (REMOTE={os.environ.get('REMOTE', '0')})")
+        return hostname
 
     def register_backend(self, port: int, host: Optional[str] = None):
         """
@@ -271,13 +256,14 @@ class PortRegistry:
         results = {}
 
         for name, service in self._services.items():
-            # For 0.0.0.0, check on localhost instead
-            test_host = 'localhost' if service.host == '0.0.0.0' else service.host
+            # Always use localhost for internal health checks
+            test_host = get_hostname_for_internal()
             results[name] = self.is_port_reachable(service.port, test_host)
             logger.info(f"Service {name} ({test_host}:{service.port}): {'✓ reachable' if results[name] else '✗ not reachable'}")
 
         for display, port in self._xpra_displays.items():
-            test_host = 'localhost' if self._default_host == '0.0.0.0' else self._default_host
+            # Always use localhost for internal health checks
+            test_host = get_hostname_for_internal()
             key = f"xpra_display_{display}"
             results[key] = self.is_port_reachable(port, test_host)
             logger.info(f"Xpra display :{display} ({test_host}:{port}): {'✓ reachable' if results[key] else '✗ not reachable'}")
