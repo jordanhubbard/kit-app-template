@@ -95,7 +95,7 @@ class PortRegistry:
 
         Returns the actual hostname/IP that can be used to reach this
         machine from remote clients.
-        
+
         Uses the centralized network utility to ensure consistent hostname detection.
         """
         hostname = get_hostname_for_client()

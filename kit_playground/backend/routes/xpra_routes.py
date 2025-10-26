@@ -15,14 +15,14 @@ xpra_bp = Blueprint('xpra', __name__, url_prefix='/api/xpra')
 def create_xpra_routes(xpra_manager):
     """
     Create and configure Xpra routes.
-    
+
     Args:
         xpra_manager: XpraManager instance
-    
+
     Returns:
         Flask Blueprint with Xpra routes configured
     """
-    
+
     @xpra_bp.route('/check', methods=['GET'])
     def check_xpra():
         """Check if Xpra is installed and available."""
@@ -34,10 +34,10 @@ def create_xpra_routes(xpra_manager):
                 text=True,
                 timeout=2
             )
-            
+
             available = result.returncode == 0
             version = None
-            
+
             if available:
                 # Parse version from output
                 output = result.stdout or result.stderr
@@ -45,7 +45,7 @@ def create_xpra_routes(xpra_manager):
                     if 'xpra' in line.lower() and any(c.isdigit() for c in line):
                         version = line.strip()
                         break
-            
+
             return jsonify({
                 'available': available,
                 'version': version,
@@ -89,16 +89,16 @@ def create_xpra_routes(xpra_manager):
     @xpra_bp.route('/status/<int:display>', methods=['GET'])
     def check_display_status(display: int):
         """Check if a specific Xpra display is ready.
-        
+
         Args:
             display: Xpra display number to check
-            
+
         Returns:
             JSON with ready status and details
         """
         try:
             import socket
-            
+
             # Check if Xpra process is running
             result = subprocess.run(
                 ['xpra', 'list'],
@@ -106,12 +106,12 @@ def create_xpra_routes(xpra_manager):
                 text=True,
                 timeout=5
             )
-            
+
             process_running = result.returncode == 0 and f':{display}' in result.stdout
-            
+
             # Check if port is listening
             port = 10000 + (display - 100)
-            
+
             # Always use localhost for internal health checks
             port_listening = False
             try:
@@ -122,7 +122,7 @@ def create_xpra_routes(xpra_manager):
                 port_listening = result == 0
             except Exception:
                 pass
-            
+
             # Check if we can get a response from the web interface
             # Use localhost for internal HTTP request
             web_ready = False
@@ -137,11 +137,11 @@ def create_xpra_routes(xpra_manager):
                         web_ready = response.status == 200
                 except Exception:
                     pass
-            
+
             # Get the hostname for the client-facing URL
             from kit_playground.backend.utils.network import get_hostname_for_client
             client_hostname = get_hostname_for_client()
-            
+
             return jsonify({
                 'display': display,
                 'port': port,
@@ -151,10 +151,9 @@ def create_xpra_routes(xpra_manager):
                 'ready': process_running and port_listening and web_ready,
                 'url': f"http://{client_hostname}:{port}" if port_listening else None
             })
-            
+
         except Exception as e:
             logger.error(f"Failed to check Xpra display status: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
     return xpra_bp
-

@@ -1,5 +1,41 @@
 @import "tailwindcss";
 
+@theme {
+  /* NVIDIA Green (Primary) */
+  --color-nvidia-green: #76B900;
+  --color-nvidia-green-dark: #5A9100;
+  --color-nvidia-green-light: #8FD400;
+  --color-nvidia-green-hover: #5E9400;
+  --color-nvidia-green-active: #4A7600;
+
+  /* Backgrounds */
+  --color-bg-dark: #0F0F0F;
+  --color-bg-panel: #1A1A1A;
+  --color-bg-card: #252525;
+  --color-bg-card-hover: #2D2D2D;
+
+  /* Borders */
+  --color-border-subtle: rgba(255, 255, 255, 0.1);
+  --color-border-panel: rgba(255, 255, 255, 0.15);
+  --color-border-active: #76B900;
+
+  /* Text */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #B3B3B3;
+  --color-text-muted: #808080;
+
+  /* Status Colors */
+  --color-status-success: #76B900;
+  --color-status-warning: #FFB700;
+  --color-status-error: #FF5252;
+  --color-status-info: #00B8D4;
+
+  /* Legacy (keep for backwards compatibility) */
+  --color-dark-bg: #1E1E1E;
+  --color-dark-card: #2D2D2D;
+  --color-dark-hover: #3D3D3D;
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

@@ -15,15 +15,15 @@ from typing import Optional
 def get_external_ip() -> str:
     """
     Get the external IP address for this machine.
-    
+
     This IP should be used when returning URLs to clients
     that need to connect from remote machines.
-    
+
     Returns:
         str: The external IP address, or "localhost" if detection fails
     """
     # Try multiple methods to get the external IP
-    
+
     # Method 1: Use ip route command (most reliable on Linux)
     try:
         result = subprocess.run(
@@ -45,7 +45,7 @@ def get_external_ip() -> str:
                         return ip
     except (subprocess.SubprocessError, FileNotFoundError, IndexError):
         pass
-    
+
     # Method 2: Use hostname -I command
     try:
         result = subprocess.run(
@@ -61,7 +61,7 @@ def get_external_ip() -> str:
                     return ip
     except (subprocess.SubprocessError, FileNotFoundError):
         pass
-    
+
     # Method 3: Use socket to connect to external address
     try:
         # Create a socket and connect to an external address
@@ -75,7 +75,7 @@ def get_external_ip() -> str:
             return ip
     except Exception:
         pass
-    
+
     # Fallback: return localhost
     return 'localhost'
 
@@ -83,12 +83,12 @@ def get_external_ip() -> str:
 def get_hostname_for_client() -> str:
     """
     Get the appropriate hostname to return to clients in API responses.
-    
+
     - In REMOTE=1 mode: Returns the external IP address
     - In REMOTE=0 mode: Returns "localhost"
-    
+
     This should be used for URLs that are sent to clients (browsers, etc.)
-    
+
     Returns:
         str: The hostname that clients should use to connect
     """
@@ -100,10 +100,10 @@ def get_hostname_for_client() -> str:
 def get_hostname_for_internal() -> str:
     """
     Get the appropriate hostname for internal service-to-service communication.
-    
+
     This should ALWAYS return "localhost" or "127.0.0.1" since it's for
     health checks and internal HTTP requests on the same machine.
-    
+
     Returns:
         str: Always returns "localhost"
     """
@@ -113,12 +113,12 @@ def get_hostname_for_internal() -> str:
 def get_bind_address() -> str:
     """
     Get the appropriate bind address for servers.
-    
+
     - In REMOTE=1 mode: Returns "0.0.0.0" (bind to all interfaces)
     - In REMOTE=0 mode: Returns "localhost" (bind only to loopback)
-    
+
     Note: This address should NEVER be sent to clients. Use get_hostname_for_client() instead.
-    
+
     Returns:
         str: The bind address for server sockets
     """
@@ -127,26 +127,25 @@ def get_bind_address() -> str:
     return 'localhost'
 
 
-def format_url(hostname: Optional[str] = None, port: int = 80, path: str = '', 
+def format_url(hostname: Optional[str] = None, port: int = 80, path: str = '',
                protocol: str = 'http') -> str:
     """
     Format a complete URL using the appropriate hostname.
-    
+
     Args:
         hostname: The hostname to use (if None, uses get_hostname_for_client())
         port: The port number
         path: The URL path (should start with / if provided)
         protocol: The protocol (http or https)
-    
+
     Returns:
         str: The formatted URL
     """
     if hostname is None:
         hostname = get_hostname_for_client()
-    
+
     # Don't include default ports in the URL
     if (protocol == 'http' and port == 80) or (protocol == 'https' and port == 443):
         return f"{protocol}://{hostname}{path}"
-    
-    return f"{protocol}://{hostname}:{port}{path}"
 
+    return f"{protocol}://{hostname}:{port}{path}"

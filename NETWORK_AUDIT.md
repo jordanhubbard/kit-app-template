@@ -21,7 +21,7 @@ Completed a comprehensive audit of all network addresses, hostnames, and ports i
 - Faster and more reliable
 - Works regardless of network configuration
 
-### Rule 2: External Communication  
+### Rule 2: External Communication
 **Use actual IP address for:**
 - URLs returned to clients (browsers)
 - WebSocket connection URLs
@@ -217,4 +217,3 @@ Centralized network utility functions:
 - Fixed `xpra_routes.py` health checks and client URLs
 - Fixed `port_registry.py` hostname detection and health checks
 - All services now distinguish internal vs external communication
-
