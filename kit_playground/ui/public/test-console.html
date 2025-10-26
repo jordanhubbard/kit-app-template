@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Test Page</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        h1 { color: #00ff00; }
+        .box {
+            border: 2px solid #00ff00;
+            padding: 20px;
+            margin: 20px 0;
+            background: #000;
+        }
+        .instruction {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        #output {
+            background: #222;
+            padding: 10px;
+            min-height: 100px;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Browser Console Test Page</h1>
+
+    <div class="box">
+        <p class="instruction">STEP 1: Open your browser console (F12)</p>
+        <p>You should see console messages appear immediately when this page loads.</p>
+    </div>
+
+    <div class="box">
+        <p class="instruction">STEP 2: Check for these messages in the console:</p>
+        <ul>
+            <li>🎯 [TEST] Console logging is working!</li>
+            <li>📊 [TEST] Browser: [your browser info]</li>
+            <li>🌐 [TEST] Current URL: [this page URL]</li>
+            <li>✅ [TEST] JavaScript execution confirmed</li>
+        </ul>
+    </div>
+
+    <div class="box">
+        <p class="instruction">STEP 3: Click these test buttons:</p>
+        <button onclick="testLog()">Test console.log()</button>
+        <button onclick="testWarn()">Test console.warn()</button>
+        <button onclick="testError()">Test console.error()</button>
+        <button onclick="testInfo()">Test console.info()</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div class="box">
+        <p class="instruction">STEP 4: On-page output (if console is broken):</p>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        // These run immediately on page load
+        console.log('🎯 [TEST] Console logging is working!');
+        console.log('📊 [TEST] Browser:', navigator.userAgent);
+        console.log('🌐 [TEST] Current URL:', window.location.href);
+        console.info('ℹ️ [TEST] console.info() works');
+        console.warn('⚠️ [TEST] console.warn() works');
+        console.error('❌ [TEST] console.error() works (this is intentional for testing)');
+        console.log('✅ [TEST] JavaScript execution confirmed');
+
+        // Also output to page
+        const output = document.getElementById('output');
+        output.innerHTML = `
+            ✅ JavaScript is executing!<br>
+            📊 Browser: ${navigator.userAgent.substring(0, 50)}...<br>
+            🕐 Time: ${new Date().toISOString()}<br>
+            🌐 URL: ${window.location.href}<br>
+            <br>
+            <span style="color: #ffff00;">If you see this text but NO console messages, your console filter is hiding them!</span>
+        `;
+
+        // Test functions for buttons
+        function testLog() {
+            console.log('🧪 [MANUAL TEST] console.log() button clicked');
+            appendOutput('console.log() executed - check console!');
+        }
+
+        function testWarn() {
+            console.warn('🧪 [MANUAL TEST] console.warn() button clicked');
+            appendOutput('console.warn() executed - check console!');
+        }
+
+        function testError() {
+            console.error('🧪 [MANUAL TEST] console.error() button clicked - THIS IS A TEST!');
+            appendOutput('console.error() executed - check console!');
+        }
+
+        function testInfo() {
+            console.info('🧪 [MANUAL TEST] console.info() button clicked');
+            appendOutput('console.info() executed - check console!');
+        }
+
+        function runAllTests() {
+            console.log('═══════════════════════════════════════════');
+            console.log('🚀 Running ALL Console Tests...');
+            console.log('═══════════════════════════════════════════');
+            testLog();
+            testWarn();
+            testError();
+            testInfo();
+            console.table([
+                { test: 'console.log', status: '✅ OK' },
+                { test: 'console.warn', status: '✅ OK' },
+                { test: 'console.error', status: '✅ OK' },
+                { test: 'console.info', status: '✅ OK' },
+            ]);
+            console.log('═══════════════════════════════════════════');
+            console.log('✅ All tests complete!');
+            console.log('═══════════════════════════════════════════');
+            appendOutput('<br><b>ALL TESTS RUN - Check console for results!</b>');
+        }
+
+        function appendOutput(msg) {
+            output.innerHTML += `<br>${new Date().toLocaleTimeString()}: ${msg}`;
+        }
+
+        // Test fetch to the main app
+        console.log('🔗 [TEST] Attempting to fetch main app...');
+        fetch('http://10.176.222.115:3000/')
+            .then(response => {
+                console.log('✅ [TEST] Main app is reachable, status:', response.status);
+            })
+            .catch(error => {
+                console.error('❌ [TEST] Cannot reach main app:', error);
+            });
+
+        // Test fetch to main.tsx
+        console.log('🔗 [TEST] Attempting to fetch main.tsx...');
+        fetch('http://10.176.222.115:3000/src/main.tsx')
+            .then(response => response.text())
+            .then(text => {
+                const hasLogs = text.includes('Kit Playground UI Loading');
+                console.log('✅ [TEST] main.tsx content check:', hasLogs ? 'CONTAINS logging code' : 'MISSING logging code');
+                console.log('📝 [TEST] main.tsx snippet:', text.substring(0, 200) + '...');
+            })
+            .catch(error => {
+                console.error('❌ [TEST] Cannot fetch main.tsx:', error);
+            });
+    </script>
+</body>
+</html>

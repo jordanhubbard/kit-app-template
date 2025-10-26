@@ -155,11 +155,14 @@ echo -e "${BLUE}Waiting for UI to be ready...${NC}"
 sleep 3
 
 # Check if frontend is responding
+# Note: Always use localhost for health check, even when binding to 0.0.0.0
+# (0.0.0.0 is a bind address, not a connection address)
 MAX_RETRIES=10
 RETRY_COUNT=0
 FRONTEND_READY=0
+HEALTH_CHECK_URL="http://localhost:${FRONTEND_PORT}"
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if curl -s "http://${FRONTEND_HOST}:${FRONTEND_PORT}" > /dev/null 2>&1; then
+    if curl -s "$HEALTH_CHECK_URL" > /dev/null 2>&1; then
         FRONTEND_READY=1
         break
     fi
