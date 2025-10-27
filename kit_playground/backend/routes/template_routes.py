@@ -180,7 +180,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 kit_file_path = result_dict.get('kit_file', '')
 
                 # Convert relative kit_file to absolute if needed
-                from pathlib import Path
+                # (Path already imported at module level)
                 kit_file_abs = Path(kit_file_path)
                 if not kit_file_abs.is_absolute():
                     kit_file_abs = Path(template_api.repo_root) / kit_file_path
