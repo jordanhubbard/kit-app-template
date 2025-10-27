@@ -45,7 +45,7 @@ echo ""
 echo "3. Validating OpenGL status..."
 if [ "$OPENGL_ENABLED" = "$EXPECTED_STATE" ]; then
     echo "   ✅ OpenGL is ENABLED"
-    
+
     # Check if using hardware or software rendering
     if echo "$OPENGL_RENDERER" | grep -qi "llvmpipe\|software"; then
         echo "   ⚠️  WARNING: Using SOFTWARE rendering (slow)"
@@ -107,4 +107,3 @@ else
     echo "Please fix the configuration and try again."
     exit 1
 fi
-

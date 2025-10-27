@@ -25,17 +25,17 @@ class XpraSession:
 
     def _wait_for_ready(self, timeout: int = 30) -> bool:
         """Wait for Xpra to be ready to accept connections.
-        
+
         Args:
             timeout: Maximum time to wait in seconds
-            
+
         Returns:
             True if Xpra is ready, False if timeout
         """
         import socket
-        
+
         logger.info(f"Waiting for Xpra display :{self.display_number} to be ready...")
-        
+
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
@@ -63,9 +63,9 @@ class XpraSession:
                         sock.close()
             except Exception:
                 pass
-            
+
             time.sleep(0.5)
-        
+
         logger.warning(f"Timeout waiting for Xpra display :{self.display_number} to be ready")
         return False
 
@@ -97,7 +97,7 @@ class XpraSession:
                 '--encodings=rgb,png,jpeg',
                 '--compression=0',
                 '--opengl=yes',
-                '--opengl-driver=all',  # Accept all OpenGL drivers, bypass greylist
+                # Note: --opengl-driver=all is not supported in all Xpra versions
                 '--speaker=off',
                 '--microphone=off',
                 '--daemon=no',  # Run in foreground so we can manage it

@@ -600,7 +600,7 @@ def launch_kit(
                 xpra_env = os.environ.copy()
                 xpra_env['XPRA_OPENGL'] = '1'  # Force OpenGL to be enabled
                 xpra_env['XPRA_OPENGL_ALLOW_GREYLISTED'] = '1'  # Allow greylisted drivers
-                
+
                 subprocess.Popen(
                     [
                         'xpra', 'start',
@@ -610,7 +610,7 @@ def launch_kit(
                         '--encodings=rgb,png,jpeg',
                         '--compression=0',
                         '--opengl=yes',
-                        '--opengl-driver=all',  # Accept all OpenGL drivers, bypass greylist
+                        # Note: --opengl-driver=all is not supported in all Xpra versions
                         '--speaker=off',
                         '--microphone=off',
                         '--daemon=yes',  # Run as daemon
