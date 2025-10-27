@@ -46,7 +46,7 @@ APP_SUCCESS=$(echo "$APP_RESPONSE" | python3 -c "import json, sys; print(json.lo
 
 if [ "$APP_SUCCESS" = "True" ]; then
     echo -e "${GREEN}✓ Application creation reported success${NC}"
-    
+
     # Verify structure
     if [ -d "${REPO_ROOT}/source/apps/test_app" ]; then
         echo -e "${GREEN}✓ Application directory exists${NC}"
@@ -54,7 +54,7 @@ if [ "$APP_SUCCESS" = "True" ]; then
         echo -e "${RED}✗ Application directory missing${NC}"
         exit 1
     fi
-    
+
     if [ -f "${REPO_ROOT}/source/apps/test_app/test_app.kit" ]; then
         echo -e "${GREEN}✓ .kit file exists${NC}"
         echo "  Contents (first 10 lines):"
@@ -63,7 +63,7 @@ if [ "$APP_SUCCESS" = "True" ]; then
         echo -e "${RED}✗ .kit file missing${NC}"
         exit 1
     fi
-    
+
     # Check for app-specific structure
     if [ -d "${REPO_ROOT}/source/apps/test_app/data" ]; then
         echo -e "${GREEN}✓ Application data directory exists${NC}"
@@ -96,11 +96,11 @@ EXT_SUCCESS=$(echo "$EXT_RESPONSE" | python3 -c "import json, sys; print(json.lo
 
 if [ "$EXT_SUCCESS" = "True" ]; then
     echo -e "${GREEN}✓ Extension creation reported success${NC}"
-    
+
     # Get the actual extension directory from the API response
     EXT_DIR=$(echo "$EXT_RESPONSE" | python3 -c "import json, sys; print(json.load(sys.stdin)['projectInfo']['outputDir'])")
     EXT_FILE=$(echo "$EXT_RESPONSE" | python3 -c "import json, sys; print(json.load(sys.stdin)['projectInfo']['kitFile'])")
-    
+
     # Verify structure (extensions go to different location)
     if [ -d "$EXT_DIR" ]; then
         echo -e "${GREEN}✓ Extension directory exists: ${EXT_DIR}${NC}"
@@ -111,7 +111,7 @@ if [ "$EXT_SUCCESS" = "True" ]; then
         ls -1 "${REPO_ROOT}/source/extensions/" | grep test | head -5
         exit 1
     fi
-    
+
     if [ -f "$EXT_FILE" ]; then
         echo -e "${GREEN}✓ extension.toml exists${NC}"
         echo "  Contents (first 10 lines):"
@@ -120,7 +120,7 @@ if [ "$EXT_SUCCESS" = "True" ]; then
         echo -e "${RED}✗ extension.toml missing: ${EXT_FILE}${NC}"
         exit 1
     fi
-    
+
     # Check for Python files
     if [ -d "${EXT_DIR}/test_extension" ]; then
         echo -e "${GREEN}✓ Python package directory exists${NC}"
@@ -153,7 +153,7 @@ SVC_SUCCESS=$(echo "$SVC_RESPONSE" | python3 -c "import json, sys; print(json.lo
 
 if [ "$SVC_SUCCESS" = "True" ]; then
     echo -e "${GREEN}✓ Microservice creation reported success${NC}"
-    
+
     # Verify structure (services also go to apps directory)
     if [ -d "${REPO_ROOT}/source/apps/test_service" ]; then
         echo -e "${GREEN}✓ Microservice directory exists${NC}"
@@ -161,7 +161,7 @@ if [ "$SVC_SUCCESS" = "True" ]; then
         echo -e "${RED}✗ Microservice directory missing${NC}"
         exit 1
     fi
-    
+
     if [ -f "${REPO_ROOT}/source/apps/test_service/test_service.kit" ]; then
         echo -e "${GREEN}✓ .kit file exists${NC}"
         echo "  Contents (first 10 lines):"
@@ -170,7 +170,7 @@ if [ "$SVC_SUCCESS" = "True" ]; then
         echo -e "${RED}✗ .kit file missing${NC}"
         exit 1
     fi
-    
+
     # Check for service-specific files
     if [ -d "${REPO_ROOT}/source/apps/test_service/services" ]; then
         echo -e "${GREEN}✓ Services directory exists${NC}"
@@ -204,4 +204,3 @@ echo "Summary:"
 echo "  ✓ Applications: Use .kit files, go to source/apps/"
 echo "  ✓ Extensions: Use extension.toml, go to source/extensions/"
 echo "  ✓ Microservices: Use .kit files, go to source/apps/ (like apps but with services/)"
-

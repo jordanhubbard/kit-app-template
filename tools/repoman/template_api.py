@@ -571,11 +571,11 @@ class TemplateAPI:
         # Different template types create files in different locations:
         # - Applications/Microservices: source/apps/{name}/{name}.kit
         # - Extensions: source/extensions/{extension_name}/config/extension.toml
-        
+
         # Detect template type from playback data
         template_type = 'application'  # default
         primary_file = None
-        
+
         if playback_path.exists():
             try:
                 import tomllib
@@ -585,17 +585,17 @@ class TemplateAPI:
                 import toml  # noqa: E402
                 with open(playback_path, 'r') as f:
                     playback_data = toml.load(f)
-            
+
             # Check if this is an extension template
             for template_name, config_data in playback_data.items():
                 if template_name.startswith('_'):
                     continue  # Skip internal fields
-                
+
                 if 'extension_name' in config_data:
                     # This is an extension template
                     template_type = 'extension'
                     ext_name = config_data['extension_name']
-                    
+
                     # Extensions go to source/extensions/{ext_name}/
                     app_dir = self.repo_root / "source" / "extensions" / ext_name
                     primary_file = f"source/extensions/{ext_name}/config/extension.toml"
@@ -606,7 +606,7 @@ class TemplateAPI:
                     app_dir = self.repo_root / "source" / "apps" / name
                     primary_file = f"source/apps/{name}/{name}.kit"
                     break
-        
+
         # Fallback to application paths if detection failed
         if primary_file is None:
             app_dir = self.repo_root / "source" / "apps" / name

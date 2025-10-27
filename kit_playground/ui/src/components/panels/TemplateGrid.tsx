@@ -45,7 +45,10 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
 
   // Filter and sort templates
   const filteredTemplates = useMemo(() => {
-    let result = templates;
+    // CRITICAL: Filter out component templates - they can't be created standalone
+    // Component templates (like omni_default_streaming, kit_service_setup) are
+    // configuration templates, not creatable projects
+    let result = templates.filter(t => t.type !== 'component');
 
     // Apply search filter
     if (searchQuery.trim()) {

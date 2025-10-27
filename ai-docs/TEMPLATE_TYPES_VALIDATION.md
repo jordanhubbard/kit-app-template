@@ -188,7 +188,7 @@ for template_name, config_data in playback_data.items():
         ext_name = config_data['extension_name']
         app_dir = repo_root / "source" / "extensions" / ext_name
         primary_file = f"source/extensions/{ext_name}/config/extension.toml"
-        
+
     elif 'application_name' in config_data:
         template_type = 'application'  # or 'microservice'
         app_dir = repo_root / "source" / "apps" / name
@@ -333,8 +333,8 @@ The UI filters templates by type:
 ```typescript
 // TemplateSidebar.tsx
 const groupedTemplates = {
-  applications: templates.filter(t => 
-    t.type === 'application' && 
+  applications: templates.filter(t =>
+    t.type === 'application' &&
     !t.name.includes('_setup')
   ),
   extensions: templates.filter(t => t.type === 'extension'),
@@ -366,7 +366,7 @@ The sidebar shows created projects with type-specific icons:
 
 **Problem:** User selects "USD Composer Setup" (extension) thinking it's the application
 
-**Solution:** 
+**Solution:**
 - Filter out `_setup` templates from Applications section
 - Add `type !== 'component'` check
 - Clear naming in UI
@@ -488,4 +488,3 @@ extension_usage = {
 ## Commit Hash
 
 `af913af` - Fix template type detection and path resolution
-
