@@ -2,12 +2,84 @@
 Template management routes for Kit Playground.
 """
 import logging
+import shutil
 from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from tools.repoman.template_api import TemplateAPI
 
 logger = logging.getLogger(__name__)
+
+# Template-to-extension mapping
+# Maps template names to the extension patterns they create
+TEMPLATE_EXTENSION_PATTERNS = {
+    'omni_usd_composer_setup': [
+        '*.usd_composer_setup',
+        '*_usd_composer_setup',
+        '*.composer_setup',
+        '*_composer_setup',
+    ],
+    'omni_usd_viewer_setup': [
+        '*.usd_viewer_setup',
+        '*_usd_viewer_setup',
+        '*.viewer_setup',
+        '*_viewer_setup',
+    ],
+    'omni_usd_editor_setup': [
+        '*.usd_editor_setup',
+        '*_usd_editor_setup',
+        '*.editor_setup',
+        '*_editor_setup',
+    ],
+    'omni_usd_explorer_setup': [
+        '*.usd_explorer_setup',
+        '*_usd_explorer_setup',
+        '*.explorer_setup',
+        '*_explorer_setup',
+    ],
+    # Add more template mappings as needed
+}
+
+def _clean_conflicting_extensions(template_name: str, repo_root: Path) -> list:
+    """
+    Clean extensions that would conflict with the template being created.
+    
+    This is a workaround for Kit SDK's template replay system which errors
+    when encountering existing directories instead of reusing them.
+    
+    Args:
+        template_name: Name of the template being created
+        repo_root: Root directory of the repository
+        
+    Returns:
+        List of extension names that were removed
+    """
+    extensions_dir = repo_root / 'source' / 'extensions'
+    if not extensions_dir.exists():
+        return []
+    
+    patterns = TEMPLATE_EXTENSION_PATTERNS.get(template_name, [])
+    if not patterns:
+        logger.debug(f"No known extension patterns for template: {template_name}")
+        return []
+    
+    removed = []
+    for pattern in patterns:
+        for ext_dir in extensions_dir.glob(pattern):
+            if not ext_dir.is_dir():
+                continue
+            
+            try:
+                logger.info(f"Pre-cleaning conflicting extension: {ext_dir.name}")
+                shutil.rmtree(ext_dir)
+                removed.append(ext_dir.name)
+            except Exception as e:
+                logger.error(f"Failed to pre-clean extension {ext_dir.name}: {e}")
+    
+    if removed:
+        logger.info(f"Pre-cleaned {len(removed)} extension(s) for template {template_name}")
+    
+    return removed
 
 def create_template_routes(playground_app, template_api: TemplateAPI):
     """
@@ -79,6 +151,13 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             logger.info(f"Creating project: template={template_name}, name={project_name}")
             logger.info(f"Using create_application() API - complete workflow (generate + execute + post-process)")
             logger.info(f"Extra params: {extra_params}")
+
+            # PRE-CLEAN: Remove any conflicting extensions before creation
+            # This prevents "directory already exists" errors from the Kit SDK's template replay
+            repo_root = Path(__file__).parent.parent.parent.parent
+            removed_extensions = _clean_conflicting_extensions(template_name, repo_root)
+            if removed_extensions:
+                logger.info(f"Pre-cleaned extensions to avoid conflicts: {removed_extensions}")
 
             # Create application using the high-level API
             # This executes the full workflow: generate playback + execute + fix structure
