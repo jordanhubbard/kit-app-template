@@ -220,10 +220,10 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 #   - default_stream.kit (uses omni.kit.livestream.app)
                 #   - nvcf_stream.kit (uses omni.services.livestream.session for NVIDIA Cloud Functions)
                 #   - gdn_stream.kit (uses omni.kit.gfn for GeForce NOW)
-                # 
+                #
                 # The 'enable_streaming' parameter is deprecated and ignored.
                 # Use streaming layer templates from templates/apps/streaming_configs/ instead.
-                
+
                 streaming_enabled = False
                 streaming_warning = None
 
