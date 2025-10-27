@@ -567,20 +567,60 @@ class TemplateAPI:
                 )
             }
 
-        # Calculate application paths
-        # After _fix_application_structure, files are in:
-        # source/apps/{name}/{name}.kit
-        app_dir = self.repo_root / "source" / "apps" / name
-        kit_file_rel = f"source/apps/{name}/{name}.kit"
+        # Calculate paths based on template type
+        # Different template types create files in different locations:
+        # - Applications/Microservices: source/apps/{name}/{name}.kit
+        # - Extensions: source/extensions/{extension_name}/config/extension.toml
+        
+        # Detect template type from playback data
+        template_type = 'application'  # default
+        primary_file = None
+        
+        if playback_path.exists():
+            try:
+                import tomllib
+                with open(playback_path, 'rb') as f:
+                    playback_data = tomllib.load(f)
+            except ImportError:
+                import toml  # noqa: E402
+                with open(playback_path, 'r') as f:
+                    playback_data = toml.load(f)
+            
+            # Check if this is an extension template
+            for template_name, config_data in playback_data.items():
+                if template_name.startswith('_'):
+                    continue  # Skip internal fields
+                
+                if 'extension_name' in config_data:
+                    # This is an extension template
+                    template_type = 'extension'
+                    ext_name = config_data['extension_name']
+                    
+                    # Extensions go to source/extensions/{ext_name}/
+                    app_dir = self.repo_root / "source" / "extensions" / ext_name
+                    primary_file = f"source/extensions/{ext_name}/config/extension.toml"
+                    break
+                elif 'application_name' in config_data:
+                    # This is an application or microservice template
+                    template_type = 'application'
+                    app_dir = self.repo_root / "source" / "apps" / name
+                    primary_file = f"source/apps/{name}/{name}.kit"
+                    break
+        
+        # Fallback to application paths if detection failed
+        if primary_file is None:
+            app_dir = self.repo_root / "source" / "apps" / name
+            primary_file = f"source/apps/{name}/{name}.kit"
 
         return {
             'success': True,
             'app_name': name,
             'display_name': display_name,
             'app_dir': str(app_dir),
-            'kit_file': kit_file_rel,
+            'kit_file': primary_file,  # Can be .kit or extension.toml depending on type
+            'template_type': template_type,
             'playback_file': result.playback_file,
-            'message': f"Application '{display_name}' created successfully"
+            'message': f"{template_type.capitalize()} '{display_name}' created successfully"
         }
 
 

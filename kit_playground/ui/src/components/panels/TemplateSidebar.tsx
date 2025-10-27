@@ -41,9 +41,9 @@ export const TemplateSidebar: React.FC = () => {
 
     return {
       // Only show actual applications (exclude setup/component templates)
-      applications: filtered.filter(t => 
-        t.type === 'application' && 
-        !t.name.includes('_setup') && 
+      applications: filtered.filter(t =>
+        t.type === 'application' &&
+        !t.name.includes('_setup') &&
         t.type !== 'component'
       ),
       extensions: filtered.filter(t => t.type === 'extension'),

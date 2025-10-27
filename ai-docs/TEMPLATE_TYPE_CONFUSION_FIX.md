@@ -44,7 +44,7 @@ Frontend tries to open non-existent .kit file (400 error)
 Added defensive filters to ensure only actual applications are shown:
 
 ```typescript
-applications: filtered.filter(t => 
+applications: filtered.filter(t =>
   t.type === 'application' &&      // Must be application type
   !t.name.includes('_setup') &&    // Exclude setup templates
   t.type !== 'component'           // Exclude component type
@@ -82,7 +82,7 @@ TEMPLATE_EXTENSION_PATTERNS = {
         '*_composer_setup',
     ],
     # ... (more application templates)
-    
+
     # Setup extension templates (create the same patterns)
     'omni_usd_composer_setup': [
         # Same patterns as application
@@ -223,4 +223,3 @@ Pre-cleaning ensures a fresh start for every template creation attempt.
 
 ## Commit Hash
 `d9e20f1` - Fix template filtering and add Home navigation button
-
