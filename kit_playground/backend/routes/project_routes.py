@@ -1550,13 +1550,24 @@ def create_project_routes(
             
             # Clean template-generated extensions
             if extensions_dir.exists():
-                # Extension patterns: *.viewer_messaging, *.viewer_setup, etc.
+                # Extension patterns: match both old (*_setup) and new (*.setup) naming conventions
                 extension_patterns = [
                     '*viewer_messaging',
+                    '*.viewer_messaging',
                     '*viewer_setup',
+                    '*.viewer_setup',
+                    '*_viewer_setup',
                     '*editor_setup',
+                    '*.editor_setup',
+                    '*_editor_setup',
                     '*composer_setup',
-                    '*explorer_setup'
+                    '*.composer_setup',
+                    '*_composer_setup',
+                    '*usd_composer_setup',
+                    '*.usd_composer_setup',
+                    '*explorer_setup',
+                    '*.explorer_setup',
+                    '*_explorer_setup'
                 ]
                 
                 for pattern in extension_patterns:

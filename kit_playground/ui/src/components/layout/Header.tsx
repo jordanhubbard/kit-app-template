@@ -4,7 +4,7 @@ import { apiService } from '../../services/api';
 
 /**
  * Header
- * 
+ *
  * Application header with branding and title.
  * Simplified for panel-based UI (no routing needed).
  */
@@ -23,7 +23,7 @@ export const Header: React.FC = () => {
       if (result.success) {
         const { counts } = result;
         alert(`✓ Successfully cleaned ${counts.total} item(s):\n• ${counts.projects} project(s)\n• ${counts.extensions} extension(s)\n\nThe sidebar will refresh automatically.`);
-        
+
         // Reload the page to refresh the sidebar
         window.location.reload();
       } else {
@@ -45,7 +45,7 @@ export const Header: React.FC = () => {
           <div className="w-10 h-10 bg-nvidia-green rounded flex items-center justify-center font-bold text-white text-xl">
             K
           </div>
-          
+
           {/* Title */}
           <div>
             <h1 className="text-xl font-bold text-text-primary">Kit Playground</h1>

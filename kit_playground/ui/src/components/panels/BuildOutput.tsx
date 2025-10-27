@@ -132,7 +132,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       console.log('[BuildOutput] Canceling running job before close:', job.id);
       await cancelJob(job.id);
     }
-    
+
     // Close the panel
     const panels = getPanelsByType('build-output');
     if (panels.length > 0) {
