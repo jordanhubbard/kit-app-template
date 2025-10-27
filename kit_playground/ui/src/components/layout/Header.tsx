@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Home } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { usePanelStore } from '../../stores/panelStore';
 
 /**
  * Header
@@ -10,6 +11,14 @@ import { apiService } from '../../services/api';
  */
 export const Header: React.FC = () => {
   const [cleaning, setCleaning] = useState(false);
+  const { closeAllPanels, openPanel } = usePanelStore();
+
+  const handleResetView = () => {
+    // Close all panels except the sidebar
+    closeAllPanels(['template-sidebar']);
+    // Open the template grid to show all templates
+    openPanel('template-grid', {});
+  };
 
   const handleCleanProjects = async () => {
     if (!confirm('Are you sure you want to delete all user-created projects?\n\nThis will:\n• Delete all projects in source/apps/\n• Delete template-generated extensions\n• Clear repo.toml apps list\n\nTest projects will be excluded.\n\nThis action cannot be undone!')) {
@@ -54,6 +63,24 @@ export const Header: React.FC = () => {
 
           {/* Spacer */}
           <div className="flex-1" />
+
+          {/* Reset View Button */}
+          <button
+            onClick={handleResetView}
+            className="
+              px-4 py-2 rounded
+              bg-nvidia-green/10 hover:bg-nvidia-green/20
+              text-nvidia-green
+              border border-nvidia-green/30
+              transition-colors
+              flex items-center gap-2
+              text-sm font-medium
+            "
+            title="Return to template browser"
+          >
+            <Home className="w-4 h-4" />
+            Home
+          </button>
 
           {/* Clean Projects Button */}
           <button

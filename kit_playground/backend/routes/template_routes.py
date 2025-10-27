@@ -13,6 +13,32 @@ logger = logging.getLogger(__name__)
 # Template-to-extension mapping
 # Maps template names to the extension patterns they create
 TEMPLATE_EXTENSION_PATTERNS = {
+    # Application templates (also create setup extensions)
+    'omni_usd_composer': [
+        '*.usd_composer_setup',
+        '*_usd_composer_setup',
+        '*.composer_setup',
+        '*_composer_setup',
+    ],
+    'omni_usd_viewer': [
+        '*.usd_viewer_setup',
+        '*_usd_viewer_setup',
+        '*.viewer_setup',
+        '*_viewer_setup',
+    ],
+    'kit_base_editor': [
+        '*.usd_editor_setup',
+        '*_usd_editor_setup',
+        '*.editor_setup',
+        '*_editor_setup',
+    ],
+    'omni_usd_explorer': [
+        '*.usd_explorer_setup',
+        '*_usd_explorer_setup',
+        '*.explorer_setup',
+        '*_explorer_setup',
+    ],
+    # Setup extension templates (create the same patterns)
     'omni_usd_composer_setup': [
         '*.usd_composer_setup',
         '*_usd_composer_setup',
