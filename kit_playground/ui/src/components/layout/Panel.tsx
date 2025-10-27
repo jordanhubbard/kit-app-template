@@ -57,10 +57,11 @@ export const Panel: React.FC<PanelProps> = ({
         flex flex-row
         transition-all duration-200 ease-in-out
         ${isActive ? 'z-10' : 'z-0'}
+        ${panel.width === 0 ? 'flex-1' : ''}
         ${className}
       `}
       style={{
-        width: `${panel.width}px`,
+        width: panel.width > 0 ? `${panel.width}px` : undefined,
         minWidth: `${panel.minWidth}px`,
         maxWidth: panel.maxWidth ? `${panel.maxWidth}px` : undefined,
       }}

@@ -79,6 +79,14 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
   }, [templates, searchQuery, sortBy]);
 
   const handleTemplateClick = (template: TemplateModel) => {
+    // Close the template grid panel to make room for the creation workflow
+    const { closePanel, getPanelsByType } = usePanelStore.getState();
+    const gridPanels = getPanelsByType('template-grid');
+    if (gridPanels.length > 0) {
+      closePanel(gridPanels[0].id);
+    }
+
+    // Open template detail panel (will now be leftmost after sidebar)
     openPanel('template-detail', { template });
   };
 
@@ -182,7 +190,7 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
           </div>
         ) : viewMode === 'grid' ? (
           /* Grid View */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 auto-rows-fr">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
             {filteredTemplates.map((template) => (
               <TemplateCard
                 key={template.id}

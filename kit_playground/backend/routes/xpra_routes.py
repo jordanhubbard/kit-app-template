@@ -8,9 +8,6 @@ from flask import Blueprint, jsonify
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint
-xpra_bp = Blueprint('xpra', __name__, url_prefix='/api/xpra')
-
 
 def create_xpra_routes(xpra_manager):
     """
@@ -22,8 +19,10 @@ def create_xpra_routes(xpra_manager):
     Returns:
         Flask Blueprint with Xpra routes configured
     """
+    # Create a NEW blueprint instance each time to avoid re-registration issues
+    bp = Blueprint('xpra', __name__, url_prefix='/api/xpra')
 
-    @xpra_bp.route('/check', methods=['GET'])
+    @bp.route('/check', methods=['GET'])
     def check_xpra():
         """Check if Xpra is installed and available."""
         try:
@@ -68,7 +67,7 @@ def create_xpra_routes(xpra_manager):
                 'error': str(e)
             })
 
-    @xpra_bp.route('/sessions', methods=['GET'])
+    @bp.route('/sessions', methods=['GET'])
     def list_sessions():
         """List active Xpra sessions."""
         try:
@@ -86,7 +85,7 @@ def create_xpra_routes(xpra_manager):
             logger.error(f"Failed to list Xpra sessions: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    @xpra_bp.route('/status/<int:display>', methods=['GET'])
+    @bp.route('/status/<int:display>', methods=['GET'])
     def check_display_status(display: int):
         """Check if a specific Xpra display is ready.
 
@@ -156,4 +155,4 @@ def create_xpra_routes(xpra_manager):
             logger.error(f"Failed to check Xpra display status: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    return xpra_bp
+    return bp

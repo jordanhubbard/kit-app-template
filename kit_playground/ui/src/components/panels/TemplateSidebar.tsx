@@ -48,15 +48,36 @@ export const TemplateSidebar: React.FC = () => {
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(section)) {
+    const wasExpanded = newExpanded.has(section);
+
+    if (wasExpanded) {
       newExpanded.delete(section);
     } else {
       newExpanded.add(section);
     }
     setExpandedSections(newExpanded);
+
+    // Also show the filtered grid when expanding a section
+    if (!wasExpanded) {
+      if (section === 'applications') {
+        handleShowApplications();
+      } else if (section === 'extensions') {
+        handleShowExtensions();
+      } else if (section === 'services') {
+        handleShowServices();
+      }
+    }
   };
 
   const handleTemplateClick = (template: TemplateModel) => {
+    // Close the template grid panel to make room for the creation workflow
+    const { closePanel, getPanelsByType } = usePanelStore.getState();
+    const gridPanels = getPanelsByType('template-grid');
+    if (gridPanels.length > 0) {
+      closePanel(gridPanels[0].id);
+    }
+
+    // Open template detail panel (will now be leftmost after sidebar)
     openPanel('template-detail', { template });
   };
 

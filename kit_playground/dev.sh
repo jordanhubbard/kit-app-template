@@ -114,14 +114,37 @@ else
 fi
 BACKEND_PID=$!
 
-# Wait for backend to start
-sleep 2
-if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo -e "${RED}✗ Backend failed to start. Check /tmp/kit-playground-backend.log${NC}"
-    cat /tmp/kit-playground-backend.log
+# Wait for backend to start with proper health check
+echo -n "Waiting for backend to be ready"
+BACKEND_READY=0
+for i in {1..30}; do
+    # Check if process is still alive
+    if ! kill -0 $BACKEND_PID 2>/dev/null; then
+        echo -e "\n${RED}✗ Backend process died. Check /tmp/kit-playground-backend.log${NC}"
+        tail -50 /tmp/kit-playground-backend.log
+        exit 1
+    fi
+
+    # Check if backend is responding to HTTP requests
+    if curl -s -f http://localhost:${BACKEND_PORT}/api/health > /dev/null 2>&1; then
+        BACKEND_READY=1
+        break
+    fi
+
+    echo -n "."
+    sleep 1
+done
+
+echo "" # newline
+
+if [ $BACKEND_READY -eq 0 ]; then
+    echo -e "${RED}✗ Backend failed to become ready after 30 seconds${NC}"
+    echo -e "${YELLOW}Last 50 lines of backend log:${NC}"
+    tail -50 /tmp/kit-playground-backend.log
     exit 1
 fi
-echo -e "${GREEN}✓ Backend started (PID: $BACKEND_PID)${NC}"
+
+echo -e "${GREEN}✓ Backend started and ready (PID: $BACKEND_PID)${NC}"
 
 # Start frontend with Vite
 echo -e "${BLUE}Starting frontend UI on port ${FRONTEND_PORT}...${NC}"

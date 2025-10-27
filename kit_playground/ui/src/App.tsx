@@ -7,6 +7,7 @@ import { ProjectConfig } from './components/panels/ProjectConfig';
 import { BuildOutput } from './components/panels/BuildOutput';
 import { CodeEditor } from './components/panels/CodeEditor';
 import { Preview } from './components/panels/Preview';
+import { OutputPanel } from './components/panels/OutputPanel';
 import { useTemplates } from './hooks/useTemplates';
 
 /**
@@ -71,6 +72,9 @@ function App() {
       <div className="flex-1 overflow-hidden">
         <PanelContainer renderPanel={renderPanel} />
       </div>
+
+      {/* Output Panel - Persistent bottom log viewer */}
+      <OutputPanel />
     </div>
   );
 }

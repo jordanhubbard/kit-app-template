@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { apiService } from '../services/api';
 
 export interface Job {
   id: string;
@@ -16,14 +17,14 @@ interface UseJobResult {
   job: Job | null;
   loading: boolean;
   error: string | null;
-  startJob: (type: Job['type'], projectName: string) => Promise<string | null>;
+  startJob: (type: Job['type'], projectName: string, projectPath?: string) => Promise<string | null>;
   cancelJob: (jobId: string) => Promise<boolean>;
   refetch: (jobId: string) => void;
 }
 
 /**
  * useJob
- * 
+ *
  * Custom hook for managing long-running jobs (build, launch, create).
  * Handles job status tracking and provides control actions.
  */
@@ -35,13 +36,12 @@ export const useJob = (): UseJobResult => {
   /**
    * Start a new job
    */
-  const startJob = useCallback(async (type: Job['type'], projectName: string): Promise<string | null> => {
+  const startJob = useCallback(async (type: Job['type'], projectName: string, projectPath?: string): Promise<string | null> => {
     try {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API call when endpoint is available
-      // For now, simulate job creation
+      // Create initial job state
       const jobId = `job_${Date.now()}`;
       const newJob: Job = {
         id: jobId,
@@ -52,20 +52,67 @@ export const useJob = (): UseJobResult => {
       };
 
       setJob(newJob);
-      
-      // In production, this would call:
-      // const response = await apiService.startJob({ type, projectName });
-      // return response.jobId;
-      
-      return jobId;
+
+      // Call the appropriate backend API
+      if (type === 'build') {
+        // Calculate project path from project name
+        const calculatedProjectPath = projectPath || `source/apps/${projectName}`;
+
+        console.log(`[useJob] Starting build for project: ${projectName} at ${calculatedProjectPath}`);
+
+        // Start the build via backend API
+        const response = await fetch('/api/projects/build', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectPath: calculatedProjectPath,
+            projectName: projectName,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Build failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Build started:', data);
+
+        // Update job status
+        setJob({
+          ...newJob,
+          status: 'running',
+          id: data.job_id || jobId,
+        });
+
+        return data.job_id || jobId;
+      } else if (type === 'launch') {
+        // TODO: Implement launch
+        console.log(`Launch not yet implemented for ${projectName}`);
+        return jobId;
+      } else {
+        // For 'create' type, job is handled by the project creation flow
+        return jobId;
+      }
     } catch (err) {
       console.error('Failed to start job:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start job');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start job';
+      setError(errorMessage);
+
+      // Update job to failed status
+      if (job) {
+        setJob({
+          ...job,
+          status: 'failed',
+          error: errorMessage,
+          endTime: new Date(),
+        });
+      }
+
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [job]);
 
   /**
    * Cancel a running job
@@ -77,7 +124,7 @@ export const useJob = (): UseJobResult => {
 
       // TODO: Replace with actual API call when endpoint is available
       // const response = await apiService.cancelJob(jobId);
-      
+
       // Simulate cancellation
       if (job && job.id === jobId) {
         setJob({
@@ -108,7 +155,7 @@ export const useJob = (): UseJobResult => {
       // TODO: Replace with actual API call when endpoint is available
       // const response = await apiService.getJob(jobId);
       // setJob(response.job);
-      
+
       // For now, no-op as we don't have the API yet
       console.log('Fetching job:', jobId);
     } catch (err) {
@@ -128,4 +175,3 @@ export const useJob = (): UseJobResult => {
     refetch,
   };
 };
-

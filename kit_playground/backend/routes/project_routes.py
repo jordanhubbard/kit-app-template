@@ -2,6 +2,7 @@
 Project build and run routes for Kit Playground.
 """
 import os
+import sys
 import logging
 import subprocess
 import threading
@@ -160,89 +161,106 @@ def create_project_routes(
                 'message': f'$ {" ".join(cmd)}'
             })
 
-            # Use Popen for real-time output streaming
+            # Use script command to force PTY (pseudo-terminal) for unbuffered output
+            # This makes the subprocess think it's running in a real terminal,
+            # preventing output buffering
+            import pty
+            import select
+
+            # Set environment to force unbuffered output
+            build_env = os.environ.copy()
+            build_env['PYTHONUNBUFFERED'] = '1'
+            build_env['PYTHONIOENCODING'] = 'utf-8'
+            build_env['TERM'] = 'xterm-256color'  # Ensure terminal features work
+
+            # Use pty.spawn for true unbuffered output
+            master_fd, slave_fd = pty.openpty()
+
             process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                stdin=slave_fd,
                 cwd=cwd,
-                bufsize=1,  # Line buffered
-                universal_newlines=True
+                env=build_env,
+                bufsize=0,
+                preexec_fn=os.setsid  # Create new session
             )
 
-            # Stream stdout in real-time
+            # Close slave fd in parent process
+            os.close(slave_fd)
+
+            # Stream output in real-time from PTY
             stdout_lines = []
-            stderr_lines = []
 
-            # Non-blocking read with timeout
-            while True:
-                # Check if process is still running
-                if process.poll() is not None:
-                    # Process finished, read any remaining output
-                    remaining_stdout = process.stdout.read()
-                    remaining_stderr = process.stderr.read()
+            try:
+                while True:
+                    # Check if process is still running
+                    if process.poll() is not None:
+                        # Read any remaining output
+                        try:
+                            while True:
+                                rlist, _, _ = select.select([master_fd], [], [], 0)
+                                if not rlist:
+                                    break
+                                data = os.read(master_fd, 1024).decode('utf-8', errors='replace')
+                                if not data:
+                                    break
+                                for line in data.splitlines():
+                                    if line.strip():
+                                        stdout_lines.append(line)
+                                        socketio.emit('log', {
+                                            'level': 'info',
+                                            'source': 'build',
+                                            'message': line
+                                        })
+                        except OSError:
+                            pass
+                        break
 
-                    if remaining_stdout:
-                        for line in remaining_stdout.strip().split('\n'):
-                            if line:
-                                stdout_lines.append(line)
-                                socketio.emit('log', {
-                                    'level': 'info',
-                                    'source': 'build',
-                                    'message': line
-                                })
+                    # Read output with select
+                    rlist, _, _ = select.select([master_fd], [], [], 0.1)
+                    if rlist:
+                        try:
+                            data = os.read(master_fd, 1024).decode('utf-8', errors='replace')
+                            if data:
+                                for line in data.splitlines():
+                                    if line.strip():
+                                        stdout_lines.append(line)
+                                        socketio.emit('log', {
+                                            'level': 'info',
+                                            'source': 'build',
+                                            'message': line
+                                        })
+                        except OSError:
+                            break
+            finally:
+                os.close(master_fd)
 
-                    if remaining_stderr:
-                        for line in remaining_stderr.strip().split('\n'):
-                            if line:
-                                stderr_lines.append(line)
-                                socketio.emit('log', {
-                                    'level': 'error',
-                                    'source': 'build',
-                                    'message': line
-                                })
-                    break
-
-                # Read a line from stdout
-                line = process.stdout.readline()
-                if line:
-                    line = line.rstrip()
-                    stdout_lines.append(line)
-                    socketio.emit('log', {
-                        'level': 'info',
-                        'source': 'build',
-                        'message': line
-                    })
-
-                # Read a line from stderr
-                err_line = process.stderr.readline()
-                if err_line:
-                    err_line = err_line.rstrip()
-                    stderr_lines.append(err_line)
-                    socketio.emit('log', {
-                        'level': 'error',
-                        'source': 'build',
-                        'message': err_line
-                    })
-
-                # Small sleep to prevent busy waiting
-                if not line and not err_line:
-                    time.sleep(0.1)
-
-            returncode = process.returncode
+            # Wait for process to fully terminate and get exit code
+            try:
+                returncode = process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                logger.warning("Process did not terminate within timeout, forcing kill")
+                process.kill()
+                returncode = process.wait()
 
             # Log full output to backend logs
             if stdout_lines:
-                logger.info("Build stdout: %s", '\n'.join(stdout_lines))
-            if stderr_lines:
-                logger.info("Build stderr: %s", '\n'.join(stderr_lines))
+                logger.info("Build output: %s", '\n'.join(stdout_lines))
 
+            # Emit completion message
             success = returncode == 0
+            socketio.emit('log', {
+                'level': 'info' if success else 'error',
+                'source': 'build',
+                'message': f'Build {"completed successfully" if success else "failed"} (exit code: {returncode})'
+            })
+
             return jsonify({
                 'success': success,
                 'output': '\n'.join(stdout_lines),
-                'error': '\n'.join(stderr_lines) if not success else None
+                'error': None if success else f'Build failed with exit code {returncode}'
             })
         except subprocess.TimeoutExpired:
             return jsonify({'error': 'Build timeout (300s)'}), 500

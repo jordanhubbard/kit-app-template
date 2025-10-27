@@ -1,0 +1,93 @@
+# Kit Service Microservice Template
+# Headless service template for background processing and API services
+
+[metadata]
+name = "kit_service"
+display_name = "Kit Service"
+type = "microservice"
+category = "api"
+description = "Minimal definition of an Omniverse Kit SDK based service. Useful for creating headless services leveraging Omniverse Kit functionality"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["python"]
+
+[metadata.tags]
+tags = ["service", "headless", "api", "microservice", "batch", "automation"]
+
+[template]
+class = "ApplicationTemplate"
+kit_file = "../../apps/kit_service/kit_service.kit"
+source_dir = "../../apps/kit_service"
+
+requires_extensions = [
+    {template = "kit_service_setup", type = "setup"}
+]
+
+[variables]
+application_name = "my_company.my_service"
+application_display_name = "My Service"
+version = "0.1.0"
+
+[documentation]
+overview = """
+Kit Service provides a headless service framework for building API-based applications
+that leverage Omniverse Kit functionality without a graphical interface. Perfect for
+automation, batch processing, and integration services.
+"""
+
+use_cases = [
+    "Automation services for background tasks",
+    "Headless batch processing of 3D content",
+    "API services for USD manipulation",
+    "Integration with other software ecosystems",
+    "Cloud-based 3D processing services"
+]
+
+key_features = [
+    "Headless operation (no GUI)",
+    "REST API endpoint support",
+    "Fully extensible architecture",
+    "Cloud deployment ready",
+    "Background processing capabilities"
+]
+
+getting_started = """
+1. Run: ./repo.sh template new kit_service --name my_company.my_api_service
+2. Configure the service setup extension when prompted
+3. Build: ./repo.sh build
+4. Launch: ./repo.sh launch
+5. Visit http://localhost:8011/docs for API documentation
+"""
+
+[dependencies]
+required_extensions = []
+optional_extensions = ["omni.services.core", "omni.usd.core"]
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+supports_streaming = false
+requires_display = false  # Headless service
+
+[build]
+requires_build = false
+supports_debug = true
+supports_release = true
+
+[extensions]
+[[extensions.setup]]
+template = "kit_service_setup"
+required = true
+description = "Setup extension providing service endpoints and configuration"
+
+[service]
+# Service-specific configuration
+default_port = 8011
+provides_api = true
+swagger_docs = true
+headless_only = true

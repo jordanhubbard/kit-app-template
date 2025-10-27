@@ -11,8 +11,9 @@ import type {
   JobType,
 } from './types';
 
-// API Base URL - can be configured via environment variable
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// API Base URL - use relative path to leverage Vite proxy in development
+// In production, this can be overridden with VITE_API_BASE_URL env var
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 class APIService {
   private client: AxiosInstance;
@@ -81,6 +82,23 @@ class APIService {
 
   async getJobStats(): Promise<JobStatsResponse> {
     const response = await this.client.get<JobStatsResponse>('/jobs/stats');
+    return response.data;
+  }
+
+  // ===== Filesystem Operations =====
+
+  async readFile(filePath: string): Promise<string> {
+    const response = await this.client.get<string>('/filesystem/read', {
+      params: { path: filePath },
+    });
+    return response.data;
+  }
+
+  async saveFile(filePath: string, content: string): Promise<{ success: boolean; message: string }> {
+    const response = await this.client.post('/filesystem/write', {
+      path: filePath,
+      content,
+    });
     return response.data;
   }
 

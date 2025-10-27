@@ -24,6 +24,7 @@ interface TemplateDetailProps {
  */
 export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
   const { closePanel, openPanel, getPanelsByType } = usePanelStore();
+  const [showDocs, setShowDocs] = React.useState(false);
 
   const handleCreateClick = () => {
     // Open project config panel (Phase 3)
@@ -31,11 +32,18 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
   };
 
   const handleBack = () => {
-    // Get the current template-detail panel and close it
+    // Close the current template-detail panel
     const panels = getPanelsByType('template-detail');
     if (panels.length > 0) {
       closePanel(panels[panels.length - 1].id);
     }
+
+    // Reopen the template grid
+    openPanel('template-grid', {});
+  };
+
+  const handleShowDocs = () => {
+    setShowDocs(!showDocs);
   };
 
   const typeColor = {
@@ -206,29 +214,33 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
             </ul>
           </div>
 
-          {/* Documentation Links (Placeholder) */}
+          {/* Documentation Links */}
           <div>
             <h3 className="text-sm font-semibold text-text-secondary mb-3 uppercase tracking-wide flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Documentation
             </h3>
             <div className="space-y-2">
+              {template.documentation && (
+                <button
+                  onClick={handleShowDocs}
+                  className="
+                    w-full flex items-center justify-between p-3 rounded-lg
+                    bg-bg-card border border-border-subtle
+                    hover:border-nvidia-green
+                    text-text-primary hover:text-nvidia-green
+                    transition-colors
+                    group
+                  "
+                >
+                  <span>{showDocs ? 'Hide' : 'Show'} Template README</span>
+                  <FileText className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
               <a
-                href="#"
-                className="
-                  flex items-center justify-between p-3 rounded-lg
-                  bg-bg-card border border-border-subtle
-                  hover:border-nvidia-green
-                  text-text-primary hover:text-nvidia-green
-                  transition-colors
-                  group
-                "
-              >
-                <span>Template README</span>
-                <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </a>
-              <a
-                href="#"
+                href="https://docs.omniverse.nvidia.com/kit/docs/kit-manual/latest/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="
                   flex items-center justify-between p-3 rounded-lg
                   bg-bg-card border border-border-subtle
@@ -243,6 +255,57 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
               </a>
             </div>
           </div>
+
+          {/* Documentation Content (expandable) */}
+          {showDocs && template.documentation && (
+            <div className="p-6 rounded-lg border border-nvidia-green/30 bg-bg-card space-y-4">
+              {template.documentation.overview && (
+                <div>
+                  <h4 className="text-lg font-semibold text-nvidia-green mb-2">Overview</h4>
+                  <p className="text-text-secondary whitespace-pre-line leading-relaxed">
+                    {template.documentation.overview}
+                  </p>
+                </div>
+              )}
+
+              {template.documentation.key_features && template.documentation.key_features.length > 0 && (
+                <div>
+                  <h4 className="text-lg font-semibold text-nvidia-green mb-2">Key Features</h4>
+                  <ul className="list-none space-y-2">
+                    {template.documentation.key_features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <span className="text-nvidia-green mt-1">✓</span>
+                        <span className="text-text-secondary">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {template.documentation.use_cases && template.documentation.use_cases.length > 0 && (
+                <div>
+                  <h4 className="text-lg font-semibold text-nvidia-green mb-2">Use Cases</h4>
+                  <ul className="list-none space-y-2">
+                    {template.documentation.use_cases.map((useCase, idx) => (
+                      <li key={idx} className="flex items-start gap-3">
+                        <span className="text-nvidia-green mt-1">→</span>
+                        <span className="text-text-secondary">{useCase}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {template.documentation.getting_started && (
+                <div>
+                  <h4 className="text-lg font-semibold text-nvidia-green mb-2">Getting Started</h4>
+                  <pre className="text-text-secondary whitespace-pre-wrap font-mono text-sm p-4 bg-bg-dark rounded border border-border-subtle">
+                    {template.documentation.getting_started}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

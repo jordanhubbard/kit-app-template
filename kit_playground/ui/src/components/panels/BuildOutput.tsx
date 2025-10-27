@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Square, RotateCcw, Trash2, CheckCircle, XCircle, Loader, Terminal } from 'lucide-react';
+import { X, Square, RotateCcw, Trash2, CheckCircle, XCircle, Loader, Terminal, Play } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { useJob, type Job } from '../../hooks/useJob';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -8,14 +8,15 @@ interface BuildOutputProps {
   jobId?: string;
   projectName?: string;
   jobType?: Job['type'];
+  autoStart?: boolean;
 }
 
 /**
  * BuildOutput
- * 
+ *
  * Real-time build output panel (Panel 4/5).
  * Displays live log streaming from build/launch jobs.
- * 
+ *
  * Features:
  * - Real-time log streaming via WebSocket
  * - Job status indicators
@@ -28,37 +29,66 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   jobId: initialJobId,
   projectName,
   jobType = 'build',
+  autoStart = false,
 }) => {
-  const { closePanel, getPanelsByType } = usePanelStore();
+  const { closePanel, getPanelsByType, openPanel } = usePanelStore();
   const { job, startJob, cancelJob } = useJob();
   const [logs, setLogs] = useState<string[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [buildCompleted, setBuildCompleted] = useState(false); // Track build completion locally
+  const [buildFailed, setBuildFailed] = useState(false); // Track build failure locally
   const logsEndRef = useRef<HTMLDivElement>(null);
   const logsContainerRef = useRef<HTMLDivElement>(null);
+  const hasStartedJob = useRef(false); // Track if we've already started the job
 
   // WebSocket for real-time updates
   const { connected } = useWebSocket({
     onJobStatus: (data) => {
-      console.log('Job status:', data);
-      // Update job status
+      console.log('[BuildOutput] Job status:', data);
+      // Job status updates from backend
     },
     onJobProgress: (data) => {
-      console.log('Job progress:', data);
-      // Update progress bar
+      console.log('[BuildOutput] Job progress:', data);
+      // Progress updates from backend
     },
-    onJobLog: (data) => {
-      // Add log message
-      setLogs(prev => [...prev, data.message || data.log || JSON.stringify(data)]);
+    onLogMessage: (data) => {
+      // Add log message from backend (emitted as 'log' events)
+      console.log('[BuildOutput] Received log:', data);
+      const logLine = data.message || JSON.stringify(data);
+      setLogs(prev => [...prev, logLine]);
+
+      // Detect build completion from log messages
+      if (jobType === 'build') {
+        if (logLine.includes('BUILD (RELEASE) SUCCEEDED') || logLine.includes('Build completed successfully')) {
+          console.log('[BuildOutput] Detected successful build completion');
+          setBuildCompleted(true);
+          setBuildFailed(false);
+        } else if (logLine.includes('BUILD (RELEASE) FAILED') || logLine.includes('Build failed')) {
+          console.log('[BuildOutput] Detected failed build');
+          setBuildCompleted(false);
+          setBuildFailed(true);
+        }
+      }
     },
   });
 
-  // Initialize job if needed
+  // Initialize job if needed (only once)
   useEffect(() => {
-    if (!initialJobId && projectName) {
+    console.log('[BuildOutput] useEffect check:', {
+      initialJobId,
+      projectName,
+      autoStart,
+      hasStarted: hasStartedJob.current
+    });
+
+    if (!initialJobId && projectName && autoStart && !hasStartedJob.current) {
+      hasStartedJob.current = true;
+      console.log(`[BuildOutput] Auto-starting ${jobType} job for ${projectName}`);
       // Start a new job
       startJob(jobType, projectName);
     }
-  }, [initialJobId, projectName, jobType, startJob]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialJobId, projectName, jobType, autoStart]); // Intentionally omit startJob to prevent loop
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -84,6 +114,19 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const handleRetry = async () => {
     if (projectName) {
       setLogs([]);
+      setBuildCompleted(false);
+      setBuildFailed(false);
+      hasStartedJob.current = false; // Reset so we can start again
+      await startJob(jobType, projectName);
+    }
+  };
+
+  const handleStart = async () => {
+    if (projectName) {
+      setLogs([]);
+      setBuildCompleted(false);
+      setBuildFailed(false);
+      hasStartedJob.current = false; // Reset so we can start again
       await startJob(jobType, projectName);
     }
   };
@@ -101,7 +144,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
 
   const getStatusConfig = () => {
     if (!job) return { icon: <Terminal className="w-5 h-5" />, color: 'text-text-muted', label: 'Idle' };
-    
+
     switch (job.status) {
       case 'pending':
         return { icon: <Loader className="w-5 h-5 animate-spin" />, color: 'text-status-info', label: 'Pending' };
@@ -118,9 +161,26 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     }
   };
 
+  const handleLaunch = async () => {
+    if (!projectName) {
+      alert('No project name available for launch');
+      return;
+    }
+
+    // TODO: Implement launch functionality
+    // For now, just open a new panel
+    openPanel('build-output', {
+      projectName,
+      jobType: 'launch',
+      autoStart: true,
+    });
+  };
+
   const statusConfig = getStatusConfig();
+  const canStart = !job || (!initialJobId && !job.id);
   const canCancel = job?.status === 'pending' || job?.status === 'running';
-  const canRetry = job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'completed';
+  const canRetry = job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'completed' || buildFailed;
+  const canLaunch = jobType === 'build' && buildCompleted && projectName;
 
   return (
     <div className="flex flex-col h-full bg-bg-panel">
@@ -159,6 +219,44 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {canStart && projectName && (
+            <button
+              onClick={handleStart}
+              className="
+                px-4 py-2 rounded
+                bg-nvidia-green hover:bg-nvidia-green-dark
+                text-white text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              "
+              title="Start build"
+            >
+              <Play className="w-4 h-4" />
+              Start {jobType === 'build' ? 'Build' : jobType === 'launch' ? 'Launch' : 'Job'}
+            </button>
+          )}
+
+          {canLaunch && (
+            <button
+              onClick={handleLaunch}
+              className="
+                px-4 py-2 rounded
+                bg-blue-600 hover:bg-blue-700
+                text-white text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              "
+              title="Launch application"
+            >
+              <Play className="w-4 h-4" />
+              Launch
+            </button>
+          )}
+
+          {((canStart && projectName) || canLaunch) && <div className="w-px h-6 bg-border-subtle mx-2" />}
+
           {canCancel && (
             <button
               onClick={handleCancel}
@@ -173,7 +271,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               <Square className="w-4 h-4" />
             </button>
           )}
-          
+
           {canRetry && (
             <button
               onClick={handleRetry}
@@ -188,7 +286,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               <RotateCcw className="w-4 h-4" />
             </button>
           )}
-          
+
           <button
             onClick={handleClear}
             disabled={logs.length === 0}
@@ -203,9 +301,9 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
           >
             <Trash2 className="w-4 h-4" />
           </button>
-          
+
           <div className="w-px h-6 bg-border-subtle mx-1" />
-          
+
           <button
             onClick={handleClose}
             className="
@@ -286,4 +384,3 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     </div>
   );
 };
-

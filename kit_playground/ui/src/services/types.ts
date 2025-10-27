@@ -13,6 +13,12 @@ export interface Template {
       min_kit_version?: string;
     };
   };
+  documentation?: {
+    overview?: string;
+    getting_started?: string;
+    key_features?: string[];
+    use_cases?: string[];
+  };
 }
 
 export interface TemplateListResponse {

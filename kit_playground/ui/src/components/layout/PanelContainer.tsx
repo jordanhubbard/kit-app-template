@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Panel } from './Panel';
 import { usePanelStore } from '../../stores/panelStore';
 
@@ -28,43 +29,118 @@ export const PanelContainer: React.FC<PanelContainerProps> = ({
   className = '',
   renderPanel,
 }) => {
-  const { panels, activePanel } = usePanelStore();
+  const {
+    panels,
+    activePanel,
+    scrollLeft,
+    scrollRight,
+    canScrollLeft,
+    canScrollRight,
+    checkCapacityAndRetire,
+  } = usePanelStore();
+
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Only render visible panels
   const visiblePanels = panels.filter(p => p.isVisible);
 
+  // Check capacity on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      checkCapacityAndRetire();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [checkCapacityAndRetire]);
+
+  const showLeftNav = canScrollLeft();
+  const showRightNav = canScrollRight();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[PanelContainer] Navigation state:', {
+      showLeftNav,
+      showRightNav,
+      visiblePanelCount: visiblePanels.length,
+      visiblePanelTypes: visiblePanels.map(p => p.type),
+    });
+  }, [showLeftNav, showRightNav, visiblePanels]);
+
   return (
-    <div
-      className={`
-        panel-container
-        flex flex-row
-        w-full h-full
-        bg-bg-dark
-        overflow-x-auto overflow-y-hidden
-        ${className}
-      `}
-      style={{
-        // Disable default scrollbar styling for custom scrollbar
-        scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(118, 185, 0, 0.5) rgba(0, 0, 0, 0.3)',
-      }}
-    >
-      {visiblePanels.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-text-muted">
-          <p>No panels open</p>
-        </div>
-      ) : (
-        visiblePanels.map((panel, index) => (
-          <Panel
-            key={panel.id}
-            panel={panel}
-            isActive={panel.id === activePanel}
-            isLast={index === visiblePanels.length - 1}
-          >
-            {renderPanel(panel.id, panel.type, panel.data)}
-          </Panel>
-        ))
+    <div className="relative w-full h-full">
+      {/* Left navigation arrow */}
+      {showLeftNav && (
+        <button
+          onClick={scrollLeft}
+          className="
+            absolute left-0 top-1/2 -translate-y-1/2 z-50
+            w-10 h-20
+            bg-nvidia-green/90 hover:bg-nvidia-green
+            text-white
+            flex items-center justify-center
+            transition-all duration-200
+            shadow-lg hover:shadow-xl
+            rounded-r-lg
+          "
+          title="Show previous panels"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
       )}
+
+      {/* Right navigation arrow */}
+      {showRightNav && (
+        <button
+          onClick={scrollRight}
+          className="
+            absolute right-0 top-1/2 -translate-y-1/2 z-50
+            w-10 h-20
+            bg-nvidia-green/90 hover:bg-nvidia-green
+            text-white
+            flex items-center justify-center
+            transition-all duration-200
+            shadow-lg hover:shadow-xl
+            rounded-l-lg
+          "
+          title="Show next panels"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Panel container with smooth transitions */}
+      <div
+        ref={containerRef}
+        className={`
+          panel-container
+          flex flex-row
+          w-full h-full
+          bg-bg-dark
+          overflow-hidden
+          ${className}
+        `}
+        style={{
+          transition: 'transform 0.3s ease-in-out',
+        }}
+      >
+        {visiblePanels.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center text-text-muted">
+            <p>No panels open</p>
+          </div>
+        ) : (
+          visiblePanels.map((panel, index) => (
+            <Panel
+              key={panel.id}
+              panel={panel}
+              isActive={panel.id === activePanel}
+              isLast={index === visiblePanels.length - 1}
+            >
+              {renderPanel(panel.id, panel.type, panel.data)}
+            </Panel>
+          ))
+        )}
+      </div>
     </div>
   );
 };

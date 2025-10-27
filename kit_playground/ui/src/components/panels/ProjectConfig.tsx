@@ -8,13 +8,52 @@ interface ProjectConfigProps {
   template: TemplateModel;
 }
 
+// Random word lists for generating default project names
+const ADJECTIVES = [
+  'happy', 'swift', 'bright', 'clever', 'cosmic', 'crystal', 'cyber',
+  'digital', 'dynamic', 'electric', 'emerald', 'golden', 'lunar', 'neon',
+  'nova', 'pixel', 'quantum', 'ruby', 'silver', 'solar', 'stellar', 'turbo',
+  'ultra', 'vapor', 'vivid', 'zenith'
+];
+
+const NOUNS = [
+  'falcon', 'phoenix', 'comet', 'nebula', 'horizon', 'summit', 'cosmos',
+  'thunder', 'lightning', 'aurora', 'eclipse', 'vertex', 'nexus', 'prism',
+  'matrix', 'vector', 'catalyst', 'beacon', 'crystal', 'fusion', 'zenith',
+  'odyssey', 'vortex', 'spectrum', 'galaxy', 'cascade'
+];
+
+/**
+ * Generate a random project name with format: adjective_noun_1
+ * Example: happy_falcon_1, swift_nebula_1
+ */
+const generateDefaultProjectName = (): string => {
+  const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+  return `${adjective}_${noun}_1`;
+};
+
+/**
+ * Convert project name to display name
+ * Example: happy_falcon_1 -> Happy Falcon
+ */
+const toDisplayName = (projectName: string): string => {
+  return projectName
+    .replace(/_\d+$/, '') // Remove trailing _1, _2, etc.
+    .replace(/[_-]/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 /**
  * ProjectConfig
- * 
+ *
  * Project configuration and creation panel (Panel 3).
  * Allows users to configure and create a new project from a template.
- * 
+ *
  * Features:
+ * - Auto-generated default project names for quick playground testing
  * - Project name validation
  * - Display name
  * - Output directory selection
@@ -25,35 +64,34 @@ interface ProjectConfigProps {
  */
 export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const { closePanel, getPanelsByType } = usePanelStore();
-  
-  // Form state
-  const [projectName, setProjectName] = useState('');
-  const [displayName, setDisplayName] = useState('');
+
+  // Generate default project name on component mount
+  const [defaultProjectName] = useState(() => generateDefaultProjectName());
+  const [defaultDisplayName] = useState(() => toDisplayName(defaultProjectName));
+
+  // Form state with auto-generated defaults
+  const [projectName, setProjectName] = useState(defaultProjectName);
+  const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [outputDir, setOutputDir] = useState('source/apps');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
   // Advanced options
   const [enableStreaming, setEnableStreaming] = useState(false);
   const [perAppDeps, setPerAppDeps] = useState(false);
   const [standalone, setStandalone] = useState(false);
-  
+
   // UI state
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // Auto-generate display name from project name
+  // Auto-update display name when project name changes
   React.useEffect(() => {
-    if (projectName && !displayName) {
-      // Convert snake_case/kebab-case to Title Case
-      const generated = projectName
-        .replace(/[_-]/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
+    if (projectName) {
+      const generated = toDisplayName(projectName);
       setDisplayName(generated);
     }
-  }, [projectName, displayName]);
+  }, [projectName]);
 
   // Validate project name
   const validateProjectName = (name: string): string | null => {
@@ -97,19 +135,29 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
         enableStreaming,
       });
 
-      if (response.success) {
-        // Close this panel
-        const panels = getPanelsByType('project-config');
-        if (panels.length > 0) {
-          closePanel(panels[panels.length - 1].id);
+      if (response.success && response.projectInfo) {
+        const { openPanel } = usePanelStore.getState();
+
+        // Close project-config and template-detail panels
+        const configPanels = getPanelsByType('project-config');
+        const detailPanels = getPanelsByType('template-detail');
+
+        if (configPanels.length > 0) {
+          closePanel(configPanels[configPanels.length - 1].id);
+        }
+        if (detailPanels.length > 0) {
+          closePanel(detailPanels[detailPanels.length - 1].id);
         }
 
-        // Open build output panel with project info (Phase 4)
-        // For now, just show success
+        // Open code editor panel with the .kit file
+        // User can click "Build" to open the build output panel and start a build
+        openPanel('code-editor', {
+          filePath: response.projectInfo.kitFile,
+          fileName: `${response.projectInfo.projectName}.kit`,
+          projectName: response.projectInfo.projectName,
+        });
+
         console.log('Project created successfully:', response);
-        
-        // TODO Phase 4: Open build panel
-        // openPanel('build-output', { projectInfo: response.projectInfo });
       } else {
         setError(response.error || 'Failed to create project');
       }
@@ -122,10 +170,12 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   };
 
   const handleBack = () => {
+    // Close the project-config panel to go back to template detail
     const panels = getPanelsByType('project-config');
     if (panels.length > 0) {
       closePanel(panels[panels.length - 1].id);
     }
+    // Template detail should still be visible, no need to reopen
   };
 
   return (
@@ -165,7 +215,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
           {/* Error Display */}
           {error && (
             <div className="p-4 rounded-lg bg-status-error/10 border border-status-error/30 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-status-error shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-semibold text-status-error mb-1">Creation Failed</h4>
                 <p className="text-sm text-text-secondary">{error}</p>
@@ -182,7 +232,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
               type="text"
               value={projectName}
               onChange={(e) => handleProjectNameChange(e.target.value)}
-              placeholder="my_awesome_app"
+              placeholder="cosmic_falcon_1"
               disabled={isCreating}
               className={`
                 w-full px-4 py-3 rounded-lg
@@ -214,7 +264,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="My Awesome App"
+              placeholder="Cosmic Falcon"
               disabled={isCreating}
               className="
                 w-full px-4 py-3 rounded-lg
@@ -226,13 +276,13 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
               "
             />
             <p className="mt-2 text-xs text-text-muted">
-              Human-readable name for your project (auto-generated from project name)
+              Human-readable name for your project (auto-updated from project name)
             </p>
           </div>
 
           {/* Output Directory */}
           <div>
-            <label className="block text-sm font-semibold text-text-primary mb-2 flex items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-text-primary mb-2">
               <Folder className="w-4 h-4" />
               Output Directory
             </label>
@@ -378,7 +428,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
           >
             Cancel
           </button>
-          
+
           <button
             onClick={handleCreate}
             disabled={isCreating || !!validationErrors.projectName || !projectName}
@@ -411,4 +461,3 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
     </div>
   );
 };
-

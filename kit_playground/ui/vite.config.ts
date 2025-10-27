@@ -17,6 +17,20 @@ export default defineConfig({
       'Pragma': 'no-cache',
       'Expires': '0',
     },
+    // Proxy API requests to backend
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
+    },
   },
   preview: {
     port: 3000,

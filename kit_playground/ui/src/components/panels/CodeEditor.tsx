@@ -1,26 +1,29 @@
-import React, { useState } from 'react';
-import { Save, X, RotateCcw, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, X, RotateCcw, FileText, Loader, Play } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
+import { apiService } from '../../services/api';
 
 interface CodeEditorProps {
   filePath?: string;
   fileName?: string;
   initialContent?: string;
   readOnly?: boolean;
+  projectName?: string;
 }
 
 /**
  * CodeEditor
- * 
+ *
  * Simple code editor panel for viewing/editing .kit files.
  * Basic text editing with save/discard functionality.
- * 
+ *
  * Features:
+ * - Auto-loads file content from filePath
  * - Syntax highlighting (basic, via textarea)
  * - Save changes
  * - Discard changes
  * - Read-only mode
- * 
+ *
  * Note: For Phase 4, this is a simple textarea.
  * In Phase 5, this could be enhanced with Monaco editor or similar.
  */
@@ -29,31 +32,58 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   fileName = 'Untitled',
   initialContent = '',
   readOnly = false,
+  projectName,
 }) => {
-  const { closePanel, getPanelsByType } = usePanelStore();
+  const { closePanel, getPanelsByType, openPanel } = usePanelStore();
   const [content, setContent] = useState(initialContent);
+  const [originalContent, setOriginalContent] = useState(initialContent);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Load file content when filePath changes
+  useEffect(() => {
+    if (filePath && !initialContent) {
+      setIsLoading(true);
+      setLoadError(null);
+
+      apiService.readFile(filePath)
+        .then((fileContent) => {
+          setContent(fileContent);
+          setOriginalContent(fileContent);
+          setIsDirty(false);
+        })
+        .catch((err) => {
+          console.error('Failed to load file:', err);
+          setLoadError(err instanceof Error ? err.message : 'Failed to load file');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, [filePath, initialContent]);
 
   const handleContentChange = (value: string) => {
     setContent(value);
-    setIsDirty(value !== initialContent);
+    setIsDirty(value !== originalContent);
   };
 
   const handleSave = async () => {
+    if (!filePath) {
+      console.error('No file path provided');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // TODO: Implement save via API
-      // await apiService.saveFile({ path: filePath, content });
-      console.log('Saving file:', filePath, content);
-      
-      // Simulate save delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await apiService.saveFile(filePath, content);
+      setOriginalContent(content);
       setIsDirty(false);
+      console.log('File saved successfully:', filePath);
     } catch (err) {
       console.error('Failed to save file:', err);
-      alert('Failed to save file');
+      alert(`Failed to save file: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -63,7 +93,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     if (isDirty && !confirm('Discard unsaved changes?')) {
       return;
     }
-    setContent(initialContent);
+    setContent(originalContent);
     setIsDirty(false);
   };
 
@@ -75,6 +105,26 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     if (panels.length > 0) {
       closePanel(panels[panels.length - 1].id);
     }
+  };
+
+  const handleBuild = () => {
+    if (isDirty) {
+      if (!confirm('You have unsaved changes. Build anyway?')) {
+        return;
+      }
+    }
+
+    if (!projectName) {
+      alert('No project name available for build');
+      return;
+    }
+
+    // Open build output panel and start build
+    openPanel('build-output', {
+      projectName,
+      jobType: 'build',
+      autoStart: true,
+    });
   };
 
   return (
@@ -97,48 +147,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {!readOnly && (
-            <>
-              <button
-                onClick={handleDiscard}
-                disabled={!isDirty || isSaving}
-                className="
-                  px-3 py-2 rounded
-                  bg-bg-card hover:bg-bg-card-hover
-                  border border-border-subtle
-                  text-text-secondary hover:text-text-primary
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  text-sm font-medium
-                  transition-colors
-                  flex items-center gap-2
-                "
-                title="Discard changes"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Discard
-              </button>
-              
-              <button
-                onClick={handleSave}
-                disabled={!isDirty || isSaving}
-                className="
-                  px-3 py-2 rounded
-                  bg-nvidia-green hover:bg-nvidia-green-dark
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  text-white text-sm font-medium
-                  transition-colors
-                  flex items-center gap-2
-                "
-                title="Save changes"
-              >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-              
-              <div className="w-px h-6 bg-border-subtle mx-1" />
-            </>
-          )}
-          
           <button
             onClick={handleClose}
             className="
@@ -154,24 +162,114 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         </div>
       </div>
 
+      {/* Action Toolbar - Above Editor */}
+      {!readOnly && !isLoading && !loadError && (
+        <div className="flex items-center justify-between px-4 py-3 bg-bg-card border-y border-border-subtle">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              disabled={!isDirty || isSaving}
+              className="
+                px-5 py-2.5 rounded
+                bg-nvidia-green hover:bg-nvidia-green-dark
+                disabled:bg-nvidia-green/30 disabled:cursor-not-allowed
+                text-white text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              "
+              title={isDirty ? "Save changes" : "No changes to save"}
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+
+            <button
+              onClick={handleDiscard}
+              disabled={!isDirty || isSaving}
+              className="
+                px-5 py-2.5 rounded
+                bg-bg-dark hover:bg-bg-panel
+                border-2 border-border-subtle hover:border-text-secondary
+                text-text-primary hover:text-text-primary
+                disabled:opacity-40 disabled:cursor-not-allowed disabled:border-border-subtle
+                text-sm font-semibold
+                transition-all
+                flex items-center gap-2
+              "
+              title={isDirty ? "Discard changes" : "No changes to discard"}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Discard
+            </button>
+
+            {projectName && (
+              <>
+                <div className="w-px h-8 bg-border-subtle mx-2" />
+                <button
+                  onClick={handleBuild}
+                  disabled={isSaving}
+                  className="
+                    px-5 py-2.5 rounded
+                    bg-blue-600 hover:bg-blue-700
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    text-white text-sm font-semibold
+                    transition-colors
+                    flex items-center gap-2
+                    shadow-sm
+                  "
+                  title="Build project"
+                >
+                  <Play className="w-4 h-4" />
+                  Build
+                </button>
+              </>
+            )}
+          </div>
+
+          {isDirty && (
+            <div className="flex items-center gap-2 text-xs text-status-warning">
+              <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse" />
+              <span className="font-medium">Unsaved changes</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Editor */}
       <div className="flex-1 overflow-hidden">
-        <textarea
-          value={content}
-          onChange={(e) => handleContentChange(e.target.value)}
-          readOnly={readOnly}
-          className="
-            w-full h-full p-4
-            bg-bg-dark
-            text-text-primary
-            font-mono text-sm
-            resize-none
-            focus:outline-none
-            placeholder:text-text-muted
-          "
-          placeholder={readOnly ? 'No content' : 'Start typing...'}
-          spellCheck={false}
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full bg-bg-dark">
+            <div className="flex flex-col items-center gap-3">
+              <Loader className="w-8 h-8 text-nvidia-green animate-spin" />
+              <p className="text-text-secondary text-sm">Loading {fileName}...</p>
+            </div>
+          </div>
+        ) : loadError ? (
+          <div className="flex items-center justify-center h-full bg-bg-dark">
+            <div className="text-center max-w-md p-6">
+              <p className="text-status-error text-sm mb-2">Failed to load file</p>
+              <p className="text-text-muted text-xs">{loadError}</p>
+            </div>
+          </div>
+        ) : (
+          <textarea
+            value={content}
+            onChange={(e) => handleContentChange(e.target.value)}
+            readOnly={readOnly || isLoading}
+            className="
+              w-full h-full p-4
+              bg-bg-dark
+              text-text-primary
+              font-mono text-sm
+              resize-none
+              focus:outline-none
+              placeholder:text-text-muted
+            "
+            placeholder={readOnly ? 'No content' : 'Start typing...'}
+            spellCheck={false}
+          />
+        )}
       </div>
 
       {/* Footer */}
@@ -179,7 +277,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         <div className="text-xs text-text-muted">
           {readOnly ? 'Read-only' : isDirty ? 'Modified' : 'Saved'}
         </div>
-        
+
         <div className="flex items-center gap-4 text-xs text-text-muted">
           <span>Lines: {content.split('\n').length}</span>
           <span>Chars: {content.length}</span>
@@ -188,4 +286,3 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     </div>
   );
 };
-

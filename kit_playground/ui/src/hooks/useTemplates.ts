@@ -13,6 +13,12 @@ export interface TemplateModel {
   thumbnail?: string;
   usageCount?: number;
   lastUsed?: Date;
+  documentation?: {
+    overview?: string;
+    getting_started?: string;
+    key_features?: string[];
+    use_cases?: string[];
+  };
   // Keep original API template for reference
   _original?: APITemplate;
 }
@@ -51,6 +57,7 @@ export const useTemplates = (): UseTemplatesResult => {
         type: mapTemplateType(t.name),
         tags: t.metadata?.tags || extractTags(t.name, t.description),
         icon: getIconForTemplate(t.name),
+        documentation: t.documentation,
         _original: t,
         // usageCount and lastUsed would come from backend tracking
       }));

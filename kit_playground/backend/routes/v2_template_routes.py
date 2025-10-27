@@ -11,10 +11,6 @@ from tools.repoman.repo_dispatcher import get_platform_build_dir
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint
-v2_template_bp = Blueprint('v2_templates', __name__, url_prefix='/api/v2/templates')
-
-
 def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketio=None):
     """
     Create and configure v2 template routes with icon support.
@@ -27,8 +23,10 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
     Returns:
         Flask Blueprint with v2 template routes configured
     """
+    # Create a NEW blueprint instance each time to avoid re-registration issues
+    bp = Blueprint('v2_templates', __name__, url_prefix='/api/v2/templates')
 
-    @v2_template_bp.route('', methods=['GET'])
+    @bp.route('', methods=['GET'])
     def list_templates_v2():
         """List all templates with icon URLs (excluding components which can't be standalone)."""
         try:
@@ -107,7 +105,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             logger.error(f"Failed to list templates: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    @v2_template_bp.route('/<template_id>/icon', methods=['GET'])
+    @bp.route('/<template_id>/icon', methods=['GET'])
     def get_template_icon(template_id):
         """Serve template icon."""
         try:
@@ -164,7 +162,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             logger.error(f"Failed to get template icon: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    @v2_template_bp.route('/<template_id>/docs', methods=['GET'])
+    @bp.route('/<template_id>/docs', methods=['GET'])
     def get_template_docs(template_id):
         """Get template documentation."""
         try:
@@ -188,7 +186,7 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             logger.error(f"Failed to get template docs: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    @v2_template_bp.route('/generate', methods=['POST'])
+    @bp.route('/generate', methods=['POST'])
     def generate_template_v2():
         """Generate a template using unified API (new high-level method)."""
         try:
@@ -305,4 +303,4 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             logger.error(f"Failed to generate template: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
-    return v2_template_bp
+    return bp

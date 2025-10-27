@@ -1,0 +1,90 @@
+# Basic C++ Extension Template
+# Minimal C++ extension foundation
+
+[metadata]
+name = "basic_cpp_extension"
+display_name = "Basic C++ Extension"
+type = "extension"
+category = "cpp"
+description = "Minimal definition of an Omniverse C++ Extension. Foundation for high-performance native extensions"
+version = "1.0.0"
+author = "NVIDIA Omniverse"
+license = "LicenseRef-NvidiaProprietary"
+
+[metadata.compatibility]
+platforms = ["linux-x86_64", "windows-x86_64"]
+min_kit_version = "108.0.0"
+languages = ["cpp", "c++"]
+
+[metadata.tags]
+tags = ["cpp", "c++", "extension", "native", "performance", "minimal"]
+
+[template]
+class = "ExtensionTemplate"
+source_dir = "../../extensions/basic_cpp/template"
+
+[variables]
+extension_name = "my_company.my_cpp_extension"
+extension_display_name = "My C++ Extension"
+version = "0.1.0"
+
+[documentation]
+overview = """
+The Basic C++ Extension Template provides a foundation for building high-performance
+native C++ extensions within the NVIDIA Omniverse ecosystem. This template offers
+the minimal structure needed for C++ development with the Omniverse Kit SDK.
+"""
+
+use_cases = [
+    "High-performance native extensions",
+    "Custom C++ functionality integration",
+    "Performance-critical operations",
+    "Low-level system integration"
+]
+
+key_features = [
+    "C++ build configuration",
+    "Native performance capabilities",
+    "Integration with Kit SDK APIs",
+    "Cross-platform support (Windows/Linux)"
+]
+
+getting_started = """
+1. Ensure C++ build tools are installed (Visual Studio on Windows)
+2. Enable C++ building in repo.toml (set build.enabled = true)
+3. Run: ./repo.sh template new basic_cpp_extension --name my_company.my_cpp_ext
+4. Add extension to an application's .kit file
+5. Build: ./repo.sh build
+"""
+
+requirements = """
+Windows: Visual Studio 2019/2022 with C++ development tools
+Linux: build-essential package (gcc, make, etc.)
+"""
+
+[dependencies]
+required_extensions = []
+optional_extensions = []
+
+[deployment]
+supports_packaging = true
+supports_containerization = true
+requires_host_application = true
+
+[build]
+requires_build = true  # C++ requires compilation
+supports_debug = true
+supports_release = true
+supports_testing = true
+build_system = "premake"
+
+[integration]
+requires_host_app = true
+can_be_standalone = false
+supported_app_types = ["application", "microservice"]
+
+[compilation]
+# C++ compilation settings
+language_standard = "c++17"
+requires_visual_studio = true  # Windows only
+requires_build_tools = true

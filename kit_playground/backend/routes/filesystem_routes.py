@@ -9,9 +9,6 @@ from flask import Blueprint, jsonify, request
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint
-filesystem_bp = Blueprint('filesystem', __name__, url_prefix='/api/filesystem')
-
 
 def create_filesystem_routes(security_validator):
     """
@@ -23,8 +20,10 @@ def create_filesystem_routes(security_validator):
     Returns:
         Flask Blueprint with filesystem routes configured
     """
+    # Create a NEW blueprint instance each time to avoid re-registration issues
+    bp = Blueprint('filesystem', __name__, url_prefix='/api/filesystem')
 
-    @filesystem_bp.route('/cwd', methods=['GET'])
+    @bp.route('/cwd', methods=['GET'])
     def get_current_directory():
         """Get current working directory (repo root)."""
         try:
@@ -37,7 +36,7 @@ def create_filesystem_routes(security_validator):
             logger.error(f"Failed to get current directory: {e}")
             return jsonify({'error': str(e)}), 500
 
-    @filesystem_bp.route('/list', methods=['GET'])
+    @bp.route('/list', methods=['GET'])
     def list_directory():
         """List directory contents."""
         try:
@@ -72,7 +71,7 @@ def create_filesystem_routes(security_validator):
             logger.error(f"Failed to list directory: {e}")
             return jsonify({'error': str(e)}), 500
 
-    @filesystem_bp.route('/mkdir', methods=['POST'])
+    @bp.route('/mkdir', methods=['POST'])
     def create_directory():
         """Create a new directory."""
         try:
@@ -93,7 +92,7 @@ def create_filesystem_routes(security_validator):
             logger.error(f"Failed to create directory: {e}")
             return jsonify({'error': str(e)}), 500
 
-    @filesystem_bp.route('/read', methods=['GET'])
+    @bp.route('/read', methods=['GET'])
     def read_file():
         """Read file contents."""
         try:
@@ -120,4 +119,43 @@ def create_filesystem_routes(security_validator):
             logger.error(f"Failed to read file: {e}")
             return jsonify({'error': str(e)}), 500
 
-    return filesystem_bp
+    @bp.route('/write', methods=['POST'])
+    def write_file():
+        """Write content to a file."""
+        try:
+            data = request.json
+            path = data.get('path')
+            content = data.get('content')
+
+            if not path:
+                return jsonify({'error': 'path required'}), 400
+            
+            if content is None:  # Allow empty string but not None
+                return jsonify({'error': 'content required'}), 400
+
+            # Basic path validation
+            path_obj = security_validator._validate_filesystem_path(path)
+            if not path_obj:
+                return jsonify({'error': 'Invalid or inaccessible path'}), 400
+
+            # Ensure parent directory exists
+            path_obj.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write file content
+            path_obj.write_text(content, encoding='utf-8')
+            
+            logger.info(f"File written successfully: {path_obj}")
+            return jsonify({
+                'success': True,
+                'path': str(path_obj),
+                'size': len(content)
+            }), 200
+            
+        except PermissionError as e:
+            logger.error(f"Permission denied writing file: {e}")
+            return jsonify({'error': 'Permission denied'}), 403
+        except Exception as e:
+            logger.error(f"Failed to write file: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    return bp

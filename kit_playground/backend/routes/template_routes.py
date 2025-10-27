@@ -2,18 +2,12 @@
 Template management routes for Kit Playground.
 """
 import logging
+from pathlib import Path
 from flask import Blueprint, jsonify, request
 
-from tools.repoman.template_api import (
-    TemplateAPI,
-    TemplateGenerationRequest
-)
+from tools.repoman.template_api import TemplateAPI
 
 logger = logging.getLogger(__name__)
-
-# Create blueprint
-template_bp = Blueprint('templates', __name__, url_prefix='/api/templates')
-
 
 def create_template_routes(playground_app, template_api: TemplateAPI):
     """
@@ -26,9 +20,11 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
     Returns:
         Flask Blueprint with template routes configured
     """
+    # Create a NEW blueprint instance each time to avoid re-registration issues
+    bp = Blueprint('templates', __name__, url_prefix='/api/templates')
 
-    @template_bp.route('/list', methods=['GET'])
-    @template_bp.route('', methods=['GET'])  # Alias: /api/templates
+    @bp.route('/list', methods=['GET'])
+    @bp.route('', methods=['GET'])  # Alias: /api/templates
     def list_templates():
         """List all available templates."""
         try:
@@ -38,7 +34,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             logger.error(f"Failed to list templates: {e}")
             return jsonify({'error': str(e)}), 500
 
-    @template_bp.route('/get/<template_name>', methods=['GET'])
+    @bp.route('/get/<template_name>', methods=['GET'])
     def get_template(template_name: str):
         """Get details of a specific template."""
         try:
@@ -50,7 +46,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             logger.error(f"Failed to get template {template_name}: {e}")
             return jsonify({'error': str(e)}), 500
 
-    @template_bp.route('/create', methods=['POST'])
+    @bp.route('/create', methods=['POST'])
     def create_from_template():
         """Create a new project from a template."""
         try:
@@ -58,101 +54,93 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             template_name = data.get('template')
             project_name = data.get('name')
             display_name = data.get('displayName', project_name)
-            # Use None as default to match CLI behavior (source/apps)
-            output_dir = data.get('outputDir', None)
             enable_streaming = data.get('enableStreaming', False)
+
+            # Get standalone flag - determines if we create a self-contained repo
+            standalone = data.get('standalone', False)
+
+            # CRITICAL: output_dir triggers standalone mode in template_engine.py
+            # Only set it if explicitly requested AND standalone is True
+            output_dir = None
+            if standalone and data.get('outputDir'):
+                output_dir = data.get('outputDir')
 
             if not template_name or not project_name:
                 return jsonify({
                     'error': 'template and name are required'
                 }), 400
 
-            # Prepare generation request
-            gen_request = TemplateGenerationRequest(
+            # Collect extra params
+            extra_params = data.get('options', {}).copy()
+            if 'perAppDeps' in data:
+                extra_params['per_app_deps'] = data['perAppDeps']
+
+            # Log the request for debugging
+            logger.info(f"Creating project: template={template_name}, name={project_name}")
+            logger.info(f"Using create_application() API - complete workflow (generate + execute + post-process)")
+            logger.info(f"Extra params: {extra_params}")
+
+            # Create application using the high-level API
+            # This executes the full workflow: generate playback + execute + fix structure
+            result_dict = template_api.create_application(
                 template_name=template_name,
-                name=project_name,  # Correct parameter name
+                name=project_name,
                 display_name=display_name,
                 version=data.get('version', '1.0.0'),
-                output_dir=output_dir,  # Correct parameter name
-                accept_license=True,  # Auto-accept for GUI
-                force_overwrite=True,  # Auto-overwrite for GUI (no stdin for prompts)
-                extra_params=data.get('options', {})  # Correct parameter name
+                accept_license=True,
+                no_register=False,  # NOTE: --no-register flag not supported by replay command yet
+                **extra_params
             )
 
-            # Generate project
-            result = template_api.generate_template(gen_request)
+            # Log the result
+            logger.info(f"Application creation result: {result_dict}")
 
-            if result.success:
-                # Fix repo.toml: The template system adds entries to the static apps list,
-                # but we use dynamic discovery via app_discovery_paths instead.
-                # Clear the static apps list to prevent build errors.
-                try:
-                    import toml
-                    from pathlib import Path
-                    repo_toml_path = Path(template_api.repo_root) / "repo.toml"
-                    if repo_toml_path.exists():
-                        with open(repo_toml_path, 'r') as f:
-                            repo_config = toml.load(f)
+            if result_dict.get('success', False):
+                # Extract paths from result
+                app_dir = result_dict.get('app_dir', '')
+                kit_file_path = result_dict.get('kit_file', '')
 
-                        # Clear the static apps list (line 113 in repo.toml)
-                        if 'apps' in repo_config:
-                            repo_config['apps'] = []
+                # Convert relative kit_file to absolute if needed
+                from pathlib import Path
+                kit_file_abs = Path(kit_file_path)
+                if not kit_file_abs.is_absolute():
+                    kit_file_abs = Path(template_api.repo_root) / kit_file_path
 
-                            with open(repo_toml_path, 'w') as f:
-                                toml.dump(repo_config, f)
-
-                            logger.info("Cleared static apps list in repo.toml (using dynamic discovery)")
-                except Exception as e:
-                    logger.warning(f"Failed to fix repo.toml after project creation: {e}")
-                    # Continue anyway - this is not critical
+                logger.info(f"Application created at: {app_dir}")
+                logger.info(f".kit file path: {kit_file_abs}")
 
                 # Enable Kit App Streaming if requested
                 streaming_enabled = False
-                if enable_streaming:
+                if enable_streaming and kit_file_abs.exists():
                     try:
-                        from pathlib import Path
-                        # Find the generated .kit file
-                        repo_root = Path(template_api.repo_root)
-                        kit_file_path = repo_root / "source" / "apps" / project_name / f"{project_name}.kit"
+                        # Read the .kit file
+                        kit_content = kit_file_abs.read_text()
 
-                        if kit_file_path.exists():
-                            # Read the .kit file
-                            with open(kit_file_path, 'r') as f:
-                                kit_content = f.read()
+                        # Check if streaming extensions are already present
+                        streaming_exts = [
+                            'omni.services.streaming.webrtc',
+                            'omni.kit.streamhelper'
+                        ]
 
-                            # Check if streaming extensions are already present
-                            streaming_exts = [
-                                'omni.services.streaming.webrtc',
-                                'omni.kit.streamhelper'
-                            ]
+                        needs_update = False
+                        for ext in streaming_exts:
+                            if ext not in kit_content:
+                                needs_update = True
+                                # Add the extension in the [dependencies] section
+                                if '[dependencies]' in kit_content:
+                                    parts = kit_content.split('[dependencies]', 1)
+                                    if len(parts) == 2:
+                                        kit_content = f'{parts[0]}[dependencies]\n"{ext}" = {{}}\n{parts[1]}'
+                                else:
+                                    kit_content += f'\n\n[dependencies]\n"{ext}" = {{}}\n'
 
-                            needs_update = False
-                            for ext in streaming_exts:
-                                if ext not in kit_content:
-                                    needs_update = True
-                                    # Add the extension in the [dependencies] section
-                                    # Find the [dependencies] section
-                                    if '[dependencies]' in kit_content:
-                                        # Insert after [dependencies]
-                                        parts = kit_content.split('[dependencies]', 1)
-                                        if len(parts) == 2:
-                                            # Add the extension at the beginning of dependencies
-                                            kit_content = f'{parts[0]}[dependencies]\n"{ext}" = {{}}\n{parts[1]}'
-                                    else:
-                                        # Add dependencies section if it doesn't exist
-                                        kit_content += f'\n\n[dependencies]\n"{ext}" = {{}}\n'
-
-                            if needs_update:
-                                # Write back the updated .kit file
-                                with open(kit_file_path, 'w') as f:
-                                    f.write(kit_content)
-                                logger.info(f"Enabled Kit App Streaming extensions in {kit_file_path}")
-                                streaming_enabled = True
-                            else:
-                                logger.info(f"Streaming extensions already present in {kit_file_path}")
-                                streaming_enabled = True
+                        if needs_update:
+                            kit_file_abs.write_text(kit_content)
+                            logger.info(f"Enabled Kit App Streaming extensions in {kit_file_abs}")
+                            streaming_enabled = True
                         else:
-                            logger.warning(f".kit file not found at {kit_file_path}")
+                            logger.info(f"Streaming extensions already present")
+                            streaming_enabled = True
                     except Exception as e:
                         logger.error(f"Failed to enable streaming extensions: {e}")
                         # Continue anyway - not critical
@@ -162,19 +150,20 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                     'projectInfo': {
                         'projectName': project_name,
                         'displayName': display_name,
-                        'outputDir': output_dir,
-                        'kitFile': f"{project_name}.kit",
-                        'streaming': streaming_enabled
-                    }
+                        'outputDir': app_dir,
+                        'kitFile': str(kit_file_abs),  # Full absolute path to .kit file
+                        'streaming': streaming_enabled,
+                    },
+                    'job_id': None  # For consistency with async endpoints
                 })
             else:
                 return jsonify({
                     'success': False,
-                    'error': result.error
+                    'error': result_dict.get('error', 'Unknown error occurred')
                 }), 500
 
         except Exception as e:
             logger.error(f"Failed to create from template: {e}")
             return jsonify({'error': str(e)}), 500
 
-    return template_bp
+    return bp

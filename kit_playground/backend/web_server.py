@@ -209,6 +209,16 @@ class PlaygroundWebServer:
                 logger.info(f"New client connected from {client_ip} at {timestamp}")
                 logger.info(f"Request: {request.method} {request.path}")
 
+        # Health check endpoint for startup verification
+        @self.app.route('/api/health', methods=['GET'])
+        def health_check():
+            """Simple health check endpoint."""
+            return jsonify({
+                'status': 'healthy',
+                'service': 'kit-playground',
+                'timestamp': datetime.now().isoformat()
+            }), 200
+
         # Register template routes
         template_bp = create_template_routes(self.playground_app, self.template_api)
         self.app.register_blueprint(template_bp)

@@ -1,7 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import type { JobLogEvent, JobProgressEvent, JobStatusEvent } from './types';
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'http://localhost:5000';
+// WebSocket connection URL
+// Use empty string to connect to current origin (Vite will proxy to backend)
+// In production, this can be overridden with VITE_WS_BASE_URL env var
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || '';
 
 export type WebSocketEventHandler<T> = (data: T) => void;
 
@@ -16,9 +19,10 @@ class WebSocketService {
       return;
     }
 
-    console.log('Connecting to WebSocket:', WS_BASE_URL);
+    console.log('Connecting to WebSocket:', WS_BASE_URL || 'current origin (proxied)');
 
     this.socket = io(WS_BASE_URL, {
+      path: '/socket.io',  // Explicitly set socket.io path for proxy
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
