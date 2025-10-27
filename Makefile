@@ -409,13 +409,27 @@ playground-start:
 	@echo "$(BLUE)Starting Kit Playground...$(NC)"
 	@REMOTE=$(REMOTE) PRODUCTION=$(PRODUCTION) $(KIT_PLAYGROUND_DIR)/dev.sh
 
+# Setup Xpra OpenGL (whitelists llvmpipe software renderer)
+# This runs automatically before playground-start
+.PHONY: playground-setup-xpra
+playground-setup-xpra:
+	@if command -v xpra >/dev/null 2>&1; then \
+		if [ -w /usr/lib/python3/dist-packages/xpra/opengl/drivers.py ] 2>/dev/null; then \
+			./tools/setup_xpra_opengl.sh; \
+		elif sudo -n true 2>/dev/null; then \
+			sudo ./tools/setup_xpra_opengl.sh; \
+		else \
+			echo "$(YELLOW)[Xpra OpenGL] Skipping setup - requires sudo or file permissions$(NC)"; \
+		fi \
+	fi
+
 # Main playground target: Stop any existing instances, then start fresh
 # Usage: make playground                       - Development mode (localhost)
 #        make playground REMOTE=1              - Development mode with remote access
 #        make playground PRODUCTION=1          - Production mode (optimized)
 #        make playground REMOTE=1 PRODUCTION=1 - Production mode with remote access
 .PHONY: playground
-playground: playground-stop playground-start
+playground: playground-stop playground-setup-xpra playground-start
 
 # Build UI (production bundle)
 .PHONY: playground-build
