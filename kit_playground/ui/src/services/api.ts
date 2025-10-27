@@ -102,6 +102,26 @@ class APIService {
     return response.data;
   }
 
+  // ===== Project Management =====
+
+  async listProjects(): Promise<{ success: boolean; projects: any[]; count: number }> {
+    const response = await this.client.get('/projects/list');
+    return response.data;
+  }
+
+  async cleanProjects(includeTest: boolean = false): Promise<{
+    success: boolean;
+    deleted: { projects: string[]; extensions: string[] };
+    counts: { projects: number; extensions: number; total: number };
+    errors?: any[];
+    warning?: string;
+  }> {
+    const response = await this.client.post('/projects/clean', null, {
+      params: { include_test: includeTest }
+    });
+    return response.data;
+  }
+
   // ===== Health Check =====
 
   async healthCheck(): Promise<boolean> {

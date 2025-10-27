@@ -146,10 +146,31 @@ export const useJob = (): UseJobResult => {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API call when endpoint is available
-      // const response = await apiService.cancelJob(jobId);
+      if (!job) {
+        console.warn('[useJob] No job to cancel');
+        return false;
+      }
 
-      // Simulate cancellation
+      console.log(`[useJob] Canceling job ${jobId} for project ${job.projectName}`);
+
+      // Call backend API to terminate the process
+      const response = await fetch('/api/projects/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          projectName: job.projectName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to cancel job: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('[useJob] Cancel response:', data);
+
+      // Update local job state
       if (job && job.id === jobId) {
         setJob({
           ...job,
@@ -158,7 +179,7 @@ export const useJob = (): UseJobResult => {
         });
       }
 
-      return true;
+      return data.success;
     } catch (err) {
       console.error('Failed to cancel job:', err);
       setError(err instanceof Error ? err.message : 'Failed to cancel job');

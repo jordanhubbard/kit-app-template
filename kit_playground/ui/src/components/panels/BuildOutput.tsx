@@ -126,7 +126,14 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    // If there's a running or pending job, cancel it first
+    if (job && (job.status === 'running' || job.status === 'pending')) {
+      console.log('[BuildOutput] Canceling running job before close:', job.id);
+      await cancelJob(job.id);
+    }
+    
+    // Close the panel
     const panels = getPanelsByType('build-output');
     if (panels.length > 0) {
       closePanel(panels[panels.length - 1].id);
@@ -136,6 +143,15 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const getStatusConfig = () => {
     if (!job) return { icon: <Terminal className="w-5 h-5" />, color: 'text-text-muted', label: 'Idle' };
 
+    // Check local completion state first (for builds that detect completion via log parsing)
+    if (buildCompleted) {
+      return { icon: <CheckCircle className="w-5 h-5" />, color: 'text-status-success', label: 'Completed' };
+    }
+    if (buildFailed) {
+      return { icon: <XCircle className="w-5 h-5" />, color: 'text-status-error', label: 'Failed' };
+    }
+
+    // Otherwise, use job status from backend
     switch (job.status) {
       case 'pending':
         return { icon: <Loader className="w-5 h-5 animate-spin" />, color: 'text-status-info', label: 'Pending' };
@@ -255,13 +271,13 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               onClick={handleCancel}
               className="
                 p-2 rounded
-                hover:bg-bg-card
-                text-text-secondary hover:text-status-error
+                bg-status-error/10 hover:bg-status-error/20
+                text-status-error
                 transition-colors
               "
-              title="Cancel job"
+              title="Cancel job (stop process)"
             >
-              <Square className="w-4 h-4" />
+              <Square className="w-4 h-4 fill-current" />
             </button>
           )}
 

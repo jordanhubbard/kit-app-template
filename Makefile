@@ -602,6 +602,25 @@ endif
 	@echo "$(BLUE)Cleaning project: $(PROJECT)$(NC)"
 	@./cleanup-project.sh $(PROJECT)
 
+# Clean all user-created projects via API
+# Usage: make clean-projects                - Clean all user projects (excludes test projects)
+#        make clean-projects INCLUDE_TEST=1 - Clean all projects including tests
+.PHONY: clean-projects
+clean-projects:
+	@echo "$(BLUE)Cleaning all user-created projects via Kit Playground API...$(NC)"
+	@if [ "$(INCLUDE_TEST)" = "1" ]; then \
+		echo "$(YELLOW)Including test projects in cleanup$(NC)"; \
+		curl -X POST "http://localhost:5000/api/projects/clean?include_test=true" \
+			-H "Content-Type: application/json" \
+			-s | python3 -m json.tool || echo "$(RED)Failed to clean projects. Is the playground running?$(NC)"; \
+	else \
+		echo "$(YELLOW)Excluding test projects (use INCLUDE_TEST=1 to include)$(NC)"; \
+		curl -X POST "http://localhost:5000/api/projects/clean?include_test=false" \
+			-H "Content-Type: application/json" \
+			-s | python3 -m json.tool || echo "$(RED)Failed to clean projects. Is the playground running?$(NC)"; \
+	fi
+	@echo "$(GREEN)✓ Project cleanup complete!$(NC)"
+
 # Platform-specific repo commands
 .PHONY: repo-build
 repo-build: check-deps

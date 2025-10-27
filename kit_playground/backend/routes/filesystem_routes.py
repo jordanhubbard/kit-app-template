@@ -137,7 +137,7 @@ def create_filesystem_routes(security_validator):
 
             if not path:
                 return jsonify({'error': 'path required'}), 400
-            
+
             if content is None:  # Allow empty string but not None
                 return jsonify({'error': 'content required'}), 400
 
@@ -151,14 +151,14 @@ def create_filesystem_routes(security_validator):
 
             # Write file content
             path_obj.write_text(content, encoding='utf-8')
-            
+
             logger.info(f"File written successfully: {path_obj}")
             return jsonify({
                 'success': True,
                 'path': str(path_obj),
                 'size': len(content)
             }), 200
-            
+
         except PermissionError as e:
             logger.error(f"Permission denied writing file: {e}")
             return jsonify({'error': 'Permission denied'}), 403

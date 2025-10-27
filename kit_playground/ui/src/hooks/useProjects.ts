@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
+import { apiService } from '../services/api';
 
 export interface Project {
   id: string;
   name: string;
   displayName: string;
   type: 'application' | 'extension' | 'microservice';
-  template: string;
   path: string;
-  status: 'created' | 'built' | 'running' | 'failed';
-  lastModified: Date;
-  createdAt: Date;
+  lastModified: string;
+  createdAt: string;
   kitFile?: string;
+  isTest?: boolean;
 }
 
 interface UseProjectsResult {
@@ -23,10 +23,8 @@ interface UseProjectsResult {
 /**
  * useProjects
  * 
- * Custom hook to fetch user-created projects.
- * 
- * TODO: Connect to actual API endpoint when available.
- * For now, returns empty list as no projects API exists yet.
+ * Custom hook to fetch user-created projects from the backend.
+ * Scans source/apps directory for user-created projects.
  */
 export const useProjects = (): UseProjectsResult => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -38,17 +36,19 @@ export const useProjects = (): UseProjectsResult => {
       setLoading(true);
       setError(null);
       
-      // TODO: Replace with actual API call when endpoint is available
-      // const response = await apiService.listProjects();
-      // setProjects(response.projects);
+      const response = await apiService.listProjects();
       
-      // For now, return empty array
-      // In production, this would fetch from /api/projects/list
-      setProjects([]);
+      if (response.success) {
+        setProjects(response.projects);
+      } else {
+        setError('Failed to load projects');
+        setProjects([]);
+      }
       
     } catch (err) {
       console.error('Failed to fetch projects:', err);
       setError(err instanceof Error ? err.message : 'Failed to load projects');
+      setProjects([]);
     } finally {
       setLoading(false);
     }

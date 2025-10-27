@@ -3,6 +3,7 @@ Project build and run routes for Kit Playground.
 """
 import os
 import sys
+import signal
 import logging
 import subprocess
 import threading
@@ -1292,5 +1293,333 @@ def create_project_routes(
                     'message': f'Clean failed: {str(e)}'
                 })
             return jsonify({'error': str(e)}), 500
+
+    @project_bp.route('/cancel', methods=['POST'])
+    def cancel_job():
+        """Cancel a running job (build or launch).
+        
+        Request body:
+            - jobId: Job ID (optional, for future use)
+            - projectName: Project name (required)
+        
+        Returns:
+            JSON response with cancellation status
+        """
+        try:
+            data = request.json
+            project_name = data.get('projectName')
+            job_id = data.get('jobId')
+            
+            if not project_name:
+                return jsonify({'error': 'projectName required'}), 400
+            
+            logger.info(f"Canceling job for project: {project_name}")
+            
+            # Check if process exists
+            if project_name not in processes:
+                logger.warning(f"No running process found for project: {project_name}")
+                return jsonify({
+                    'success': True,
+                    'message': f'No running process found for {project_name}',
+                    'wasRunning': False
+                })
+            
+            process = processes[project_name]
+            
+            # Check if process is still alive
+            if process.poll() is not None:
+                logger.info(f"Process for {project_name} already terminated")
+                del processes[project_name]
+                return jsonify({
+                    'success': True,
+                    'message': f'Process for {project_name} was already terminated',
+                    'wasRunning': False
+                })
+            
+            # Terminate the process group (SIGTERM first, then SIGKILL if needed)
+            try:
+                # Get the process group ID
+                pgid = os.getpgid(process.pid)
+                logger.info(f"Sending SIGTERM to process group {pgid}")
+                
+                # Send SIGTERM to the entire process group
+                os.killpg(pgid, signal.SIGTERM)
+                
+                # Wait up to 3 seconds for graceful shutdown
+                try:
+                    process.wait(timeout=3)
+                    logger.info(f"Process {project_name} terminated gracefully")
+                except subprocess.TimeoutExpired:
+                    # Force kill if it didn't terminate
+                    logger.warning(f"Process {project_name} didn't terminate gracefully, sending SIGKILL")
+                    os.killpg(pgid, signal.SIGKILL)
+                    process.wait(timeout=1)
+                
+                # Emit log message
+                if socketio:
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'system',
+                        'message': f'✓ Canceled {project_name}'
+                    })
+                
+                # Remove from tracking
+                del processes[project_name]
+                
+                logger.info(f"Successfully canceled job for {project_name}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Successfully canceled {project_name}',
+                    'wasRunning': True
+                })
+                
+            except ProcessLookupError:
+                # Process already gone
+                logger.info(f"Process {project_name} already terminated (ProcessLookupError)")
+                if project_name in processes:
+                    del processes[project_name]
+                return jsonify({
+                    'success': True,
+                    'message': f'Process for {project_name} was already terminated',
+                    'wasRunning': False
+                })
+            except Exception as e:
+                logger.error(f"Error terminating process {project_name}: {e}")
+                # Still remove from tracking
+                if project_name in processes:
+                    del processes[project_name]
+                return jsonify({
+                    'success': False,
+                    'error': f'Error terminating process: {str(e)}',
+                    'wasRunning': True
+                }), 500
+                
+        except Exception as e:
+            logger.error(f"Failed to cancel job: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+    @project_bp.route('/list', methods=['GET'])
+    def list_projects():
+        """List all user-created projects.
+        
+        Scans the source/apps directory for user-created projects,
+        excluding system directories (exts, extscache) and test projects.
+        
+        Returns:
+            JSON response with list of projects and their metadata
+        """
+        try:
+            from datetime import datetime
+            
+            # Get the repo root
+            repo_root = get_repo_root()
+            apps_dir = repo_root / 'source' / 'apps'
+            
+            if not apps_dir.exists():
+                logger.warning(f"Apps directory not found: {apps_dir}")
+                return jsonify({
+                    'success': True,
+                    'projects': [],
+                    'count': 0
+                })
+            
+            projects = []
+            
+            # Scan the apps directory
+            for item in apps_dir.iterdir():
+                # Skip system directories and hidden files
+                if item.name in ['exts', 'extscache', '.', '..'] or item.name.startswith('.'):
+                    continue
+                
+                # Only process directories
+                if not item.is_dir():
+                    continue
+                
+                # Look for a .kit file
+                kit_files = list(item.glob('*.kit'))
+                if not kit_files:
+                    continue
+                
+                kit_file = kit_files[0]  # Use the first .kit file found
+                
+                # Get file stats
+                stats = kit_file.stat()
+                modified = datetime.fromtimestamp(stats.st_mtime).isoformat()
+                created = datetime.fromtimestamp(stats.st_ctime).isoformat()
+                
+                # Determine project type from directory name or kit file content
+                # Convention: if name contains 'test', it's a test project
+                is_test = 'test' in item.name.lower()
+                
+                # Try to determine type from template
+                project_type = 'application'  # default
+                if 'extension' in item.name.lower():
+                    project_type = 'extension'
+                elif 'service' in item.name.lower():
+                    project_type = 'microservice'
+                
+                project = {
+                    'id': item.name,
+                    'name': item.name,
+                    'displayName': item.name.replace('_', ' ').title(),
+                    'type': project_type,
+                    'path': str(item),
+                    'kitFile': str(kit_file),
+                    'lastModified': modified,
+                    'createdAt': created,
+                    'isTest': is_test
+                }
+                
+                projects.append(project)
+            
+            # Sort by last modified (newest first)
+            projects.sort(key=lambda p: p['lastModified'], reverse=True)
+            
+            logger.info(f"Found {len(projects)} user project(s)")
+            
+            return jsonify({
+                'success': True,
+                'projects': projects,
+                'count': len(projects)
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to list projects: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'projects': [],
+                'count': 0
+            }), 500
+
+    @project_bp.route('/clean', methods=['POST'])
+    def clean_projects():
+        """Clean all user-created projects.
+        
+        Deletes all user-created applications and extensions from source/apps,
+        excluding system directories (exts, extscache).
+        
+        Query params:
+            - include_test: bool (default False) - Whether to include test projects
+        
+        Returns:
+            JSON response with cleanup results
+        """
+        try:
+            include_test = request.args.get('include_test', 'false').lower() == 'true'
+            
+            # Get the repo root
+            repo_root = get_repo_root()
+            apps_dir = repo_root / 'source' / 'apps'
+            extensions_dir = repo_root / 'source' / 'extensions'
+            
+            deleted_projects = []
+            deleted_extensions = []
+            errors = []
+            
+            # Clean apps directory
+            if apps_dir.exists():
+                for item in apps_dir.iterdir():
+                    # Skip system directories and hidden files
+                    if item.name in ['exts', 'extscache', '.', '..'] or item.name.startswith('.'):
+                        continue
+                    
+                    # Only process directories
+                    if not item.is_dir():
+                        continue
+                    
+                    # Skip test projects unless include_test is True
+                    if not include_test and 'test' in item.name.lower():
+                        logger.info(f"Skipping test project: {item.name}")
+                        continue
+                    
+                    try:
+                        logger.info(f"Deleting project: {item.name}")
+                        shutil.rmtree(item)
+                        deleted_projects.append(item.name)
+                    except Exception as e:
+                        logger.error(f"Failed to delete {item.name}: {e}")
+                        errors.append({
+                            'project': item.name,
+                            'error': str(e)
+                        })
+            
+            # Clean template-generated extensions
+            if extensions_dir.exists():
+                # Extension patterns: *.viewer_messaging, *.viewer_setup, etc.
+                extension_patterns = [
+                    '*viewer_messaging',
+                    '*viewer_setup',
+                    '*editor_setup',
+                    '*composer_setup',
+                    '*explorer_setup'
+                ]
+                
+                for pattern in extension_patterns:
+                    for ext_dir in extensions_dir.glob(pattern):
+                        if not ext_dir.is_dir():
+                            continue
+                        
+                        try:
+                            logger.info(f"Deleting extension: {ext_dir.name}")
+                            shutil.rmtree(ext_dir)
+                            deleted_extensions.append(ext_dir.name)
+                        except Exception as e:
+                            logger.error(f"Failed to delete {ext_dir.name}: {e}")
+                            errors.append({
+                                'extension': ext_dir.name,
+                                'error': str(e)
+                            })
+            
+            # Clean repo.toml apps list
+            repo_toml = repo_root / 'repo.toml'
+            if repo_toml.exists():
+                try:
+                    import re
+                    content = repo_toml.read_text()
+                    # Replace apps = [...] with apps = []
+                    new_content = re.sub(r'^apps\s*=\s*\[.*\]', 'apps = []', content, flags=re.MULTILINE)
+                    repo_toml.write_text(new_content)
+                    logger.info("Cleared repo.toml apps list")
+                except Exception as e:
+                    logger.error(f"Failed to clean repo.toml: {e}")
+                    errors.append({
+                        'file': 'repo.toml',
+                        'error': str(e)
+                    })
+            
+            response = {
+                'success': True,
+                'deleted': {
+                    'projects': deleted_projects,
+                    'extensions': deleted_extensions,
+                },
+                'counts': {
+                    'projects': len(deleted_projects),
+                    'extensions': len(deleted_extensions),
+                    'total': len(deleted_projects) + len(deleted_extensions)
+                },
+                'errors': errors
+            }
+            
+            if errors:
+                response['warning'] = f"{len(errors)} item(s) failed to delete"
+            
+            logger.info(f"Clean complete: {len(deleted_projects)} projects, {len(deleted_extensions)} extensions")
+            
+            return jsonify(response)
+            
+        except Exception as e:
+            logger.error(f"Failed to clean projects: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'deleted': {'projects': [], 'extensions': []},
+                'counts': {'projects': 0, 'extensions': 0, 'total': 0}
+            }), 500
 
     return project_bp
