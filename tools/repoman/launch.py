@@ -596,6 +596,11 @@ def launch_kit(
             xpra_port = 10000 + (xpra_display - 100)
 
             try:
+                # Environment variables to force OpenGL enablement
+                xpra_env = os.environ.copy()
+                xpra_env['XPRA_OPENGL'] = '1'  # Force OpenGL to be enabled
+                xpra_env['XPRA_OPENGL_ALLOW_GREYLISTED'] = '1'  # Allow greylisted drivers
+                
                 subprocess.Popen(
                     [
                         'xpra', 'start',
@@ -605,14 +610,16 @@ def launch_kit(
                         '--encodings=rgb,png,jpeg',
                         '--compression=0',
                         '--opengl=yes',
+                        '--opengl-driver=all',  # Accept all OpenGL drivers, bypass greylist
                         '--speaker=off',
                         '--microphone=off',
                         '--daemon=yes',  # Run as daemon
                     ],
+                    env=xpra_env,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
-                print(f"Xpra started on port {xpra_port}")
+                print(f"Xpra started on port {xpra_port} with FORCED OpenGL")
                 print(f"Browser preview: http://{bind_host}:{xpra_port}")
 
                 # Wait for Xpra to be ready before continuing

@@ -38,7 +38,7 @@ const getGradient = (type: TemplateCardProps['type']): string => {
 const isStreamingTemplate = (name: string, tags: string[] = []): boolean => {
   const streamingKeywords = ['streaming', 'webrtc', 'remote'];
   const nameMatch = streamingKeywords.some(kw => name.toLowerCase().includes(kw));
-  const tagsMatch = streamingKeywords.some(kw => 
+  const tagsMatch = streamingKeywords.some(kw =>
     tags.some(tag => tag.toLowerCase().includes(kw))
   );
   return nameMatch || tagsMatch;
@@ -113,8 +113,8 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
         {/* Type Badge with Streaming Indicator */}
         <div className="absolute top-2 right-2">
-          <TemplateIcons 
-            type={type} 
+          <TemplateIcons
+            type={type}
             isStreaming={isStreaming}
             showLabels={true}
             size="sm"

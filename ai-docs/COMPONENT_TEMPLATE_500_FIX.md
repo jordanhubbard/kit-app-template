@@ -38,13 +38,13 @@ The Kit SDK's template replay system doesn't know how to handle component templa
 
 #### Applications (5 templates)
 - `kit_base_editor` - Kit Base Editor
-- `omni_usd_viewer` - USD Viewer  
+- `omni_usd_viewer` - USD Viewer
 - `base_application` - Base Application
 - `omni_usd_composer` - USD Composer
 - `omni_usd_explorer` - USD Explorer
 
-**Icon:** 🖥️ Monitor (Blue)  
-**Location:** `source/apps/{name}/`  
+**Icon:** 🖥️ Monitor (Blue)
+**Location:** `source/apps/{name}/`
 **Primary File:** `{name}.kit`
 
 #### Extensions (4 templates)
@@ -53,15 +53,15 @@ The Kit SDK's template replay system doesn't know how to handle component templa
 - `basic_python_binding` - Python C++ Bindings
 - `basic_cpp_extension` - Basic C++ Extension
 
-**Icon:** 📦 Package (Purple)  
-**Location:** `source/extensions/{name}/`  
+**Icon:** 📦 Package (Purple)
+**Location:** `source/extensions/{name}/`
 **Primary File:** `config/extension.toml`
 
 #### Microservices (1 template)
 - `kit_service` - Kit Service
 
-**Icon:** 🖥️ Server (Green)  
-**Location:** `source/apps/{name}/`  
+**Icon:** 🖥️ Server (Green)
+**Location:** `source/apps/{name}/`
 **Primary File:** `{name}.kit`
 
 ### ❌ Non-Creatable Templates (Hidden from UI)
@@ -86,17 +86,17 @@ let result = templates.filter(t => t.type !== 'component');
 **TemplateSidebar.tsx:**
 ```typescript
 return {
-  applications: filtered.filter(t => 
-    t.type === 'application' && 
-    !t.name.includes('_setup') && 
+  applications: filtered.filter(t =>
+    t.type === 'application' &&
+    !t.name.includes('_setup') &&
     t.type !== 'component'
   ),
-  extensions: filtered.filter(t => 
-    t.type === 'extension' && 
+  extensions: filtered.filter(t =>
+    t.type === 'extension' &&
     t.type !== 'component'
   ),
-  microservices: filtered.filter(t => 
-    t.type === 'microservice' && 
+  microservices: filtered.filter(t =>
+    t.type === 'microservice' &&
     t.type !== 'component'
   ),
 };
@@ -144,7 +144,7 @@ Auto-detects streaming templates:
 const isStreamingTemplate = (name: string, tags: string[] = []): boolean => {
   const streamingKeywords = ['streaming', 'webrtc', 'remote'];
   const nameMatch = streamingKeywords.some(kw => name.toLowerCase().includes(kw));
-  const tagsMatch = streamingKeywords.some(kw => 
+  const tagsMatch = streamingKeywords.some(kw =>
     tags.some(tag => tag.toLowerCase().includes(kw))
   );
   return nameMatch || tagsMatch;
@@ -223,8 +223,8 @@ No more 500 errors from component templates
 <TemplateTypeBadge type="extension" showLabel={true} size="md" />
 
 // Combined type + streaming badges
-<TemplateIcons 
-  type="application" 
+<TemplateIcons
+  type="application"
   isStreaming={true}
   showLabels={true}
   size="sm"
@@ -303,13 +303,13 @@ Add endpoint to validate template type before creation:
 @bp.route('/validate-template', methods=['POST'])
 def validate_template():
     template_type = get_template_type(template_name)
-    
+
     if template_type == 'component':
         return {
             'error': 'Component templates cannot be created standalone',
             'suggestion': 'Use an application template instead'
         }, 400
-    
+
     return {'valid': True, 'type': template_type}
 ```
 
@@ -356,17 +356,16 @@ if template_type == 'component':
 
 ## Summary
 
-✅ **Problem Solved:** No more 500 errors from component templates  
-✅ **UX Improved:** Clear visual indicators for template types  
-✅ **Consistency:** Centralized icon system used throughout UI  
-✅ **User Safety:** Component templates hidden from creation flow  
+✅ **Problem Solved:** No more 500 errors from component templates
+✅ **UX Improved:** Clear visual indicators for template types
+✅ **Consistency:** Centralized icon system used throughout UI
+✅ **User Safety:** Component templates hidden from creation flow
 
-**Before:** 13 templates (3 broken) → 23% failure rate  
-**After:** 10 templates (0 broken) → 0% failure rate  
+**Before:** 13 templates (3 broken) → 23% failure rate
+**After:** 10 templates (0 broken) → 0% failure rate
 
 Users can now confidently create projects knowing:
 - 🖥️ Blue Monitor = Application (full app)
 - 📦 Purple Package = Extension (reusable component)
 - 🖥️ Green Server = Microservice (network service)
 - ⚡ Yellow Lightning = Supports Kit App Streaming
-

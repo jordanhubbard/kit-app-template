@@ -160,13 +160,13 @@ def check_xpra_opengl(display):
         capture_output=True,
         text=True
     )
-    
+
     for line in result.stdout.split('\n'):
         if 'display.opengl.enable=' in line:
             enabled = 'True' in line
             if not enabled:
                 return False, "OpenGL disabled in Xpra (driver greylisted)"
-    
+
     return True, "OpenGL enabled"
 
 # Before launching Kit
@@ -191,21 +191,21 @@ def select_launch_mode(app_info):
     3. If DISPLAY available → Direct launch (best performance)
     4. If remote + Xpra available → Xpra with OpenGL check
     """
-    
+
     if app_info.get('streaming'):
         return 'streaming'
-    
+
     has_display = os.environ.get('DISPLAY')
     if has_display and not is_remote_client():
         return 'direct'
-    
+
     if xpra_available():
         opengl_ok, _ = check_xpra_opengl()
         if opengl_ok:
             return 'xpra'
         else:
             return 'xpra_sw'  # Software rendering
-    
+
     return 'error'
 ```
 
@@ -303,4 +303,3 @@ This issue needs to be fixed in the next iteration of the playground.
 **Priority:** High
 **Impact:** Xpra preview mode is unusable for Kit applications
 **Workaround:** Use Kit App Streaming or direct display
-

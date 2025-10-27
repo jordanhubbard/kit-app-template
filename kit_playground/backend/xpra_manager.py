@@ -97,14 +97,21 @@ class XpraSession:
                 '--encodings=rgb,png,jpeg',
                 '--compression=0',
                 '--opengl=yes',
+                '--opengl-driver=all',  # Accept all OpenGL drivers, bypass greylist
                 '--speaker=off',
                 '--microphone=off',
                 '--daemon=no',  # Run in foreground so we can manage it
             ]
 
-            logger.info(f"Starting Xpra session :{self.display_number} on port {self.port}")
+            # Environment variables to force OpenGL enablement
+            env = os.environ.copy()
+            env['XPRA_OPENGL'] = '1'  # Force OpenGL to be enabled
+            env['XPRA_OPENGL_ALLOW_GREYLISTED'] = '1'  # Allow greylisted drivers
+
+            logger.info(f"Starting Xpra session :{self.display_number} on port {self.port} with FORCED OpenGL")
             self.process = subprocess.Popen(
                 cmd,
+                env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
