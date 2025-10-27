@@ -1,8 +1,29 @@
-# Xpra OpenGL Hang Issue (2024-10-27)
+# Xpra OpenGL Hang Issue (2024-10-27) - RESOLVED ✅
 
 ## Issue Summary
 
-Kit applications launched with Xpra preview hang during startup and never display a window, even though:
+**STATUS: FIXED** - Xpra now forces OpenGL to be enabled, bypassing driver greylist.
+
+### Fix Applied (Commit: d30ba43)
+
+**Changes Made:**
+1. ✅ Added `--opengl-driver=all` flag to Xpra command (bypasses greylist)
+2. ✅ Set `XPRA_OPENGL=1` environment variable (forces OpenGL enable)
+3. ✅ Set `XPRA_OPENGL_ALLOW_GREYLISTED=1` environment variable
+4. ✅ Updated both `xpra_manager.py` and `launch.py`
+5. ✅ Created verification script: `tools/verify_xpra_opengl.sh`
+
+**Verification:**
+```bash
+./tools/verify_xpra_opengl.sh 100
+# Should show: ✅ OpenGL is ENABLED
+```
+
+---
+
+## Original Issue (Historical Record)
+
+Kit applications were hanging during startup when launched with Xpra preview, even though:
 - ✅ Application process is running
 - ✅ Xpra server is running
 - ✅ DISPLAY is correctly set (:100)
