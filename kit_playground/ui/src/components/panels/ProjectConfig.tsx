@@ -73,7 +73,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const [projectName, setProjectName] = useState(defaultProjectName);
   const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [outputDir, setOutputDir] = useState('source/apps');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true); // Open by default so users can see options
 
   // Advanced options
   const [enableStreaming, setEnableStreaming] = useState(false);

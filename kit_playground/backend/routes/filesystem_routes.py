@@ -101,19 +101,27 @@ def create_filesystem_routes(security_validator):
             if not path:
                 return jsonify({'error': 'path required'}), 400
 
+            logger.info(f"[filesystem/read] Requested path: {path}")
+
             # Basic path validation
             path_obj = security_validator._validate_filesystem_path(path)
             if not path_obj:
+                logger.error(f"[filesystem/read] Path validation failed for: {path}")
                 return jsonify({'error': 'Invalid or inaccessible path'}), 400
 
+            logger.info(f"[filesystem/read] Validated path: {path_obj}")
+
             if not path_obj.exists():
+                logger.error(f"[filesystem/read] File does not exist: {path_obj}")
                 return jsonify({'error': 'File does not exist'}), 404
 
             if not path_obj.is_file():
+                logger.error(f"[filesystem/read] Path is not a file: {path_obj}")
                 return jsonify({'error': 'Path is not a file'}), 400
 
             # Read file content
             content = path_obj.read_text(encoding='utf-8')
+            logger.info(f"[filesystem/read] Successfully read file: {path_obj} ({len(content)} bytes)")
             return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
         except Exception as e:
             logger.error(f"Failed to read file: {e}")
