@@ -86,9 +86,33 @@ export const useJob = (): UseJobResult => {
 
         return data.job_id || jobId;
       } else if (type === 'launch') {
-        // TODO: Implement launch
-        console.log(`Launch not yet implemented for ${projectName}`);
-        return jobId;
+        const calculatedProjectPath = projectPath || `source/apps/${projectName}`;
+        console.log(`[useJob] Starting launch for project: ${projectName} at ${calculatedProjectPath}`);
+
+        const response = await fetch('/api/projects/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectPath: calculatedProjectPath,
+            projectName: projectName,
+            useXpra: null,  // null = auto-detect based on environment
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Launch failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Launch started:', data);
+
+        setJob({
+          ...newJob,
+          status: 'running',
+          id: data.job_id || jobId,
+        });
+
+        return data.job_id || jobId;
       } else {
         // For 'create' type, job is handled by the project creation flow
         return jobId;

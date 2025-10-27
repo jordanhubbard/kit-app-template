@@ -99,6 +99,17 @@ def create_project_routes(
         Flask Blueprint with project routes configured
     """
 
+    @project_bp.route('/environment', methods=['GET'])
+    def get_environment():
+        """Get environment capabilities for smart launch decisions."""
+        has_display = 'DISPLAY' in os.environ and os.environ['DISPLAY']
+        return jsonify({
+            'hasDisplay': has_display,
+            'display': os.environ.get('DISPLAY', None),
+            'canDirectLaunch': has_display,
+            'xpraAvailable': True,  # Assume Xpra is always available
+        })
+
     @project_bp.route('/build', methods=['POST'])
     def build_project():
         """Build a Kit project using repo.sh wrapper from the app directory."""
@@ -275,7 +286,7 @@ def create_project_routes(
             data = request.json
             project_path = data.get('projectPath')
             project_name = data.get('projectName')
-            use_xpra = data.get('useXpra', False)
+            use_xpra = data.get('useXpra', None)  # None means "auto-detect"
             use_web_preview = data.get('useWebPreview', False)
             streaming_port = data.get('streamingPort', 47995)
 
@@ -290,21 +301,47 @@ def create_project_routes(
 
             kit_file = f"{project_name}.kit"
             repo_root = Path(__file__).parent.parent.parent.parent
-            logger.info(f"Launching kit application: {kit_file} (Xpra: {use_xpra}, Web Preview: {use_web_preview})")
+
+            # Detect environment capabilities
+            has_display = 'DISPLAY' in os.environ and os.environ['DISPLAY']
+            logger.info(f"Environment check: DISPLAY={os.environ.get('DISPLAY', 'not set')}, has_display={has_display}")
 
             preview_url = None
             streaming_url = None
             is_streaming_app = False
 
-            # Check if this is a streaming app
+            # Check if this is a streaming app (Kit App Streaming)
             try:
                 from tools.repoman.streaming_utils import is_streaming_app as check_streaming
                 kit_file_path = repo_root / "source" / "apps" / project_name / kit_file
                 if kit_file_path.exists():
                     is_streaming_app = check_streaming(kit_file_path)
-                    logger.info(f"Streaming app detected: {is_streaming_app}")
+                    logger.info(f"Kit App Streaming (KAS) enabled: {is_streaming_app}")
             except Exception as e:
-                logger.warning(f"Could not check if app is streaming: {e}")
+                logger.warning(f"Could not check if app has Kit App Streaming: {e}")
+
+            # SMART DECISION TREE for launch mode
+            # 1. If KAS enabled → Always use KAS (user's explicit intent)
+            # 2. If no DISPLAY and no KAS → Must use Xpra
+            # 3. If DISPLAY set and no KAS → Use user's choice (default direct, optional Xpra)
+
+            if is_streaming_app:
+                # Rule 1: KAS enabled - always use it
+                logger.info("DECISION: Using Kit App Streaming (KAS enabled)")
+                use_xpra = False
+                use_web_preview = True
+            elif not has_display:
+                # Rule 2: No DISPLAY - must use Xpra
+                logger.info("DECISION: No DISPLAY available - forcing Xpra mode")
+                use_xpra = True
+                # Note: Log message will be emitted later after launch starts
+            else:
+                # Rule 3: DISPLAY available - respect user choice or default to direct
+                if use_xpra is None:
+                    use_xpra = False  # Default to direct display
+                logger.info(f"DECISION: DISPLAY available - using {'Xpra preview' if use_xpra else 'direct display'}")
+
+            logger.info(f"Final launch mode: KAS={is_streaming_app}, Xpra={use_xpra}, Direct={not use_xpra and not is_streaming_app}")
 
             # Determine launch mode
             # Mode 1: Kit App Streaming (always --no-window, URL on stdout)
@@ -388,12 +425,18 @@ def create_project_routes(
                         'message': 'Starting streaming server...'
                     })
 
-                    # Get hostname for client connections
-                    # Note: Use actual IP for remote, localhost for local
-                    streaming_host = get_hostname_for_client()
+                    # Extract client host from request headers (same logic as Xpra)
+                    # Check X-Forwarded-Host first (set by proxy), then fall back to Host header
+                    original_host = request.headers.get('X-Forwarded-Host', request.host)
+                    client_host = registry.extract_client_host(original_host)
 
-                    # Get streaming URL
-                    streaming_url = get_streaming_url(port=streaming_port, hostname=streaming_host)
+                    # Get streaming URL with remote hostname
+                    streaming_url = get_streaming_url(port=streaming_port, hostname=client_host)
+
+                    logger.info(f"[STREAMING URL] Request.host: {request.host}")
+                    logger.info(f"[STREAMING URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
+                    logger.info(f"[STREAMING URL] Client host: {client_host}")
+                    logger.info(f"[STREAMING URL] Constructed URL: {streaming_url}")
 
                     socketio.emit('log', {
                         'level': 'info',
@@ -403,7 +446,8 @@ def create_project_routes(
 
                     # Wait for server (in a thread to avoid blocking)
                     def wait_and_notify():
-                        if wait_for_streaming_ready(streaming_port, streaming_host, timeout=30):
+                        # Check localhost for readiness (local check), but provide remote URL to client
+                        if wait_for_streaming_ready(streaming_port, 'localhost', timeout=30):
                             socketio.emit('log', {
                                 'level': 'success',
                                 'source': 'runtime',
@@ -528,6 +572,12 @@ def create_project_routes(
             elif use_xpra:
                 # Launch with Xpra using repo.sh --xpra flag
                 # This delegates Xpra management to the CLI tool
+                if not has_display:
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'runtime',
+                        'message': '=== No DISPLAY detected - using Xpra mode ==='
+                    })
                 socketio.emit('log', {
                     'level': 'info',
                     'source': 'runtime',
@@ -638,6 +688,14 @@ def create_project_routes(
                         'level': 'info',
                         'source': 'runtime',
                         'message': f'Preview: {preview_url}'
+                    })
+
+                    # Emit xpra_ready event for frontend to auto-open
+                    socketio.emit('xpra_ready', {
+                        'project': project_name,
+                        'url': preview_url,
+                        'display': xpra_display,
+                        'port': xpra_port
                     })
 
                     # Start thread to stream output from both stdout and stderr concurrently

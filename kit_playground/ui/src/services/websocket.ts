@@ -118,6 +118,26 @@ class WebSocketService {
     };
   }
 
+  onXpraReady(
+    handler: WebSocketEventHandler<{
+      project: string;
+      url: string;
+      display: number;
+      port: number;
+    }>
+  ): () => void {
+    if (!this.socket) {
+      console.warn('WebSocket not connected');
+      return () => {};
+    }
+
+    this.socket.on('xpra_ready', handler);
+
+    return () => {
+      this.socket?.off('xpra_ready', handler);
+    };
+  }
+
   onLogMessage(
     handler: WebSocketEventHandler<{
       level: string;

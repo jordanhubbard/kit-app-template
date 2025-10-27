@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Square, RotateCcw, Trash2, CheckCircle, XCircle, Loader, Terminal, Play } from 'lucide-react';
+import { X, Square, RotateCcw, CheckCircle, XCircle, Loader, Terminal, Play } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { useJob, type Job } from '../../hooks/useJob';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -33,12 +33,8 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
 }) => {
   const { closePanel, getPanelsByType, openPanel } = usePanelStore();
   const { job, startJob, cancelJob } = useJob();
-  const [logs, setLogs] = useState<string[]>([]);
-  const [autoScroll, setAutoScroll] = useState(true);
   const [buildCompleted, setBuildCompleted] = useState(false); // Track build completion locally
   const [buildFailed, setBuildFailed] = useState(false); // Track build failure locally
-  const logsEndRef = useRef<HTMLDivElement>(null);
-  const logsContainerRef = useRef<HTMLDivElement>(null);
   const hasStartedJob = useRef(false); // Track if we've already started the job
 
   // WebSocket for real-time updates
@@ -52,13 +48,13 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       // Progress updates from backend
     },
     onLogMessage: (data) => {
-      // Add log message from backend (emitted as 'log' events)
+      // Logs are now shown only in the bottom Output panel
+      // Build/Launch panels show status info only
       console.log('[BuildOutput] Received log:', data);
-      const logLine = data.message || JSON.stringify(data);
-      setLogs(prev => [...prev, logLine]);
 
       // Detect build completion from log messages
       if (jobType === 'build') {
+        const logLine = data.message || JSON.stringify(data);
         if (logLine.includes('BUILD (RELEASE) SUCCEEDED') || logLine.includes('Build completed successfully')) {
           console.log('[BuildOutput] Detected successful build completion');
           setBuildCompleted(true);
@@ -68,6 +64,22 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
           setBuildCompleted(false);
           setBuildFailed(true);
         }
+      }
+    },
+    onStreamingReady: (data) => {
+      console.log('[BuildOutput] Streaming ready:', data);
+      if (data.url && jobType === 'launch') {
+        // Auto-open streaming URL in new tab
+        console.log('[BuildOutput] Auto-opening streaming URL:', data.url);
+        window.open(data.url, '_blank');
+      }
+    },
+    onXpraReady: (data) => {
+      console.log('[BuildOutput] Xpra ready:', data);
+      if (data.url && jobType === 'launch') {
+        // Auto-open Xpra URL in new tab
+        console.log('[BuildOutput] Auto-opening Xpra URL:', data.url);
+        window.open(data.url, '_blank');
       }
     },
   });
@@ -90,21 +102,6 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialJobId, projectName, jobType, autoStart]); // Intentionally omit startJob to prevent loop
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (autoScroll && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs, autoScroll]);
-
-  // Detect manual scroll
-  const handleScroll = () => {
-    if (!logsContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-    setAutoScroll(isAtBottom);
-  };
-
   const handleCancel = async () => {
     if (job && job.id) {
       await cancelJob(job.id);
@@ -113,7 +110,6 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
 
   const handleRetry = async () => {
     if (projectName) {
-      setLogs([]);
       setBuildCompleted(false);
       setBuildFailed(false);
       hasStartedJob.current = false; // Reset so we can start again
@@ -123,16 +119,11 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
 
   const handleStart = async () => {
     if (projectName) {
-      setLogs([]);
       setBuildCompleted(false);
       setBuildFailed(false);
       hasStartedJob.current = false; // Reset so we can start again
       await startJob(jobType, projectName);
     }
-  };
-
-  const handleClear = () => {
-    setLogs([]);
   };
 
   const handleClose = () => {
@@ -167,12 +158,13 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       return;
     }
 
-    // TODO: Implement launch functionality
-    // For now, just open a new panel
+    console.log('[BuildOutput] Launching application:', projectName);
+
+    // Open a new panel for launch output
     openPanel('build-output', {
       projectName,
       jobType: 'launch',
-      autoStart: true,
+      autoStart: true,  // This will trigger startJob in the new panel's useEffect
     });
   };
 
@@ -287,21 +279,6 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
             </button>
           )}
 
-          <button
-            onClick={handleClear}
-            disabled={logs.length === 0}
-            className="
-              p-2 rounded
-              hover:bg-bg-card
-              text-text-secondary hover:text-text-primary
-              disabled:opacity-50 disabled:cursor-not-allowed
-              transition-colors
-            "
-            title="Clear logs"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-
           <div className="w-px h-6 bg-border-subtle mx-1" />
 
           <button
@@ -329,56 +306,84 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
         </div>
       )}
 
-      {/* Log Output */}
-      <div
-        ref={logsContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 bg-bg-dark font-mono text-sm"
-      >
-        {logs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Terminal className="w-12 h-12 text-text-muted mb-4" />
-            <p className="text-text-secondary">
-              {job?.status === 'pending' ? 'Waiting for job to start...' : 'No output yet'}
-            </p>
-          </div>
-        ) : (
-          <>
-            {logs.map((log, index) => (
-              <div key={index} className="text-text-primary whitespace-pre-wrap break-words">
-                {log}
-              </div>
-            ))}
-            <div ref={logsEndRef} />
-          </>
-        )}
-      </div>
+      {/* Status Summary */}
+      <div className="flex-1 overflow-y-auto p-6 bg-bg-dark">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex flex-col items-center justify-center space-y-6">
+            {/* Status Icon */}
+            <div className="flex items-center justify-center">
+              {statusConfig.icon}
+            </div>
 
-      {/* Auto-scroll indicator */}
-      {!autoScroll && logs.length > 0 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-          <button
-            onClick={() => {
-              setAutoScroll(true);
-              logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="
-              px-4 py-2 rounded-full
-              bg-nvidia-green hover:bg-nvidia-green-dark
-              text-white text-xs font-medium
-              shadow-lg
-              transition-colors
-            "
-          >
-            ↓ Scroll to bottom
-          </button>
+            {/* Status Message */}
+            <div className="text-center">
+              <h3 className={`text-xl font-semibold mb-2 ${statusConfig.color}`}>
+                {statusConfig.label}
+              </h3>
+              {projectName && (
+                <p className="text-text-secondary">
+                  {jobType === 'build' ? 'Building' : 'Launching'}: <span className="text-text-primary font-mono">{projectName}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Job Details */}
+            {job && (
+              <div className="w-full max-w-md bg-bg-card rounded-lg p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-text-secondary">Status:</span>
+                  <span className={`font-semibold ${statusConfig.color}`}>{statusConfig.label}</span>
+                </div>
+
+                {job.startTime && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text-secondary">Started:</span>
+                    <span className="text-text-primary">{new Date(job.startTime).toLocaleTimeString()}</span>
+                  </div>
+                )}
+
+                {job.endTime && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text-secondary">Finished:</span>
+                    <span className="text-text-primary">{new Date(job.endTime).toLocaleTimeString()}</span>
+                  </div>
+                )}
+
+                {job.progress !== undefined && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-text-secondary">Progress:</span>
+                    <span className="text-text-primary">{job.progress}%</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Instructions */}
+            <div className="text-center text-sm text-text-secondary max-w-md">
+              {job?.status === 'pending' && (
+                <p>Job is queued and will start shortly...</p>
+              )}
+              {job?.status === 'running' && (
+                <p>View detailed logs in the Output panel at the bottom of the screen.</p>
+              )}
+              {buildCompleted && (
+                <p className="text-nvidia-green">Build successful! Click the Launch button to run your application.</p>
+              )}
+              {buildFailed && (
+                <p className="text-status-error">Build failed. Check the Output panel for error details.</p>
+              )}
+              {jobType === 'launch' && job?.status === 'running' && (
+                <p className="text-nvidia-green">Application is starting... Preview will open automatically when ready.</p>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Footer */}
       <div className="p-3 border-t border-border-subtle bg-bg-dark">
         <div className="text-xs text-text-muted">
-          {logs.length} lines • {connected ? 'Connected' : 'Disconnected'}
+          {connected ? '🟢 Connected' : '🔴 Disconnected'}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ interface UseWebSocketOptions {
   onJobProgress?: (data: any) => void;
   onLogMessage?: (data: any) => void;
   onStreamingReady?: (data: any) => void;
+  onXpraReady?: (data: any) => void;
   onJobLog?: (data: any) => void;
 }
 
@@ -15,7 +16,7 @@ interface UseWebSocketResult {
 
 /**
  * useWebSocket
- * 
+ *
  * Custom hook for WebSocket connections and real-time updates.
  * Manages connection lifecycle and event subscriptions.
  */
@@ -25,7 +26,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRes
   useEffect(() => {
     // Connect to WebSocket
     websocketService.connect();
-    
+
     // Update connected state
     setConnected(websocketService.isConnected());
 
@@ -48,6 +49,10 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRes
       const unsub = websocketService.onStreamingReady(options.onStreamingReady);
       unsubscribeFns.push(unsub);
     }
+    if (options.onXpraReady) {
+      const unsub = websocketService.onXpraReady(options.onXpraReady);
+      unsubscribeFns.push(unsub);
+    }
     if (options.onJobLog) {
       const unsub = websocketService.onJobLog(options.onJobLog);
       unsubscribeFns.push(unsub);
@@ -57,14 +62,13 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRes
     return () => {
       // Call all unsubscribe functions
       unsubscribeFns.forEach(unsub => unsub());
-      
+
       // Note: We don't disconnect here as other components may be using the socket
       // websocketService.disconnect();
     };
-  }, [options.onJobStatus, options.onJobProgress, options.onLogMessage, options.onStreamingReady, options.onJobLog]);
+  }, [options.onJobStatus, options.onJobProgress, options.onLogMessage, options.onStreamingReady, options.onXpraReady, options.onJobLog]);
 
   return {
     connected,
   };
 };
-

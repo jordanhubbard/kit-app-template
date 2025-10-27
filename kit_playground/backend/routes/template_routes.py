@@ -110,8 +110,24 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 logger.info(f".kit file path: {kit_file_abs}")
 
                 # Enable Kit App Streaming if requested
+                # NOTE: Kit App Streaming requires specific extensions that may not be available
+                # in all Kit SDK configurations. If unavailable, use Xpra instead.
                 streaming_enabled = False
+                streaming_warning = None
+
                 if enable_streaming and kit_file_abs.exists():
+                    logger.warning("Kit App Streaming requested, but this requires extensions that may not be available in this Kit SDK")
+                    logger.warning("Required extensions: omni.services.streaming.webrtc, omni.kit.streamhelper")
+                    logger.warning("If these are not available, the application launch will fail.")
+                    logger.warning("Consider using Xpra mode instead for remote preview.")
+
+                    streaming_warning = (
+                        "Warning: Kit App Streaming extensions (omni.services.streaming.webrtc, "
+                        "omni.kit.streamhelper) may not be available in this Kit SDK. "
+                        "If launch fails, use Xpra mode for remote preview instead."
+                    )
+
+                    # Still try to add the extensions, but warn the user
                     try:
                         # Read the .kit file
                         kit_content = kit_file_abs.read_text()
@@ -136,16 +152,17 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
 
                         if needs_update:
                             kit_file_abs.write_text(kit_content)
-                            logger.info(f"Enabled Kit App Streaming extensions in {kit_file_abs}")
+                            logger.info(f"Added Kit App Streaming extensions to {kit_file_abs}")
+                            logger.info("NOTE: These extensions must be available in your Kit SDK registries")
                             streaming_enabled = True
                         else:
-                            logger.info(f"Streaming extensions already present")
+                            logger.info(f"Streaming extensions already present in .kit file")
                             streaming_enabled = True
                     except Exception as e:
-                        logger.error(f"Failed to enable streaming extensions: {e}")
-                        # Continue anyway - not critical
+                        logger.error(f"Failed to add streaming extensions: {e}")
+                        streaming_warning = f"Failed to enable streaming: {e}"
 
-                return jsonify({
+                response_data = {
                     'success': True,
                     'projectInfo': {
                         'projectName': project_name,
@@ -155,7 +172,12 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                         'streaming': streaming_enabled,
                     },
                     'job_id': None  # For consistency with async endpoints
-                })
+                }
+
+                if streaming_warning:
+                    response_data['warning'] = streaming_warning
+
+                return jsonify(response_data)
             else:
                 return jsonify({
                     'success': False,
