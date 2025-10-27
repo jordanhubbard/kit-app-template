@@ -23,12 +23,31 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward the original host header to the backend
+            // This is crucial for the backend to construct URLs with the correct hostname
+            const originalHost = req.headers.host;
+            if (originalHost) {
+              proxyReq.setHeader('X-Forwarded-Host', originalHost);
+            }
+          });
+        },
       },
       '/socket.io': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward the original host header for WebSocket connections too
+            const originalHost = req.headers.host;
+            if (originalHost) {
+              proxyReq.setHeader('X-Forwarded-Host', originalHost);
+            }
+          });
+        },
       },
     },
   },

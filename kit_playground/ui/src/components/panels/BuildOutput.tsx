@@ -208,6 +208,25 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               )}
             </div>
           </div>
+
+          {/* Launch button next to title */}
+          {canLaunch && (
+            <button
+              onClick={handleLaunch}
+              className="
+                ml-4 px-4 py-2 rounded
+                bg-blue-600 hover:bg-blue-700
+                text-white text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              "
+              title="Launch application"
+            >
+              <Play className="w-4 h-4" />
+              Launch
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -229,25 +248,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
             </button>
           )}
 
-          {canLaunch && (
-            <button
-              onClick={handleLaunch}
-              className="
-                px-4 py-2 rounded
-                bg-blue-600 hover:bg-blue-700
-                text-white text-sm font-semibold
-                transition-colors
-                flex items-center gap-2
-                shadow-sm
-              "
-              title="Launch application"
-            >
-              <Play className="w-4 h-4" />
-              Launch
-            </button>
-          )}
-
-          {((canStart && projectName) || canLaunch) && <div className="w-px h-6 bg-border-subtle mx-2" />}
+          {(canStart && projectName) && <div className="w-px h-6 bg-border-subtle mx-2" />}
 
           {canCancel && (
             <button
