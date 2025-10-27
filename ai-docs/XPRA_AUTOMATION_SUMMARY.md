@@ -2,8 +2,8 @@
 
 ## ✅ COMPLETE: Seamless, Automated Xpra OpenGL Setup
 
-**Date:** October 27, 2025  
-**Status:** Fully implemented and tested  
+**Date:** October 27, 2025
+**Status:** Fully implemented and tested
 **Impact:** Zero user intervention required
 
 ---
@@ -132,11 +132,11 @@ Starting Kit Playground...
 
 ### What Users DON'T See
 
-❌ No manual patching required  
-❌ No configuration files to edit  
-❌ No need to remember Xpra setup  
-❌ No complex troubleshooting  
-❌ No environment variables to set  
+❌ No manual patching required
+❌ No configuration files to edit
+❌ No need to remember Xpra setup
+❌ No complex troubleshooting
+❌ No environment variables to set
 
 **It just works!** ✅
 
@@ -393,7 +393,7 @@ grep -A 2 "^WHITELIST" /usr/lib/python3/dist-packages/xpra/opengl/drivers.py
 # Restore original files:
 sudo cp /usr/lib/python3/dist-packages/xpra/opengl/drivers.py.backup \
         /usr/lib/python3/dist-packages/xpra/opengl/drivers.py
-        
+
 sudo cp /usr/lib/python3/dist-packages/xpra/opengl/check.py.backup \
         /usr/lib/python3/dist-packages/xpra/opengl/check.py
 
@@ -403,4 +403,3 @@ sudo rm -f /usr/lib/python3/dist-packages/xpra/opengl/__pycache__/*.pyc
 ---
 
 **Documentation:** See `ai-docs/XPRA_OPENGL_WHITELIST_AUTOMATION.md` for complete details.
-

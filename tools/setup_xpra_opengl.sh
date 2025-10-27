@@ -56,19 +56,19 @@ if grep -q '"renderer": ("llvmpipe",)' "$XPRA_DRIVERS"; then
     DRIVERS_PATCHED=true
 else
     log_info "Patching drivers.py to whitelist llvmpipe..."
-    
+
     # Backup original file
     if [ ! -f "${XPRA_DRIVERS}.backup" ]; then
         cp "$XPRA_DRIVERS" "${XPRA_DRIVERS}.backup"
         log_info "  Created backup: ${XPRA_DRIVERS}.backup"
     fi
-    
+
     # Apply patch: Add llvmpipe to WHITELIST
     sed -i 's/^WHITELIST: GL_MATCH_LIST = {$/WHITELIST: GL_MATCH_LIST = {\n    "renderer": ("llvmpipe",),/' "$XPRA_DRIVERS"
-    
+
     # Clear Python bytecode cache
     rm -f /usr/lib/python3/dist-packages/xpra/opengl/__pycache__/drivers.*.pyc 2>/dev/null || true
-    
+
     log_info "✓ drivers.py patched successfully"
     DRIVERS_PATCHED=true
 fi
@@ -79,23 +79,23 @@ if grep -q 'match_list(props, GREYLIST, "greylist") and not match_list(props, WH
     CHECK_PATCHED=true
 else
     log_info "Patching check.py to fix whitelist bypass..."
-    
+
     # Backup original file
     if [ ! -f "${XPRA_CHECK}.backup" ]; then
         cp "$XPRA_CHECK" "${XPRA_CHECK}.backup"
         log_info "  Created backup: ${XPRA_CHECK}.backup"
     fi
-    
+
     # Find the line number of the greylist check
     LINE_NUM=$(grep -n 'if safe and match_list(props, GREYLIST, "greylist"):' "$XPRA_CHECK" | cut -d: -f1)
-    
+
     if [ -n "$LINE_NUM" ]; then
         # Apply patch: Add whitelist check to the condition
         sed -i "${LINE_NUM}s/.*/    if safe and match_list(props, GREYLIST, \"greylist\") and not match_list(props, WHITELIST, \"whitelist\"):/" "$XPRA_CHECK"
-        
+
         # Clear Python bytecode cache
         rm -f /usr/lib/python3/dist-packages/xpra/opengl/__pycache__/check.*.pyc 2>/dev/null || true
-        
+
         log_info "✓ check.py patched successfully"
         CHECK_PATCHED=true
     else
@@ -117,4 +117,3 @@ else
 fi
 
 exit 0
-

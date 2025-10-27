@@ -214,58 +214,34 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 logger.info(f"Application created at: {app_dir}")
                 logger.info(f".kit file path: {kit_file_abs}")
 
-                # Enable Kit App Streaming if requested
-                # NOTE: Kit App Streaming requires specific extensions that may not be available
-                # in all Kit SDK configurations. If unavailable, use Xpra instead.
+                # Kit App Streaming Note:
+                # Streaming is implemented as an ApplicationLayerTemplate, not by modifying the .kit file.
+                # To enable streaming, users should apply a streaming layer template:
+                #   - default_stream.kit (uses omni.kit.livestream.app)
+                #   - nvcf_stream.kit (uses omni.services.livestream.session for NVIDIA Cloud Functions)
+                #   - gdn_stream.kit (uses omni.kit.gfn for GeForce NOW)
+                # 
+                # The 'enable_streaming' parameter is deprecated and ignored.
+                # Use streaming layer templates from templates/apps/streaming_configs/ instead.
+                
                 streaming_enabled = False
                 streaming_warning = None
 
-                if enable_streaming and kit_file_abs.exists():
-                    logger.warning("Kit App Streaming requested, but this requires extensions that may not be available in this Kit SDK")
-                    logger.warning("Required extensions: omni.services.streaming.webrtc, omni.kit.streamhelper")
-                    logger.warning("If these are not available, the application launch will fail.")
-                    logger.warning("Consider using Xpra mode instead for remote preview.")
+                if enable_streaming:
+                    logger.warning("Kit App Streaming requested via 'enable_streaming' parameter.")
+                    logger.warning("This parameter is DEPRECATED. Streaming must be configured as a layer template.")
+                    logger.warning("Available streaming layers:")
+                    logger.warning("  - default_stream.kit (omni.kit.livestream.app)")
+                    logger.warning("  - nvcf_stream.kit (omni.services.livestream.session for NVCF)")
+                    logger.warning("  - gdn_stream.kit (omni.kit.gfn for GeForce NOW)")
+                    logger.warning("For remote preview without streaming, use Xpra mode instead.")
 
                     streaming_warning = (
-                        "Warning: Kit App Streaming extensions (omni.services.streaming.webrtc, "
-                        "omni.kit.streamhelper) may not be available in this Kit SDK. "
-                        "If launch fails, use Xpra mode for remote preview instead."
+                        "Note: Kit App Streaming must be configured as a layer template, not via this parameter. "
+                        "Use streaming layer templates from templates/apps/streaming_configs/ "
+                        "(default_stream.kit, nvcf_stream.kit, or gdn_stream.kit). "
+                        "For simple remote preview, use Xpra mode instead."
                     )
-
-                    # Still try to add the extensions, but warn the user
-                    try:
-                        # Read the .kit file
-                        kit_content = kit_file_abs.read_text()
-
-                        # Check if streaming extensions are already present
-                        streaming_exts = [
-                            'omni.services.streaming.webrtc',
-                            'omni.kit.streamhelper'
-                        ]
-
-                        needs_update = False
-                        for ext in streaming_exts:
-                            if ext not in kit_content:
-                                needs_update = True
-                                # Add the extension in the [dependencies] section
-                                if '[dependencies]' in kit_content:
-                                    parts = kit_content.split('[dependencies]', 1)
-                                    if len(parts) == 2:
-                                        kit_content = f'{parts[0]}[dependencies]\n"{ext}" = {{}}\n{parts[1]}'
-                                else:
-                                    kit_content += f'\n\n[dependencies]\n"{ext}" = {{}}\n'
-
-                        if needs_update:
-                            kit_file_abs.write_text(kit_content)
-                            logger.info(f"Added Kit App Streaming extensions to {kit_file_abs}")
-                            logger.info("NOTE: These extensions must be available in your Kit SDK registries")
-                            streaming_enabled = True
-                        else:
-                            logger.info(f"Streaming extensions already present in .kit file")
-                            streaming_enabled = True
-                    except Exception as e:
-                        logger.error(f"Failed to add streaming extensions: {e}")
-                        streaming_warning = f"Failed to enable streaming: {e}"
 
                 response_data = {
                     'success': True,

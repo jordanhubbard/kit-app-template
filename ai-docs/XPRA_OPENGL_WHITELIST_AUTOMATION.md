@@ -448,4 +448,3 @@ The Xpra OpenGL whitelist system is now **fully automated** and seamlessly integ
 7. Enables OpenGL for Kit applications in Xpra
 
 **Result:** Kit applications can now successfully launch and render using Xpra preview mode with software-based OpenGL rendering!
-
