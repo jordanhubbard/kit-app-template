@@ -19,7 +19,7 @@ export const TemplateSidebar: React.FC = () => {
 
   // Fetch templates and projects
   const { templates, loading, error } = useTemplates();
-  const { projects } = useProjects();
+  const { projects, loading: loadingProjects } = useProjects();
 
   // Group templates by type
   const groupedTemplates = useMemo(() => {
@@ -378,23 +378,36 @@ export const TemplateSidebar: React.FC = () => {
 
               {expandedSections.has('projects') && (
                 <div className="pl-6">
-                  {projects.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-text-muted">No projects yet</div>
-                  ) : (
-                    projects.slice(0, 10).map((project) => (
-                      <button
-                        key={project.id}
-                        onClick={() => openPanel('project-detail', { project })}
-                        className="
-                          w-full flex items-center gap-2 px-3 py-1
-                          hover:bg-bg-card-hover
-                          transition-colors text-left
-                        "
-                      >
-                        <span className="text-text-secondary truncate">{project.displayName || project.name}</span>
-                      </button>
-                    ))
+                  {loadingProjects && (
+                    <div className="px-3 py-2 text-xs text-text-muted flex items-center gap-2">
+                      <div className="w-3 h-3 border-2 border-nvidia-green border-t-transparent rounded-full animate-spin" />
+                      Loading...
+                    </div>
                   )}
+                  {!loadingProjects && projects.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-text-muted">No projects yet</div>
+                  )}
+                  {!loadingProjects && projects.length > 0 && projects.slice(0, 10).map((project) => (
+                    <button
+                      key={project.id}
+                      onClick={() => {
+                        // Open the code editor for this project
+                        openPanel('code-editor', {
+                          filePath: project.kitFile,
+                          fileName: `${project.name}.kit`,
+                          projectName: project.name,
+                        });
+                      }}
+                      className="
+                        w-full flex items-center gap-2 px-3 py-1
+                        hover:bg-bg-card-hover
+                        transition-colors text-left
+                      "
+                      title={`Open ${project.name} in editor`}
+                    >
+                      <span className="text-text-secondary truncate">{project.displayName || project.name}</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
