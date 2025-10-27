@@ -92,28 +92,28 @@ interface TemplateTypeBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export function TemplateTypeBadge({ 
-  type, 
-  showLabel = true, 
+export function TemplateTypeBadge({
+  type,
+  showLabel = true,
   className = '',
   size = 'md'
 }: TemplateTypeBadgeProps) {
   const Icon = getTemplateTypeIcon(type);
   const { color, bgColor } = getTemplateTypeColors(type);
   const label = getTemplateTypeLabel(type);
-  
+
   const sizeClasses = {
     sm: 'w-3 h-3',
     md: 'w-4 h-4',
     lg: 'w-5 h-5'
   };
-  
+
   const paddingClasses = {
     sm: 'px-1.5 py-0.5',
     md: 'px-2 py-1',
     lg: 'px-3 py-1.5'
   };
-  
+
   const textClasses = {
     sm: 'text-xs',
     md: 'text-sm',
@@ -121,7 +121,7 @@ export function TemplateTypeBadge({
   };
 
   return (
-    <div 
+    <div
       className={`
         inline-flex items-center gap-1.5 rounded
         ${bgColor} ${paddingClasses[size]}
@@ -148,25 +148,25 @@ interface StreamingBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export function StreamingBadge({ 
-  showLabel = false, 
+export function StreamingBadge({
+  showLabel = false,
   className = '',
   size = 'sm'
 }: StreamingBadgeProps) {
   const { Icon, color, bgColor, label } = STREAMING_ICON;
-  
+
   const sizeClasses = {
     sm: 'w-3 h-3',
     md: 'w-4 h-4',
     lg: 'w-5 h-5'
   };
-  
+
   const paddingClasses = {
     sm: 'px-1 py-0.5',
     md: 'px-1.5 py-0.5',
     lg: 'px-2 py-1'
   };
-  
+
   const textClasses = {
     sm: 'text-xs',
     md: 'text-sm',
@@ -174,7 +174,7 @@ export function StreamingBadge({
   };
 
   return (
-    <div 
+    <div
       className={`
         inline-flex items-center gap-1 rounded
         ${bgColor} ${paddingClasses[size]}
@@ -217,4 +217,3 @@ export function TemplateIcons({
     </div>
   );
 }
-

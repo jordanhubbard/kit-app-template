@@ -1,5 +1,6 @@
 import React from 'react';
-import { Layers, Box, Zap, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { TemplateIcons, getTemplateTypeColors } from '../../utils/templateIcons';
 
 interface TemplateCardProps {
   id: string;
@@ -21,46 +22,26 @@ interface TemplateCardProps {
 const getGradient = (type: TemplateCardProps['type']): string => {
   switch (type) {
     case 'application':
-      return 'from-nvidia-green/20 to-nvidia-green/5';
+      return 'from-blue-500/20 to-blue-500/5';  // Blue for applications
     case 'extension':
-      return 'from-blue-500/20 to-blue-500/5';
+      return 'from-purple-500/20 to-purple-500/5';  // Purple for extensions
     case 'microservice':
-      return 'from-purple-500/20 to-purple-500/5';
+      return 'from-green-500/20 to-green-500/5';  // Green for services
     default:
       return 'from-gray-500/20 to-gray-500/5';
   }
 };
 
 /**
- * Get icon for template type
+ * Detect if template is a streaming application
  */
-const getTypeIcon = (type: TemplateCardProps['type']) => {
-  switch (type) {
-    case 'application':
-      return <Layers className="w-5 h-5" />;
-    case 'extension':
-      return <Box className="w-5 h-5" />;
-    case 'microservice':
-      return <Zap className="w-5 h-5" />;
-    default:
-      return <Layers className="w-5 h-5" />;
-  }
-};
-
-/**
- * Get color for template type
- */
-const getTypeColor = (type: TemplateCardProps['type']): string => {
-  switch (type) {
-    case 'application':
-      return 'text-nvidia-green';
-    case 'extension':
-      return 'text-blue-400';
-    case 'microservice':
-      return 'text-purple-400';
-    default:
-      return 'text-gray-400';
-  }
+const isStreamingTemplate = (name: string, tags: string[] = []): boolean => {
+  const streamingKeywords = ['streaming', 'webrtc', 'remote'];
+  const nameMatch = streamingKeywords.some(kw => name.toLowerCase().includes(kw));
+  const tagsMatch = streamingKeywords.some(kw => 
+    tags.some(tag => tag.toLowerCase().includes(kw))
+  );
+  return nameMatch || tagsMatch;
 };
 
 /**
@@ -87,9 +68,9 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
   onClick,
 }) => {
   const gradient = getGradient(type);
-  const typeIcon = getTypeIcon(type);
-  const typeColor = getTypeColor(type);
   const title = displayName || name;
+  const isStreaming = isStreamingTemplate(name, tags);
+  const { color: typeColor } = getTemplateTypeColors(type);
 
   // Debug logging - remove after testing
   if (typeof window !== 'undefined' && !(window as any).__TEMPLATE_CARD_LOGGED) {
@@ -130,17 +111,15 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           </div>
         )}
 
-        {/* Type Badge */}
+        {/* Type Badge with Streaming Indicator */}
         <div className="absolute top-2 right-2">
-          <div className={`
-            flex items-center gap-1.5 px-2 py-1 rounded
-            bg-bg-dark/80 backdrop-blur-sm
-            ${typeColor}
-            text-xs font-medium
-          `}>
-            {typeIcon}
-            <span className="capitalize">{type}</span>
-          </div>
+          <TemplateIcons 
+            type={type} 
+            isStreaming={isStreaming}
+            showLabels={true}
+            size="sm"
+            className="bg-bg-dark/80 backdrop-blur-sm"
+          />
         </div>
 
         {/* Usage Count (if available) */}
