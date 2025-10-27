@@ -132,19 +132,31 @@ class TestTemplateCreationWithPerAppDeps:
 
             assert result.returncode == 0
 
-            # Parse JSON output from stderr
+            # Parse JSON output from stdout (JSON mode prints to stdout)
+            # The JSON may be pretty-printed across multiple lines
             import json
             json_output = None
-            for line in result.stderr.split('\n'):
-                if line.strip().startswith('{'):
-                    try:
-                        json_output = json.loads(line)
-                        break
-                    except json.JSONDecodeError:
-                        continue
+            try:
+                # Try to parse the entire stdout as JSON (handles multi-line)
+                json_output = json.loads(result.stdout.strip())
+            except json.JSONDecodeError:
+                # Fallback: try line by line for single-line JSON
+                for line in result.stdout.split('\n'):
+                    if line.strip().startswith('{'):
+                        try:
+                            json_output = json.loads(line)
+                            break
+                        except json.JSONDecodeError:
+                            continue
 
-            assert json_output is not None, "No JSON output found"
-            assert json_output.get('per_app_deps') is True
+            assert json_output is not None, (
+                f"No JSON output found in stdout.\n"
+                f"stdout: {result.stdout}\n"
+                f"stderr: {result.stderr}"
+            )
+            assert json_output.get('per_app_deps') is True, (
+                f"per_app_deps not found or not True in JSON output: {json_output}"
+            )
 
         finally:
             self.cleanup_test_app(app_name)

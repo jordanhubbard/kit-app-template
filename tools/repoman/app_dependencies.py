@@ -179,9 +179,53 @@ def get_app_kit_executable(
     return None
 
 
+def get_repo_config() -> Optional[Dict[str, Any]]:
+    """
+    Load repository configuration from repo.toml.
+
+    Returns:
+        Dictionary with repository configuration, or None if not found
+    """
+    try:
+        # Find repo root (go up from tools/repoman)
+        repo_root = Path(__file__).parent.parent.parent
+        repo_toml = repo_root / "repo.toml"
+
+        if repo_toml.exists():
+            return load_toml(repo_toml)
+    except Exception:
+        pass
+
+    return None
+
+
+def get_global_kit_version_override() -> Optional[str]:
+    """
+    Get global Kit SDK version override from repo.toml.
+
+    Returns:
+        Kit SDK version string if override is set, None otherwise
+    """
+    config = get_repo_config()
+    if config and 'per_app_deps' in config:
+        per_app_deps = config['per_app_deps']
+        # Check for override first
+        if 'kit_version_override' in per_app_deps:
+            return per_app_deps['kit_version_override']
+        # Fall back to default
+        if 'default_kit_version' in per_app_deps:
+            return per_app_deps['default_kit_version']
+    return None
+
+
 def get_kit_sdk_version(app_path: Path) -> Optional[str]:
     """
     Get the Kit SDK version configured for an application.
+
+    Priority order:
+    1. App-specific version in dependencies/kit-deps.toml
+    2. Global override in repo.toml [per_app_deps] kit_version_override
+    3. Default version in repo.toml [per_app_deps] default_kit_version
 
     Args:
         app_path: Path to application directory
@@ -189,10 +233,15 @@ def get_kit_sdk_version(app_path: Path) -> Optional[str]:
     Returns:
         Kit SDK version string, or None if not configured
     """
+    # First check app-specific config
     config = get_app_deps_config(app_path)
     if config and 'kit_sdk' in config:
-        return config['kit_sdk'].get('version')
-    return None
+        app_version = config['kit_sdk'].get('version')
+        if app_version:
+            return app_version
+
+    # Fall back to global override/default
+    return get_global_kit_version_override()
 
 
 def create_default_deps_config(
@@ -219,7 +268,7 @@ def create_default_deps_config(
 
 
 def initialize_per_app_deps(
-    app_path: Path, kit_version: str = "106.0"
+    app_path: Path, kit_version: Optional[str] = None
 ) -> bool:
     """
     Initialize per-app dependencies for an application.
@@ -228,12 +277,18 @@ def initialize_per_app_deps(
 
     Args:
         app_path: Path to application directory
-        kit_version: Kit SDK version to configure
+        kit_version: Kit SDK version to configure. If None, uses global default from repo.toml
 
     Returns:
         True if initialization successful, False otherwise
     """
     try:
+        # Use provided version or fall back to global default
+        if kit_version is None:
+            kit_version = get_global_kit_version_override()
+            if kit_version is None:
+                kit_version = "106.0"  # Ultimate fallback
+
         deps_dir = app_path / "dependencies"
         deps_dir.mkdir(parents=True, exist_ok=True)
 

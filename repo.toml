@@ -197,3 +197,18 @@ type_ordering = [
     "ApplicationTemplate",
     "ApplicationLayerTemplate",
 ]
+
+
+########################################################################################################################
+# Per-App Dependencies Configuration
+########################################################################################################################
+[per_app_deps]
+# Default Kit SDK version for apps using per-app dependencies
+# Available versions: https://docs.omniverse.nvidia.com/dev-guide/latest/release-notes.html
+# Examples: "108.1", "108.0", "107.3", "107.2", "107.0", "106.5", "106.0", "105.0"
+# This can be overridden per-app in the app's dependencies/kit-deps.toml file
+default_kit_version = "108.0"
+
+# Global override for Kit SDK version (applies to all apps with per-app deps unless specified in app config)
+# Uncomment to override:
+# kit_version_override = "107.0"

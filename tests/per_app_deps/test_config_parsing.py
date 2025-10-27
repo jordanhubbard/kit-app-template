@@ -72,12 +72,14 @@ class TestConfigParsing:
         version = get_kit_sdk_version(test_app_with_deps_config)
         assert version == '106.0'
 
-    def test_get_kit_sdk_version_without_config_returns_none(
+    def test_get_kit_sdk_version_without_config_returns_global_default(
         self, test_app_without_deps
     ):
-        """Should return None for app without config."""
+        """Should return global default for app without config."""
         version = get_kit_sdk_version(test_app_without_deps)
-        assert version is None
+        # Should return global default from repo.toml (108.0) or fallback
+        assert version is not None
+        assert isinstance(version, str)
 
 
 class TestKitPathResolution:
@@ -200,7 +202,9 @@ class TestBackwardCompatibility:
         """Apps without per-app deps should work as before."""
         assert not should_use_per_app_deps(test_app_without_deps)
         assert get_app_deps_config(test_app_without_deps) is None
-        assert get_kit_sdk_version(test_app_without_deps) is None
+        # Kit version now returns global default even without per-app config
+        version = get_kit_sdk_version(test_app_without_deps)
+        assert version is not None  # Gets global default from repo.toml
 
     def test_kit_path_resolution_works_for_all_apps(self, test_app_path):
         """Kit path resolution should work regardless of per-app deps."""

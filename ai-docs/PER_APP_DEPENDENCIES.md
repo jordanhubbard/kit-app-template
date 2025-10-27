@@ -50,13 +50,34 @@ The launch system automatically detects if an app uses per-app dependencies and 
 
 ## Configuration
 
-### Kit Dependency Configuration
+### Global Kit Version Override
+
+**File**: `repo.toml`
+
+```toml
+[per_app_deps]
+# Default Kit SDK version for apps using per-app dependencies
+# Available versions: https://docs.omniverse.nvidia.com/dev-guide/latest/release-notes.html
+# Examples: "108.1", "108.0", "107.3", "107.2", "107.0", "106.5", "106.0", "105.0"
+default_kit_version = "108.0"
+
+# Global override for Kit SDK version (applies to all apps)
+# Uncomment to override:
+# kit_version_override = "107.0"
+```
+
+**Priority Order**:
+1. App-specific version in `dependencies/kit-deps.toml`
+2. Global `kit_version_override` in `repo.toml`
+3. Global `default_kit_version` in `repo.toml`
+
+### Per-App Kit Dependency Configuration
 
 **File**: `source/apps/my_app/dependencies/kit-deps.toml`
 
 ```toml
 [kit_sdk]
-version = "106.0"
+version = "106.0"  # Optional: omit to use global default
 
 [cache]
 strategy = "isolated"  # or "shared" for global cache
@@ -68,8 +89,15 @@ strategy = "isolated"  # or "shared" for global cache
 ### Configuration Options
 
 **`[kit_sdk]`** - Kit SDK settings
-- `version` (required) - Kit SDK version (e.g., "106.0", "105.5")
+- `version` (optional) - Kit SDK version (e.g., "108.1", "108.0", "107.0", "106.0"). If omitted, uses global default from repo.toml
 - `branch` (optional) - Custom Kit branch name
+
+**Available Kit Versions**: See [NVIDIA Omniverse Kit Release Notes](https://docs.omniverse.nvidia.com/dev-guide/latest/release-notes.html)
+- Kit 108.1 (Latest)
+- Kit 108.0
+- Kit 107.3, 107.2, 107.0
+- Kit 106.5, 106.4, 106.3, 106.2, 106.1, 106.0
+- Kit 105.0
 
 **`[cache]`** - Cache strategy
 - `strategy` - `"isolated"` (per-app cache) or `"shared"` (global cache)
