@@ -401,7 +401,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
                       Create as Standalone Project
                     </div>
                     <div className="text-xs text-text-muted mt-1">
-                      Include all build tools for independent operation
+                      ⚠️ Creates separate repository (not in source/apps/). Only check if distributing as standalone repo.
                     </div>
                   </div>
                 </label>
