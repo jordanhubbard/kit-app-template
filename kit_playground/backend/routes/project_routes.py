@@ -345,9 +345,23 @@ def create_project_routes(
             try:
                 from tools.repoman.streaming_utils import is_streaming_app as check_streaming
                 kit_file_path = repo_root / "source" / "apps" / project_name / kit_file
+                logger.info(f"Checking for streaming in: {kit_file_path}")
+                logger.info(f"Kit file exists: {kit_file_path.exists()}")
                 if kit_file_path.exists():
                     is_streaming_app = check_streaming(kit_file_path)
-                    logger.info(f"Kit App Streaming (KAS) enabled: {is_streaming_app}")
+                    logger.info(f"Kit App Streaming (KAS) detection result: {is_streaming_app}")
+                    
+                    # DEBUG: Let's verify what's in the file
+                    if not is_streaming_app:
+                        try:
+                            content = kit_file_path.read_text()
+                            has_dep = 'omni.kit.livestream.app' in content
+                            logger.warning(f"Streaming detection returned False, but file contains dependency: {has_dep}")
+                            if has_dep:
+                                logger.warning("Forcing is_streaming_app = True based on file content")
+                                is_streaming_app = True
+                        except Exception as debug_e:
+                            logger.error(f"Could not debug-read kit file: {debug_e}")
             except Exception as e:
                 logger.warning(f"Could not check if app has Kit App Streaming: {e}")
 
