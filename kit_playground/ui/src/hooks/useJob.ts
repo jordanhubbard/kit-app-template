@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { apiService } from '../services/api';
 
 export interface Job {
   id: string;
@@ -19,6 +18,7 @@ interface UseJobResult {
   error: string | null;
   startJob: (type: Job['type'], projectName: string, projectPath?: string) => Promise<string | null>;
   cancelJob: (jobId: string) => Promise<boolean>;
+  stopProject: (projectName: string) => Promise<boolean>;
   refetch: (jobId: string) => void;
 }
 
@@ -190,6 +190,43 @@ export const useJob = (): UseJobResult => {
   }, [job]);
 
   /**
+   * Stop a running project (separate from cancel)
+   * This calls the backend to stop a project by name
+   */
+  const stopProject = useCallback(async (projectName: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log(`[useJob] Stopping project: ${projectName}`);
+
+      // Call backend API to stop the project
+      const response = await fetch('/api/projects/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to stop project: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('[useJob] Stop response:', data);
+
+      return data.success;
+    } catch (err) {
+      console.error('Failed to stop project:', err);
+      setError(err instanceof Error ? err.message : 'Failed to stop project');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
    * Fetch job status
    */
   const refetch = useCallback(async (jobId: string) => {
@@ -217,6 +254,7 @@ export const useJob = (): UseJobResult => {
     error,
     startJob,
     cancelJob,
+    stopProject,
     refetch,
   };
 };

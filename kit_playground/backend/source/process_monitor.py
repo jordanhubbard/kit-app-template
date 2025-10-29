@@ -33,7 +33,7 @@ class ProcessInfo:
 class ProcessMonitor:
     """
     Singleton process monitor for tracking Kit application processes.
-    
+
     Automatically shuts down Xpra displays when no processes are using them.
     """
     _instance: Optional['ProcessMonitor'] = None
@@ -49,14 +49,14 @@ class ProcessMonitor:
     def __init__(self):
         if self._initialized:
             return
-        
+
         self._processes: Dict[str, ProcessInfo] = {}
         self._xpra_displays: Dict[int, int] = defaultdict(int)  # display -> count
         self._monitor_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._socketio: Optional[SocketIO] = None
         self._initialized = True
-        
+
         logger.info("ProcessMonitor initialized")
 
     @classmethod
@@ -79,7 +79,7 @@ class ProcessMonitor:
                 })
             except Exception as e:
                 logger.error(f"Failed to emit log via SocketIO: {e}")
-        
+
         log_level = getattr(logging, level.upper(), logging.INFO)
         logger.log(log_level, message)
 
@@ -110,15 +110,15 @@ class ProcessMonitor:
                 is_streaming=is_streaming,
                 start_time=time.time()
             )
-            
+
             self._processes[project_name] = proc_info
-            
+
             if xpra_display is not None:
                 self._xpra_displays[xpra_display] += 1
-                self._emit_log('info', 
+                self._emit_log('info',
                     f"Registered Xpra display :{xpra_display} for {project_name}. "
                     f"Count: {self._xpra_displays[xpra_display]}")
-            
+
             self._emit_log('info',
                 f"Registered process {project_name} (PID: {pid}, Streaming: {is_streaming})")
 
@@ -136,24 +136,24 @@ class ProcessMonitor:
         with self._lock:
             if project_name not in self._processes:
                 return
-            
+
             proc_info = self._processes.pop(project_name)
-            
+
             if proc_info.xpra_display is not None:
                 display = proc_info.xpra_display
                 self._xpra_displays[display] -= 1
-                
+
                 self._emit_log('info',
                     f"Unregistered Xpra display :{display} for {project_name}. "
                     f"Count: {self._xpra_displays[display]}")
-                
+
                 if self._xpra_displays[display] <= 0:
                     # No more processes using this display
                     self._xpra_displays.pop(display, None)
                     self._emit_log('info',
                         f"Xpra display :{display} count is zero. Shutting down...")
                     self._stop_xpra_display(display)
-            
+
             self._emit_log('info', f"Unregistered process {project_name}")
 
     def _stop_xpra_display(self, display: int):
@@ -164,7 +164,7 @@ class ProcessMonitor:
             display: Display number to stop
         """
         self._emit_log('info', f"Attempting to stop Xpra display :{display}...")
-        
+
         try:
             result = subprocess.run(
                 ['xpra', 'stop', f':{display}'],
@@ -172,7 +172,7 @@ class ProcessMonitor:
                 text=True,
                 timeout=10
             )
-            
+
             if result.returncode == 0:
                 logger.info(f"Successfully shut down Xpra display :{display}")
                 if self._socketio:
@@ -188,14 +188,14 @@ class ProcessMonitor:
     def _monitor_loop(self):
         """Background monitoring loop."""
         self._emit_log('info', "Process monitor started")
-        
+
         while not self._stop_event.is_set():
             time.sleep(2)  # Check every 2 seconds
-            
+
             with self._lock:
                 # Create a copy to iterate over
                 processes_to_check = list(self._processes.items())
-            
+
             for project_name, proc_info in processes_to_check:
                 try:
                     # Check if process still exists (signal 0)
@@ -209,7 +209,7 @@ class ProcessMonitor:
                     logger.error(
                         f"Error checking process {project_name} (PID: {proc_info.pid}): {e}")
                     self.unregister_process(project_name)
-        
+
         self._emit_log('info', "Process monitor stopped")
 
     def start_monitor(self):
@@ -257,4 +257,3 @@ class ProcessMonitor:
 def get_process_monitor() -> ProcessMonitor:
     """Get the singleton ProcessMonitor instance."""
     return ProcessMonitor.get_instance()
-

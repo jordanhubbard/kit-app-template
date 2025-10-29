@@ -32,7 +32,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   autoStart = false,
 }) => {
   const { closePanel, getPanelsByType, openPanel } = usePanelStore();
-  const { job, startJob, cancelJob } = useJob();
+  const { job, startJob, cancelJob, stopProject } = useJob();
   const [buildCompleted, setBuildCompleted] = useState(false); // Track build completion locally
   const [buildFailed, setBuildFailed] = useState(false); // Track build failure locally
   const [isStreamingActive, setIsStreamingActive] = useState(false); // Track if streaming is enabled
@@ -141,6 +141,33 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     }
   };
 
+  const handleRelaunch = async () => {
+    if (!projectName) {
+      alert('No project name available for re-launch');
+      return;
+    }
+
+    console.log('[BuildOutput] Re-launching application:', projectName);
+
+    // First, stop the currently running instance (if any)
+    const stopped = await stopProject(projectName);
+    if (stopped) {
+      console.log('[BuildOutput] Successfully stopped running instance');
+    }
+
+    // Wait a brief moment for cleanup
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Reset state
+    setBuildCompleted(false);
+    setBuildFailed(false);
+    setIsStreamingActive(false);
+    hasStartedJob.current = false;
+
+    // Start again
+    await startJob('launch', projectName);
+  };
+
   const handleClose = async () => {
     // If there's a running or pending job, cancel it first
     if (job && (job.status === 'running' || job.status === 'pending')) {
@@ -204,6 +231,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const canCancel = job?.status === 'pending' || job?.status === 'running';
   const canRetry = job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'completed' || buildFailed;
   const canLaunch = jobType === 'build' && buildCompleted && projectName;
+  const canRelaunch = jobType === 'launch' && projectName && (job?.status === 'running' || job?.status === 'completed');
 
   return (
     <div className="flex flex-col h-full bg-bg-panel">
@@ -288,7 +316,25 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
             </button>
           )}
 
-          {(canStart && projectName) && <div className="w-px h-6 bg-border-subtle mx-2" />}
+          {canRelaunch && (
+            <button
+              onClick={handleRelaunch}
+              className="
+                px-4 py-2 rounded
+                bg-blue-600 hover:bg-blue-700
+                text-white text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              "
+              title="Stop and restart the application"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Re-launch
+            </button>
+          )}
+
+          {((canStart && projectName) || canRelaunch) && <div className="w-px h-6 bg-border-subtle mx-2" />}
 
           {canCancel && (
             <button
@@ -305,7 +351,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
             </button>
           )}
 
-          {canRetry && (
+          {canRetry && !canRelaunch && (
             <button
               onClick={handleRetry}
               className="
