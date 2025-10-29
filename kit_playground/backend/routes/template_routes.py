@@ -10,6 +10,20 @@ from tools.repoman.template_api import TemplateAPI
 
 logger = logging.getLogger(__name__)
 
+# Layer template to extension dependencies mapping
+# Used for workaround of repo_kit_template bug (line 371 in repo.py)
+LAYER_DEPENDENCIES = {
+    'omni_default_streaming': [
+        '"omni.kit.livestream.app" = {}  # WebRTC Streaming'
+    ],
+    'nvcf_streaming': [
+        '"omni.services.livestream.session" = {}  # NVCF Streaming'
+    ],
+    'omni_gdn_streaming': [
+        '"omni.kit.gfn" = {}  # GeForce NOW Streaming'
+    ],
+}
+
 # Template-to-extension mapping
 # Maps template names to the extension patterns they create
 TEMPLATE_EXTENSION_PATTERNS = {
@@ -65,6 +79,98 @@ TEMPLATE_EXTENSION_PATTERNS = {
     ],
     # Add more template mappings as needed
 }
+
+
+def _apply_layer_dependencies_workaround(
+    kit_file_path: Path, layer_names: list
+) -> bool:
+    """
+    Workaround for repo_kit_template bug (line 371 in repo.py).
+
+    Manually adds layer dependencies and settings to the .kit file instead of using
+    the broken add_layers() method in repo_kit_template.
+
+    Args:
+        kit_file_path: Path to the application's .kit file
+        layer_names: List of layer template names to apply
+
+    Returns:
+        True if dependencies were added, False otherwise
+    """
+    if not kit_file_path.exists():
+        logger.error(f"Kit file not found: {kit_file_path}")
+        return False
+
+    if not layer_names:
+        return False
+
+    try:
+        # Read the .kit file
+        content = kit_file_path.read_text()
+
+        # Collect dependencies to add
+        dependencies_to_add = []
+        has_streaming_layer = False
+
+        for layer_name in layer_names:
+            if layer_name in LAYER_DEPENDENCIES:
+                dependencies_to_add.extend(LAYER_DEPENDENCIES[layer_name])
+                logger.info(f"Applying layer '{layer_name}' via workaround")
+
+                # Check if this is a streaming layer
+                if 'streaming' in layer_name.lower():
+                    has_streaming_layer = True
+            else:
+                logger.warning(f"Unknown layer template '{layer_name}' - no dependency mapping available")
+
+        if not dependencies_to_add:
+            logger.warning("No dependencies to add for specified layers")
+            return False
+
+        # Check if dependencies already exist
+        existing_deps = [dep for dep in dependencies_to_add if dep in content]
+        if existing_deps:
+            logger.info(f"Layer dependencies already present in {kit_file_path.name}")
+            # Continue to check if settings need to be added
+            if not has_streaming_layer:
+                return False
+
+        # Find [dependencies] section and add layers
+        if "[dependencies]" in content:
+            # Add after [dependencies] line
+            layer_config = "\n# Layer dependencies (added via API workaround)\n"
+            layer_config += "\n".join(dependencies_to_add) + "\n"
+
+            new_content = content.replace("[dependencies]", f"[dependencies]{layer_config}")
+
+            # If this is a streaming layer, add the port configuration settings
+            if has_streaming_layer and 'settings.exts."omni.kit.livestream.webrtc"' not in new_content:
+                streaming_settings = """
+# Streaming configuration (added via API workaround)
+[settings.exts."omni.kit.livestream.webrtc"]
+port = 47995
+enabled = true
+
+[settings.app.livestream]
+enabled = true
+port = 47995
+"""
+                # Add settings at the end of the file
+                new_content = new_content.rstrip() + "\n" + streaming_settings
+                logger.info(f"Added streaming port configuration to {kit_file_path.name}")
+
+            kit_file_path.write_text(new_content)
+
+            logger.info(f"Successfully added {len(dependencies_to_add)} layer dependencies to {kit_file_path.name}")
+            return True
+        else:
+            logger.error(f"Could not find [dependencies] section in {kit_file_path}")
+            return False
+
+    except Exception as e:
+        logger.error("Error applying layer dependencies: %s", e)
+        return False
+
 
 def _clean_conflicting_extensions(template_name: str, repo_root: Path) -> list:
     """
@@ -132,6 +238,38 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             logger.error(f"Failed to list templates: {e}")
             return jsonify({'error': str(e)}), 500
 
+    @bp.route('/layers', methods=['GET'])
+    def list_layers():
+        """
+        List available layer templates (component type).
+
+        Layers are templates that can be applied on top of base applications
+        to add additional functionality (e.g., streaming capabilities).
+        """
+        try:
+            # Get all templates
+            all_templates = template_api.list_templates()
+
+            # Filter for component/layer templates
+            layers = [t for t in all_templates if t.type == 'component']
+
+            # Group by category for easier UI organization
+            categorized = {}
+            for layer in layers:
+                category = layer.category or 'other'
+                if category not in categorized:
+                    categorized[category] = []
+                categorized[category].append(layer)
+
+            return jsonify({
+                'layers': layers,
+                'categorized': categorized,
+                'count': len(layers)
+            })
+        except Exception as e:
+            logger.error(f"Error listing layers: {e}")
+            return jsonify({'error': str(e)}), 500
+
     @bp.route('/get/<template_name>', methods=['GET'])
     def get_template(template_name: str):
         """Get details of a specific template."""
@@ -173,6 +311,18 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             if 'perAppDeps' in data:
                 extra_params['per_app_deps'] = data['perAppDeps']
 
+            # Handle layers (new feature)
+            # WORKAROUND: repo_kit_template has a bug (line 371 in repo.py) that causes
+            # TypeError when adding layers via playback. We apply layers manually after creation.
+            selected_layers = data.get('layers', [])
+            if selected_layers:
+                logger.info("Layers requested: %s", selected_layers)
+                logger.info(
+                    "Using workaround for repo_kit_template bug - "
+                    "will apply layers after creation"
+                )
+                # Note: We don't pass layers to create_application to avoid the bug
+
             # Log the request for debugging
             logger.info(f"Creating project: template={template_name}, name={project_name}")
             logger.info(f"Using create_application() API - complete workflow (generate + execute + post-process)")
@@ -185,20 +335,50 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             if removed_extensions:
                 logger.info(f"Pre-cleaned extensions to avoid conflicts: {removed_extensions}")
 
-            # Create application using the high-level API
-            # This executes the full workflow: generate playback + execute + fix structure
+            # Create application
+            # WORKAROUND: If layers are requested and the buggy repo_kit_template fails,
+            # we recover gracefully since the app IS created before the error occurs
             result_dict = template_api.create_application(
                 template_name=template_name,
                 name=project_name,
                 display_name=display_name,
                 version=data.get('version', '1.0.0'),
                 accept_license=True,
-                no_register=False,  # NOTE: --no-register flag not supported by replay command yet
+                no_register=False,
                 **extra_params
             )
 
             # Log the result
             logger.info(f"Application creation result: {result_dict}")
+
+            # WORKAROUND: Check if this is the repo_kit_template layer bug
+            # The bug causes failure but the app IS created successfully
+            if not result_dict.get('success') and selected_layers:
+                error_msg = str(result_dict.get('error', ''))
+                if "'NoneType' object is not iterable" in error_msg and "add_layers" in error_msg:
+                    logger.warning("Detected repo_kit_template layer bug (line 371)")
+                    logger.info("App was created despite error - recovering...")
+
+                    # Check if app was actually created
+                    app_dir = repo_root / "source" / "apps" / project_name
+                    kit_file_path = app_dir / f"{project_name}.kit"
+
+                    if kit_file_path.exists():
+                        logger.info(f"✓ Confirmed app exists at {app_dir}")
+                        # Reconstruct success result
+                        result_dict = {
+                            'success': True,
+                            'app_name': project_name,
+                            'display_name': display_name,
+                            'app_dir': str(app_dir),
+                            'kit_file': f"source/apps/{project_name}/{project_name}.kit",
+                            'template_type': 'application',
+                            'message': f"Application '{display_name}' created successfully (recovered from layer bug)"
+                        }
+                        logger.info("Successfully recovered from repo_kit_template bug")
+                    else:
+                        logger.error(f"App not found at {app_dir} - cannot recover")
+                        # Keep the error result
 
             if result_dict.get('success', False):
                 # Extract paths from result
@@ -214,6 +394,27 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 logger.info(f"Application created at: {app_dir}")
                 logger.info(f".kit file path: {kit_file_abs}")
 
+                # WORKAROUND: Apply layers manually to avoid bug
+                logger.info(f"DEBUG: selected_layers = {selected_layers}")
+                logger.info(f"DEBUG: Checking if layers should be applied...")
+                if selected_layers:
+                    logger.info(
+                        "Applying %d layer(s) via workaround...",
+                        len(selected_layers)
+                    )
+                    layers_applied = _apply_layer_dependencies_workaround(
+                        kit_file_abs, selected_layers
+                    )
+                    if layers_applied:
+                        logger.info(
+                            "Layers successfully applied to %s",
+                            kit_file_abs.name
+                        )
+                    else:
+                        logger.warning(
+                            "Failed to apply some layers - check logs"
+                        )
+
                 # Kit App Streaming Note:
                 # Streaming is implemented as an ApplicationLayerTemplate, not by modifying the .kit file.
                 # To enable streaming, users should apply a streaming layer template:
@@ -224,7 +425,12 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
                 # The 'enable_streaming' parameter is deprecated and ignored.
                 # Use streaming layer templates from templates/apps/streaming_configs/ instead.
 
-                streaming_enabled = False
+                streaming_enabled = bool(
+                    selected_layers and any(
+                        'streaming' in layer.lower()
+                        for layer in selected_layers
+                    )
+                )
                 streaming_warning = None
 
                 if enable_streaming:

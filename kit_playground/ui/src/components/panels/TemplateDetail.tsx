@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, FileText, Sparkles, Package, Copy, ExternalLink } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import type { TemplateModel } from '../../hooks/useTemplates';
@@ -24,7 +24,7 @@ interface TemplateDetailProps {
  */
 export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
   const { closePanel, openPanel, getPanelsByType } = usePanelStore();
-  const [showDocs, setShowDocs] = React.useState(false);
+  const [showDocs, setShowDocs] = useState(false);
 
   const handleCreateClick = () => {
     // Open project config panel (Phase 3)
@@ -43,6 +43,8 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
   };
 
   const handleShowDocs = () => {
+    console.log('Show docs clicked, current state:', showDocs);
+    console.log('Template documentation:', template.documentation);
     setShowDocs(!showDocs);
   };
 

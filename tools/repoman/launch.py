@@ -426,6 +426,9 @@ def _wait_for_xpra_ready(display: int, port: int, bind_host: str, timeout: int =
     print(f"Waiting for Xpra display :{display} to be ready...")
 
     start_time = time.time()
+    port_ready = False
+    x11_ready = False
+
     while time.time() - start_time < timeout:
         try:
             # Check if Xpra process is running
@@ -437,18 +440,44 @@ def _wait_for_xpra_ready(display: int, port: int, bind_host: str, timeout: int =
             )
             if result.returncode == 0 and f':{display}' in result.stdout:
                 # Xpra process is running, now check if port is listening
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                try:
-                    result = sock.connect_ex((bind_host, port))
-                    sock.close()
-                    if result == 0:
-                        print(f"Xpra display :{display} is ready on port {port}")
-                        return True
-                except Exception:
-                    pass
-                finally:
-                    sock.close()
+                if not port_ready:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(1)
+                    try:
+                        result = sock.connect_ex((bind_host, port))
+                        sock.close()
+                        if result == 0:
+                            print(f"Xpra port {port} is listening...")
+                            port_ready = True
+                    except Exception:
+                        pass
+                    finally:
+                        sock.close()
+
+                # Once port is ready, check if X11 server is ready
+                if port_ready and not x11_ready:
+                    # Test X11 connection using xdpyinfo
+                    try:
+                        test_env = os.environ.copy()
+                        test_env['DISPLAY'] = f':{display}'
+                        result = subprocess.run(
+                            ['xdpyinfo'],
+                            env=test_env,
+                            capture_output=True,
+                            timeout=2
+                        )
+                        if result.returncode == 0:
+                            print(f"Xpra X11 server on :{display} is ready!")
+                            x11_ready = True
+                            # Give it one more second for stability
+                            time.sleep(1)
+                            return True
+                    except (subprocess.TimeoutExpired, FileNotFoundError):
+                        # xdpyinfo not available or timed out, wait a bit more
+                        if time.time() - start_time > 5:  # After 5s, assume it's ready
+                            print(f"Xpra display :{display} port ready (X11 check unavailable)")
+                            time.sleep(2)  # Additional safety delay
+                            return True
         except Exception:
             pass
 

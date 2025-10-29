@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, Folder, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, Folder, ChevronDown, ChevronUp, AlertCircle, Layers } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { apiService } from '../../services/api';
 import type { TemplateModel } from '../../hooks/useTemplates';
+import { useLayers } from '../../hooks/useLayers';
 
 interface ProjectConfigProps {
   template: TemplateModel;
@@ -65,6 +66,9 @@ const toDisplayName = (projectName: string): string => {
 export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const { closePanel, getPanelsByType } = usePanelStore();
 
+  // Fetch available layers
+  const { data: layersData, isLoading: isLoadingLayers } = useLayers();
+
   // Generate default project name on component mount
   const [defaultProjectName] = useState(() => generateDefaultProjectName());
   const [defaultDisplayName] = useState(() => toDisplayName(defaultProjectName));
@@ -73,12 +77,9 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const [projectName, setProjectName] = useState(defaultProjectName);
   const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [outputDir, setOutputDir] = useState('source/apps');
-  const [showAdvanced, setShowAdvanced] = useState(true); // Open by default so users can see options
 
-  // Advanced options
-  const [enableStreaming, setEnableStreaming] = useState(false);
-  const [perAppDeps, setPerAppDeps] = useState(false);
-  const [standalone, setStandalone] = useState(false);
+  // Layer selection
+  const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
 
   // UI state
   const [isCreating, setIsCreating] = useState(false);
@@ -125,22 +126,34 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
     setError(null);
 
     try {
+      console.log('[ProjectConfig] Starting project creation:', {
+        template: template.name,
+        projectName,
+        displayName,
+        selectedLayers,
+      });
+
       const response = await apiService.createProject({
         template: template.name,
         name: projectName,
         displayName: displayName || projectName,
-        outputDir: outputDir || undefined,
-        standalone,
-        perAppDeps,
-        enableStreaming,
+        layers: selectedLayers.length > 0 ? selectedLayers : undefined,
       });
 
+      console.log('[ProjectConfig] Received response:', response);
+
       if (response.success && response.projectInfo) {
+        console.log('[ProjectConfig] Project created successfully, opening editor');
         const { openPanel } = usePanelStore.getState();
 
         // Close project-config and template-detail panels
         const configPanels = getPanelsByType('project-config');
         const detailPanels = getPanelsByType('template-detail');
+
+        console.log('[ProjectConfig] Closing panels:', {
+          configPanels: configPanels.length,
+          detailPanels: detailPanels.length,
+        });
 
         if (configPanels.length > 0) {
           closePanel(configPanels[configPanels.length - 1].id);
@@ -151,20 +164,28 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
 
         // Open code editor panel with the .kit file
         // User can click "Build" to open the build output panel and start a build
+        console.log('[ProjectConfig] Opening code-editor panel with:', {
+          filePath: response.projectInfo.kitFile,
+          fileName: `${response.projectInfo.projectName}.kit`,
+          projectName: response.projectInfo.projectName,
+        });
+
         openPanel('code-editor', {
           filePath: response.projectInfo.kitFile,
           fileName: `${response.projectInfo.projectName}.kit`,
           projectName: response.projectInfo.projectName,
         });
 
-        console.log('Project created successfully:', response);
+        console.log('[ProjectConfig] Project creation complete');
       } else {
+        console.error('[ProjectConfig] Project creation failed:', response.error);
         setError(response.error || 'Failed to create project');
       }
     } catch (err) {
-      console.error('Failed to create project:', err);
+      console.error('[ProjectConfig] Exception during project creation:', err);
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
+      console.log('[ProjectConfig] Setting isCreating to false');
       setIsCreating(false);
     }
   };
@@ -306,108 +327,80 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
             </p>
           </div>
 
-          {/* Advanced Options */}
-          <div className="border border-border-subtle rounded-lg overflow-hidden">
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              disabled={isCreating}
-              className="
-                w-full px-4 py-3
-                bg-bg-card hover:bg-bg-card-hover
-                flex items-center justify-between
-                transition-colors
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              <span className="text-sm font-semibold text-text-primary">
-                Advanced Options
-              </span>
-              {showAdvanced ? (
-                <ChevronUp className="w-5 h-5 text-text-secondary" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-text-secondary" />
-              )}
-            </button>
-
-            {showAdvanced && (
-              <div className="p-4 space-y-4 border-t border-border-subtle">
-                {/* Enable Kit App Streaming */}
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={enableStreaming}
-                    onChange={(e) => setEnableStreaming(e.target.checked)}
-                    disabled={isCreating}
-                    className="
-                      mt-1 w-5 h-5 rounded
-                      border-border-subtle
-                      text-nvidia-green
-                      focus:ring-2 focus:ring-nvidia-green
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                    "
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-text-primary group-hover:text-nvidia-green transition-colors">
-                      Enable Kit App Streaming
-                    </div>
-                    <div className="text-xs text-text-muted mt-1">
-                      Add WebRTC streaming extensions for remote access
-                    </div>
-                  </div>
-                </label>
-
-                {/* Per-App Dependencies */}
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={perAppDeps}
-                    onChange={(e) => setPerAppDeps(e.target.checked)}
-                    disabled={isCreating}
-                    className="
-                      mt-1 w-5 h-5 rounded
-                      border-border-subtle
-                      text-nvidia-green
-                      focus:ring-2 focus:ring-nvidia-green
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                    "
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-text-primary group-hover:text-nvidia-green transition-colors">
-                      Per-Application Dependencies
-                    </div>
-                    <div className="text-xs text-text-muted mt-1">
-                      Isolate Kit SDK and dependencies for this application
-                    </div>
-                  </div>
-                </label>
-
-                {/* Standalone Project */}
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={standalone}
-                    onChange={(e) => setStandalone(e.target.checked)}
-                    disabled={isCreating}
-                    className="
-                      mt-1 w-5 h-5 rounded
-                      border-border-subtle
-                      text-nvidia-green
-                      focus:ring-2 focus:ring-nvidia-green
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                    "
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-text-primary group-hover:text-nvidia-green transition-colors">
-                      Create as Standalone Project
-                    </div>
-                    <div className="text-xs text-text-muted mt-1">
-                      ⚠️ Creates separate repository (not in source/apps/). Only check if distributing as standalone repo.
-                    </div>
-                  </div>
-                </label>
+          {/* Application Layers */}
+          {template.type === 'application' && layersData && layersData.count > 0 && (
+            <div className="border border-border-subtle rounded-lg p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-nvidia-green" />
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Application Layers
+                </h3>
               </div>
-            )}
-          </div>
+              <p className="text-xs text-text-muted">
+                Layers add additional functionality to your base application (e.g., streaming capabilities).
+                They create separate .kit files that depend on your base application.
+              </p>
+
+              {/* Streaming Layers */}
+              {layersData.categorized.streaming && layersData.categorized.streaming.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                    Streaming
+                  </h4>
+                  <div className="space-y-2">
+                    {layersData.categorized.streaming.map((layer: any) => (
+                      <label
+                        key={layer.name}
+                        className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg hover:bg-bg-card-hover transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedLayers.includes(layer.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLayers([...selectedLayers, layer.name]);
+                            } else {
+                              setSelectedLayers(selectedLayers.filter(l => l !== layer.name));
+                            }
+                          }}
+                          disabled={isCreating}
+                          className="
+                            mt-1 w-4 h-4 rounded
+                            border-border-subtle
+                            text-nvidia-green
+                            focus:ring-2 focus:ring-nvidia-green
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                          "
+                        />
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-text-primary">
+                            {layer.display_name}
+                          </div>
+                          <div className="text-xs text-text-muted mt-1">
+                            {layer.description}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isLoadingLayers && (
+                <div className="text-xs text-text-muted flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                  Loading available layers...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Advanced Options - REMOVED
+              All options removed due to issues:
+              - "Enable Kit App Streaming" → DEPRECATED, use Application Layers instead
+              - "Per-Application Dependencies" → Untested, unclear if it works
+              - "Create as Standalone Project" → Has upstream bugs (see test_api_argument_mapping.py @xfail)
+          */}
         </div>
       </div>
 

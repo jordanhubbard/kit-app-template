@@ -4,7 +4,7 @@ export interface Template {
   name: string;
   display_name: string;
   description: string;
-  type: 'application' | 'extension' | 'microservice';
+  type: 'application' | 'extension' | 'microservice' | 'component';
   version?: string;
   metadata?: {
     category?: string;
@@ -38,6 +38,7 @@ export interface CreateProjectRequest {
   standalone?: boolean;
   perAppDeps?: boolean;
   enableStreaming?: boolean;
+  layers?: string[];  // List of layer template names to apply
 }
 
 export interface CreateProjectResponse {

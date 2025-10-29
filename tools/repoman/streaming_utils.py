@@ -23,7 +23,7 @@ Usage:
     if is_streaming_app(Path("my_app_stream.kit")):
         streaming_type = get_streaming_type(Path("my_app_stream.kit"))
         url = get_streaming_url(port=47995)
-        
+
         # Launch app
         subprocess.Popen(["./my_app_stream.sh"])
         if wait_for_streaming_ready(47995):
@@ -80,7 +80,7 @@ def is_streaming_app(kit_file_path: Path) -> bool:
 
         # Check dependencies section for streaming extensions
         dependencies = content.get('dependencies', {})
-        
+
         for ext in STREAMING_EXTENSIONS.values():
             if ext in dependencies:
                 return True
@@ -144,6 +144,35 @@ def get_streaming_type(kit_file_path: Path) -> Optional[Literal['default', 'nvcf
         return None
 
 
+def get_streaming_flags(port: int = 47995) -> list:
+    """
+    Get Kit command-line flags to enable streaming.
+
+    The omni.kit.livestream.app extension auto-starts when running in headless mode.
+    Port configuration should be set in the .kit file under [settings.exts."omni.kit.livestream.webrtc"]
+
+    Args:
+        port: WebRTC port number (default: 47995) - used for environment variable
+
+    Returns:
+        List of command-line arguments for Kit
+
+    Example:
+        >>> get_streaming_flags(port=47995)
+        ['--no-window', '--/app/window/enabled=false']
+    """
+    # Set port via environment variable (extension may read this)
+    import os
+    os.environ['LIVESTREAM_PORT'] = str(port)
+
+    # The --no-window flag is essential for streaming mode
+    # The extension will auto-start when running headless
+    return [
+        "--no-window",
+        "--/app/window/enabled=false",
+    ]
+
+
 def get_streaming_url(
     port: int = 47995,
     hostname: str = 'localhost',
@@ -197,14 +226,14 @@ def wait_for_streaming_ready(
         True
     """
     start_time = time.time()
-    
+
     while time.time() - start_time < timeout:
         try:
             with socket.create_connection((hostname, port), timeout=2):
                 return True
         except (socket.timeout, socket.error, ConnectionRefusedError):
             time.sleep(interval)
-    
+
     return False
 
 
@@ -229,7 +258,7 @@ def get_streaming_config_path(
         'nvcf': 'nvcf_stream.kit',
         'gdn': 'gdn_stream.kit',
     }
-    
+
     filename = config_files.get(streaming_type, 'default_stream.kit')
     return f'templates/apps/streaming_configs/{filename}'
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Square, RotateCcw, CheckCircle, XCircle, Loader, Terminal, Play } from 'lucide-react';
+import { X, Square, RotateCcw, CheckCircle, XCircle, Loader, Terminal, Play, Zap } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { useJob, type Job } from '../../hooks/useJob';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -35,6 +35,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const { job, startJob, cancelJob } = useJob();
   const [buildCompleted, setBuildCompleted] = useState(false); // Track build completion locally
   const [buildFailed, setBuildFailed] = useState(false); // Track build failure locally
+  const [isStreamingActive, setIsStreamingActive] = useState(false); // Track if streaming is enabled
   const hasStartedJob = useRef(false); // Track if we've already started the job
 
   // WebSocket for real-time updates
@@ -65,9 +66,19 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
           setBuildFailed(true);
         }
       }
+
+      // Detect streaming mode activation (for launch jobs)
+      if (jobType === 'launch') {
+        const logLine = data.message || JSON.stringify(data);
+        if (logLine.includes('Kit App Streaming') || logLine.includes('Streaming Mode') || logLine.includes('WebRTC')) {
+          console.log('[BuildOutput] Detected streaming mode activation');
+          setIsStreamingActive(true);
+        }
+      }
     },
     onStreamingReady: (data) => {
       console.log('[BuildOutput] Streaming ready:', data);
+      setIsStreamingActive(true); // Mark streaming as active
       if (data.url && jobType === 'launch') {
         // Auto-open streaming URL in new tab
         console.log('[BuildOutput] Auto-opening streaming URL:', data.url);
@@ -95,6 +106,8 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
 
     if (!initialJobId && projectName && autoStart && !hasStartedJob.current) {
       hasStartedJob.current = true;
+      // Reset streaming state for new launch
+      setIsStreamingActive(false);
       console.log(`[BuildOutput] Auto-starting ${jobType} job for ${projectName}`);
       // Start a new job
       startJob(jobType, projectName);
@@ -112,6 +125,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     if (projectName) {
       setBuildCompleted(false);
       setBuildFailed(false);
+      setIsStreamingActive(false); // Reset streaming state
       hasStartedJob.current = false; // Reset so we can start again
       await startJob(jobType, projectName);
     }
@@ -121,6 +135,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     if (projectName) {
       setBuildCompleted(false);
       setBuildFailed(false);
+      setIsStreamingActive(false); // Reset streaming state
       hasStartedJob.current = false; // Reset so we can start again
       await startJob(jobType, projectName);
     }
@@ -195,8 +210,17 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border-subtle bg-bg-dark">
         <div className="flex items-center gap-3">
-          <div className={statusConfig.color}>
+          <div className={`relative ${statusConfig.color}`}>
             {statusConfig.icon}
+            {/* Lightning bolt icon for streaming mode */}
+            {isStreamingActive && jobType === 'launch' && (
+              <div
+                className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-0.5"
+                title="Kit App Streaming enabled"
+              >
+                <Zap className="w-3 h-3 text-black" fill="currentColor" />
+              </div>
+            )}
           </div>
           <div>
             <h3 className="text-sm font-semibold text-text-primary">

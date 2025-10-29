@@ -18,6 +18,7 @@ from flask_socketio import SocketIO
 # Import PortRegistry for centralized port management
 from kit_playground.backend.source.port_registry import PortRegistry
 from kit_playground.backend.utils.network import get_hostname_for_client
+from kit_playground.backend.source.process_monitor import get_process_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,9 @@ def _wait_for_xpra_ready(display: int, port: int, timeout: int = 30) -> bool:
     logger.info(f"Waiting for Xpra display :{display} to be ready...")
 
     start_time = time.time()
+    port_ready = False
+    x11_ready = False
+
     while time.time() - start_time < timeout:
         try:
             # Check if Xpra process is running
@@ -53,18 +57,44 @@ def _wait_for_xpra_ready(display: int, port: int, timeout: int = 30) -> bool:
             if result.returncode == 0 and f':{display}' in result.stdout:
                 # Xpra process is running, now check if port is listening
                 # Note: Always use localhost for health checks (internal communication)
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                try:
-                    result = sock.connect_ex(('localhost', port))
-                    sock.close()
-                    if result == 0:
-                        logger.info(f"Xpra display :{display} is ready on port {port}")
-                        return True
-                except Exception:
-                    pass
-                finally:
-                    sock.close()
+                if not port_ready:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(1)
+                    try:
+                        result = sock.connect_ex(('localhost', port))
+                        sock.close()
+                        if result == 0:
+                            logger.info(f"Xpra port {port} is listening...")
+                            port_ready = True
+                    except Exception:
+                        pass
+                    finally:
+                        sock.close()
+
+                # Once port is ready, check if X11 server is ready
+                if port_ready and not x11_ready:
+                    # Test X11 connection using xdpyinfo
+                    try:
+                        test_env = os.environ.copy()
+                        test_env['DISPLAY'] = f':{display}'
+                        result = subprocess.run(
+                            ['xdpyinfo'],
+                            env=test_env,
+                            capture_output=True,
+                            timeout=2
+                        )
+                        if result.returncode == 0:
+                            logger.info(f"Xpra X11 server on :{display} is ready!")
+                            x11_ready = True
+                            # Give it one more second for stability
+                            time.sleep(1)
+                            return True
+                    except (subprocess.TimeoutExpired, FileNotFoundError):
+                        # xdpyinfo not available or timed out, wait a bit more
+                        if time.time() - start_time > 5:  # After 5s, assume it's ready
+                            logger.info(f"Xpra display :{display} port ready (X11 check unavailable)")
+                            time.sleep(2)  # Additional safety delay
+                            return True
         except Exception:
             pass
 
@@ -417,6 +447,16 @@ def create_project_routes(
                     # Store process
                     processes[project_name] = process
 
+                    # Register process with monitor (streaming doesn't use Xpra)
+                    monitor = get_process_monitor()
+                    monitor.register_socketio(socketio)
+                    monitor.register_process(
+                        project_name=project_name,
+                        pid=process.pid,
+                        streaming_port=streaming_port,
+                        is_streaming=True
+                    )
+
                     # Wait for streaming server to be ready
                     from tools.repoman.streaming_utils import wait_for_streaming_ready, get_streaming_url
 
@@ -425,6 +465,9 @@ def create_project_routes(
                         'source': 'runtime',
                         'message': 'Starting streaming server...'
                     })
+
+                    # Get PortRegistry instance for client host extraction
+                    registry = PortRegistry.get_instance()
 
                     # Extract client host from request headers (same logic as Xpra)
                     # Check X-Forwarded-Host first (set by proxy), then fall back to Host header
@@ -648,6 +691,16 @@ def create_project_routes(
                     xpra_display = 100  # Default display
                     xpra_port = 10000 + (xpra_display - 100)
                     registry.register_xpra_display(display=xpra_display, port=xpra_port)
+
+                    # Register process with monitor for automatic Xpra cleanup
+                    monitor = get_process_monitor()
+                    monitor.register_socketio(socketio)
+                    monitor.register_process(
+                        project_name=project_name,
+                        pid=process.pid,
+                        xpra_display=xpra_display,
+                        is_streaming=False
+                    )
 
                     # Wait for Xpra to be ready before returning preview URL
                     socketio.emit('log', {
@@ -1005,6 +1058,10 @@ def create_project_routes(
                         'message': f'Process already terminated'
                     })
 
+                # Unregister from process monitor
+                monitor = get_process_monitor()
+                monitor.unregister_process(project_name)
+
                 del processes[project_name]
                 return jsonify({'success': True})
             else:
@@ -1037,6 +1094,10 @@ def create_project_routes(
                 except ProcessLookupError:
                     # Process already terminated
                     pass
+
+                # Unregister from process monitor
+                monitor = get_process_monitor()
+                monitor.unregister_process(project_name)
 
                 del processes[project_name]
                 return jsonify({'success': True})
@@ -1100,6 +1161,9 @@ def create_project_routes(
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     process.kill()
+                # Unregister from process monitor
+                monitor = get_process_monitor()
+                monitor.unregister_process(project_id)
                 del processes[project_id]
 
             # Delete the project directory from _build/apps
@@ -1329,6 +1393,9 @@ def create_project_routes(
             # Check if process is still alive
             if process.poll() is not None:
                 logger.info(f"Process for {project_name} already terminated")
+                # Unregister from process monitor
+                monitor = get_process_monitor()
+                monitor.unregister_process(project_name)
                 del processes[project_name]
                 return jsonify({
                     'success': True,
@@ -1363,6 +1430,10 @@ def create_project_routes(
                         'message': f'✓ Canceled {project_name}'
                     })
 
+                # Unregister from process monitor
+                monitor = get_process_monitor()
+                monitor.unregister_process(project_name)
+
                 # Remove from tracking
                 del processes[project_name]
 
@@ -1378,6 +1449,9 @@ def create_project_routes(
                 # Process already gone
                 logger.info(f"Process {project_name} already terminated (ProcessLookupError)")
                 if project_name in processes:
+                    # Unregister from process monitor
+                    monitor = get_process_monitor()
+                    monitor.unregister_process(project_name)
                     del processes[project_name]
                 return jsonify({
                     'success': True,
@@ -1388,6 +1462,9 @@ def create_project_routes(
                 logger.error(f"Error terminating process {project_name}: {e}")
                 # Still remove from tracking
                 if project_name in processes:
+                    # Unregister from process monitor
+                    monitor = get_process_monitor()
+                    monitor.unregister_process(project_name)
                     del processes[project_name]
                 return jsonify({
                     'success': False,

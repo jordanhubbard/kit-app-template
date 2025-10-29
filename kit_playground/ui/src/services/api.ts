@@ -44,6 +44,15 @@ class APIService {
     return response.data;
   }
 
+  async listLayers(): Promise<{
+    layers: any[];
+    categorized: Record<string, any[]>;
+    count: number;
+  }> {
+    const response = await this.client.get('/templates/layers');
+    return response.data;
+  }
+
   async getTemplate(name: string): Promise<TemplateDetailResponse> {
     const response = await this.client.get<TemplateDetailResponse>(`/templates/get/${name}`);
     return response.data;

@@ -7,7 +7,7 @@ export interface TemplateModel {
   name: string;
   displayName: string;
   description: string;
-  type: 'application' | 'extension' | 'microservice';
+  type: 'application' | 'extension' | 'microservice' | 'component';
   tags?: string[];
   icon?: string;
   thumbnail?: string;
@@ -54,7 +54,8 @@ export const useTemplates = (): UseTemplatesResult => {
         name: t.name,
         displayName: t.display_name,
         description: t.description,
-        type: mapTemplateType(t.name),
+        // Use type from backend API, fallback to heuristic mapping if not provided
+        type: (t.type as TemplateModel['type']) || mapTemplateType(t.name),
         tags: t.metadata?.tags || extractTags(t.name, t.description),
         icon: getIconForTemplate(t.name),
         documentation: t.documentation,
