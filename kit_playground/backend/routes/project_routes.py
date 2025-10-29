@@ -350,7 +350,7 @@ def create_project_routes(
                 if kit_file_path.exists():
                     is_streaming_app = check_streaming(kit_file_path)
                     logger.info(f"Kit App Streaming (KAS) detection result: {is_streaming_app}")
-                    
+
                     # DEBUG: Let's verify what's in the file
                     if not is_streaming_app:
                         try:

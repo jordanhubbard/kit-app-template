@@ -48,6 +48,14 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
     setShowDocs(!showDocs);
   };
 
+  // Check if documentation has any actual content
+  const hasDocContent = template.documentation && (
+    template.documentation.overview ||
+    (template.documentation.key_features && template.documentation.key_features.length > 0) ||
+    (template.documentation.use_cases && template.documentation.use_cases.length > 0) ||
+    template.documentation.getting_started
+  );
+
   const typeColor = {
     application: 'text-nvidia-green',
     extension: 'text-blue-400',
@@ -223,7 +231,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
               Documentation
             </h3>
             <div className="space-y-2">
-              {template.documentation && (
+              {hasDocContent && (
                 <button
                   onClick={handleShowDocs}
                   className="
@@ -259,7 +267,7 @@ export const TemplateDetail: React.FC<TemplateDetailProps> = ({ template }) => {
           </div>
 
           {/* Documentation Content (expandable) */}
-          {showDocs && template.documentation && (
+          {showDocs && hasDocContent && (
             <div className="p-6 rounded-lg border border-nvidia-green/30 bg-bg-card space-y-4">
               {template.documentation.overview && (
                 <div>
