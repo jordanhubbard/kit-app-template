@@ -86,6 +86,34 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
+  // Detect if template is a streaming template (matches logic from TemplateCard)
+  const isStreamingTemplate = React.useMemo(() => {
+    const streamingKeywords = ['streaming', 'webrtc', 'remote'];
+    const nameMatch = streamingKeywords.some(kw => 
+      template.name.toLowerCase().includes(kw) ||
+      (template.displayName && template.displayName.toLowerCase().includes(kw))
+    );
+    const tagsMatch = template.tags && streamingKeywords.some(kw =>
+      template.tags.some(tag => tag.toLowerCase().includes(kw))
+    );
+    return nameMatch || tagsMatch;
+  }, [template.name, template.displayName, template.tags]);
+
+  // Auto-select streaming layer for streaming templates
+  React.useEffect(() => {
+    if (isStreamingTemplate && layersData && layersData.layers.length > 0) {
+      // Find the default streaming layer (omni_default_streaming)
+      const defaultStreamingLayer = layersData.layers.find(
+        layer => layer.name === 'omni_default_streaming'
+      );
+      
+      if (defaultStreamingLayer && !selectedLayers.includes(defaultStreamingLayer.name)) {
+        console.log('[ProjectConfig] Auto-selecting streaming layer for template:', template.name);
+        setSelectedLayers([defaultStreamingLayer.name]);
+      }
+    }
+  }, [isStreamingTemplate, layersData, template.name]); // Intentionally exclude selectedLayers to run only once
+
   // Auto-update display name when project name changes
   React.useEffect(() => {
     if (projectName) {
