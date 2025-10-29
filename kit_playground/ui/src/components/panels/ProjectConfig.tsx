@@ -89,7 +89,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   // Detect if template is a streaming template (matches logic from TemplateCard)
   const isStreamingTemplate = React.useMemo(() => {
     const streamingKeywords = ['streaming', 'webrtc', 'remote'];
-    const nameMatch = streamingKeywords.some(kw => 
+    const nameMatch = streamingKeywords.some(kw =>
       template.name.toLowerCase().includes(kw) ||
       (template.displayName && template.displayName.toLowerCase().includes(kw))
     );
@@ -106,7 +106,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
       const defaultStreamingLayer = layersData.layers.find(
         layer => layer.name === 'omni_default_streaming'
       );
-      
+
       if (defaultStreamingLayer && !selectedLayers.includes(defaultStreamingLayer.name)) {
         console.log('[ProjectConfig] Auto-selecting streaming layer for template:', template.name);
         setSelectedLayers([defaultStreamingLayer.name]);
