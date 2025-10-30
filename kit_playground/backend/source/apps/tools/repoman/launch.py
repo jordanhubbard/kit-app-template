@@ -542,8 +542,17 @@ def launch_kit(
             print(f"{'='*60}")
             print(f"Port: {streaming_port}")
 
-            # Determine hostname based on REMOTE environment variable
-            streaming_host = "0.0.0.0" if os.environ.get('REMOTE') == '1' else "localhost"
+            # Determine hostname for client URL based on REMOTE environment variable
+            # When REMOTE=1, try to get the actual hostname, otherwise use localhost
+            if os.environ.get('REMOTE') == '1':
+                # Try to get the actual hostname for remote access
+                import socket
+                try:
+                    streaming_host = socket.gethostname()
+                except Exception:
+                    streaming_host = "localhost"
+            else:
+                streaming_host = "localhost"
 
             # Construct streaming URL (deterministic)
             streaming_url = get_streaming_url(port=streaming_port, hostname=streaming_host)
@@ -672,8 +681,10 @@ def launch_kit(
         )
 
         # Wait for streaming server to be ready
+        # Note: Always use 'localhost' for health checks (local connectivity test)
+        # The streaming_url uses the proper hostname for client access
         print(f"Waiting for streaming server on port {streaming_port}...")
-        if wait_for_streaming_ready(streaming_port, streaming_host, timeout=30):
+        if wait_for_streaming_ready(streaming_port, 'localhost', timeout=30):
             print(f"\n{'='*60}")
             print(f"✓ Streaming Ready!")
             print(f"{'='*60}")
