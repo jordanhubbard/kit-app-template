@@ -42,9 +42,9 @@ def main(config: dict):
         help='Specific .kit file to validate'
     )
     parser.add_argument(
-        '--no-registry',
+        '--check-registry',
         action='store_true',
-        help='Skip online registry checks'
+        help='Enable online registry queries (experimental, slow)'
     )
     parser.add_argument(
         '--prefetch',
@@ -89,7 +89,8 @@ def main(config: dict):
 
     # Validation mode
     print(f"\nMode: Validate dependencies")
-    check_registry = not args.no_registry
+    print(f"Registry checks: {'enabled' if args.check_registry else 'disabled (local only)'}")
+    check_registry = args.check_registry
 
     if args.kit_file:
         valid, errors = validate_kit_file(

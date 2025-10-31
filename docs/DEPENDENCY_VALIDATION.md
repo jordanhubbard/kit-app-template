@@ -21,15 +21,19 @@ This document explains how to validate Kit dependencies declared in `.kit` files
 ### Basic Validation
 
 ```bash
-# Validate all .kit files
+# Validate all .kit files (local only, fast - RECOMMENDED)
 python tools/repoman/validate_kit_deps.py
 
 # Validate specific app
 python tools/repoman/validate_kit_deps.py --kit-file source/apps/my.app/my.app.kit
 
-# Skip online registry checks (local only, fast)
-python tools/repoman/validate_kit_deps.py --no-registry-check
+# Enable online registry checks (experimental, slow, not recommended)
+python tools/repoman/validate_kit_deps.py --check-registry
 ```
+
+**Default Behavior**: Local validation only (checks syntax and local extensions)  
+**Why**: Online registry queries require template variable resolution and are slow  
+**Recommendation**: Use `--prefetch` for proper validation via Kit SDK
 
 **Output**:
 ```
@@ -122,6 +126,8 @@ python tools/repoman/validate_kit_deps.py
          ├─> ✅ Copy local extensions
          └─> ❌ Does NOT validate registry extensions
 ```
+
+**Note**: The build system only validates local extensions in `source/extensions/`. Registry extensions (from online registries like kit/default, kit/sdk) are resolved at **runtime** by Kit SDK.
 
 ### Runtime (First Launch)
 ```
@@ -264,14 +270,14 @@ build:
 
 ### Validation
 ```bash
-# Validate all .kit files
+# Validate all .kit files (local only - default)
 python tools/repoman/validate_kit_deps.py
 
 # Validate specific app
-python tools/repoman/validate_kit_deps.py --kit-file SOURCE/apps/my.app/my.app.kit
+python tools/repoman/validate_kit_deps.py --kit-file source/apps/my.app/my.app.kit
 
-# Local only (no registry check)
-python tools/repoman/validate_kit_deps.py --no-registry-check
+# Enable registry checks (experimental, slow)
+python tools/repoman/validate_kit_deps.py --check-registry
 
 # Stop on first error
 python tools/repoman/validate_kit_deps.py --fail-fast
@@ -279,6 +285,11 @@ python tools/repoman/validate_kit_deps.py --fail-fast
 # Verbose output
 python tools/repoman/validate_kit_deps.py -v
 ```
+
+**Note**: Registry checks are disabled by default because they:
+- Require template variable resolution (kit_version_major, etc.)
+- Are slow (70+ seconds for 130 extensions)
+- Are not necessary when using `--prefetch` (Kit SDK validates properly)
 
 ### Pre-Fetching
 ```bash
@@ -288,6 +299,59 @@ python tools/repoman/validate_kit_deps.py --prefetch
 # Pre-fetch for specific app
 python tools/repoman/validate_kit_deps.py --prefetch --kit-file my.app.kit
 ```
+
+## Registry Query Limitation
+
+### Why Registry Checks Are Disabled by Default
+
+**Problem**: The registry URLs in `repo.toml` contain template variables:
+
+```toml
+registries = [
+    { name = "kit/default", url = "https://.../${kit_version_major}/shared" },
+    { name = "kit/sdk", url = "https://.../${kit_version_short}/${kit_git_hash}" },
+]
+```
+
+**Challenge**: These variables need to be resolved:
+- `${kit_version_major}` → `108`
+- `${kit_version_short}` → `108.0`
+- `${kit_git_hash}` → Git hash from Kit SDK
+
+**Current Limitation**: The validation script doesn't integrate with repo build system's token resolution, so:
+- ❌ Template variables not expanded
+- ❌ Registry queries fail or timeout
+- ❌ 70+ seconds for 130 extensions
+- ❌ Reports false negatives ("NOT FOUND")
+
+### Recommended Approach
+
+**Instead of registry queries, use `--prefetch`**:
+
+```bash
+# This uses Kit SDK's built-in mechanism (proper validation)
+python tools/repoman/validate_kit_deps.py --prefetch
+```
+
+**Benefits**:
+- ✅ Kit SDK resolves template variables correctly
+- ✅ Uses proper registry API
+- ✅ Validates AND downloads extensions
+- ✅ Fast when cached (3 seconds)
+- ✅ Source of truth for what extensions exist
+
+### Future Improvement
+
+To enable proper registry validation would require:
+1. Parse `_build/.../VERSION` file
+2. Integrate with repo build token system
+3. Resolve template variables
+4. Learn registry API structure
+5. Handle authentication
+
+**Effort**: ~4 hours  
+**Value**: Low (Kit SDK already does this properly)  
+**Decision**: Keep it simple, use `--prefetch` for real validation
 
 ## Troubleshooting
 

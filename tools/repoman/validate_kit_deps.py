@@ -272,9 +272,8 @@ def prefetch_extensions(
     try:
         import subprocess
 
-        # Call repo_kit_pull_extensions (the proper tool for this)
+        # Call repo.sh pull_extensions (shell script, not Python)
         cmd = [
-            sys.executable,
             str(repo_root / 'repo.sh'),
             'pull_extensions',
             'setup',
@@ -288,7 +287,8 @@ def prefetch_extensions(
         result = subprocess.run(
             cmd,
             cwd=repo_root,
-            capture_output=False
+            capture_output=False,
+            shell=False
         )
 
         if result.returncode == 0:
@@ -364,9 +364,9 @@ def main():
         help='Specific .kit file to validate (default: all .kit files)'
     )
     parser.add_argument(
-        '--no-registry-check',
+        '--check-registry',
         action='store_true',
-        help='Skip online registry queries (local only)'
+        help='Enable online registry queries (experimental, slow)'
     )
     parser.add_argument(
         '--prefetch',
@@ -397,14 +397,20 @@ def main():
     )
 
     args = parser.parse_args()
-
+    
     # Setup logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
         format='%(levelname)s: %(message)s'
     )
-
+    
+    # Note about registry checks
+    if args.verbose and not args.check_registry:
+        logger.info("Registry checks disabled (use --check-registry to enable)")
+        logger.info("Note: Registry checks are experimental and slow")
+        logger.info("Recommendation: Use --prefetch for proper validation via Kit SDK")
+    
     # Prefetch mode
     if args.prefetch:
         if args.kit_file:
@@ -419,8 +425,8 @@ def main():
         sys.exit(0 if success else 1)
 
     # Validation mode
-    check_registry = not args.no_registry_check
-
+    check_registry = args.check_registry
+    
     if args.kit_file:
         valid, errors = validate_kit_file(
             args.kit_file,
