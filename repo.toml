@@ -212,3 +212,24 @@ default_kit_version = "108.0"
 # Global override for Kit SDK version (applies to all apps with per-app deps unless specified in app config)
 # Uncomment to override:
 # kit_version_override = "107.0"
+
+
+########################################################################################################################
+# Kit Dependency Validation Configuration
+########################################################################################################################
+[kit_deps_validation]
+# Enable build-time validation of .kit dependencies
+# When enabled, build will fail if dependencies can't be resolved
+enabled = false  # Set to true to enable by default
+
+# Check online registries during validation
+# Disable for offline builds (will only check local extensions)
+check_registry = true
+
+# Fail build on validation errors (vs. warning only)
+fail_on_error = false
+
+# Pre-fetch extensions during build
+# This downloads all extensions at build time for faster first launch
+# Note: Significantly increases build time on first build
+prefetch_on_build = false
