@@ -174,10 +174,13 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
 
   const handleOpenPreview = () => {
     if (!projectName) return;
-    // Prefer Xpra when ready, otherwise open streaming preview panel which will wait for URL
-    const mode = xpraReady ? 'xpra' : 'streaming';
-    const streamingUrl = xpraReady ? xpraUrl || undefined : undefined;
-    openPanel('preview', { projectName, streamingUrl, mode });
+    // If Xpra is ready, open in a separate browser window (full desktop)
+    if (xpraReady && xpraUrl) {
+      window.open(xpraUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    // Otherwise open the streaming preview panel which will await the URL
+    openPanel('preview', { projectName, mode: 'streaming' });
   };
 
   const handleClose = async () => {
