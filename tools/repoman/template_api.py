@@ -348,11 +348,12 @@ class TemplateAPI:
         """
         import subprocess
 
-        # Get the appropriate repo command for this platform
-        repo_cmd = self._get_repo_cmd()
+        # Prefer invoking dispatcher with Packman Python directly so we can pass PYTHONPATH
+        python_cmd = str(self.repo_root / 'tools' / 'packman' / ('python.bat' if os.name == 'nt' else 'python.sh'))
+        dispatcher = str(self.repo_root / 'tools' / 'repoman' / 'repo_dispatcher.py')
 
         # Build command
-        cmd = [repo_cmd, 'template', 'replay', playback_file]
+        cmd = [python_cmd, dispatcher, 'template', 'replay', playback_file]
 
         # Add --no-register flag if supported (future enhancement)
         if no_register:
