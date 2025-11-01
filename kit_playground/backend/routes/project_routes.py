@@ -422,7 +422,10 @@ def create_project_routes(
                 # Fallback to repo root
                 if not launch_cmd:
                     launch_cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file, '--streaming', '--streaming-port', str(streaming_port)]
-                    launch_cwd = str(repo_root)
+                    # Prefer opening file dialogs in the USD assets directory
+                    assets_dir = Path.home() / 'OmniverseAssets' / 'USD'
+                    assets_dir.mkdir(parents=True, exist_ok=True)
+                    launch_cwd = str(assets_dir)
 
                 # Log the launch command
                 logger.info("=" * 80)
@@ -659,7 +662,10 @@ def create_project_routes(
                 # Fallback to repo root
                 if not launch_cmd:
                     launch_cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file, '--xpra']
-                    launch_cwd = str(repo_root)
+                    # Prefer opening file dialogs in the USD assets directory
+                    assets_dir = Path.home() / 'OmniverseAssets' / 'USD'
+                    assets_dir.mkdir(parents=True, exist_ok=True)
+                    launch_cwd = str(assets_dir)
 
                 # Log the launch command for reproducibility
                 logger.info("=" * 80)
@@ -856,7 +862,10 @@ def create_project_routes(
                         cwd = str(repo_root)
                 else:
                     cmd = [str(repo_root / 'repo.sh'), 'launch', '--name', kit_file]
-                    cwd = str(repo_root)
+                    # Prefer opening file dialogs in the USD assets directory
+                    assets_dir = Path.home() / 'OmniverseAssets' / 'USD'
+                    assets_dir.mkdir(parents=True, exist_ok=True)
+                    cwd = str(assets_dir)
 
                 # Log the command being executed (critical for user reproducibility)
                 logger.info("=" * 80)
