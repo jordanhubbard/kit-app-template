@@ -14,6 +14,13 @@ from typing import Generator
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_socketio import SocketIO
+from kit_playground.backend.config import (
+    CACHE_PATH,
+    CACHED_THRESHOLD,
+    ESTIMATED_SIZE_BYTES,
+    DEFAULT_BANDWIDTH_MBPS,
+    PREPARE_STATUS_UPDATE_EVERY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +39,7 @@ def format_size(bytes_size: int) -> str:
 
 def get_extension_cache_path() -> Path:
     """Get the path to Kit SDK extension cache."""
-    return Path.home() / '.local/share/ov/data/exts'
+    return CACHE_PATH
 
 
 def get_cache_status() -> dict:
@@ -72,7 +79,7 @@ def get_cache_status() -> dict:
                     pass
 
         # Consider cached if we have a reasonable number of extensions
-        is_cached = ext_count > 50
+        is_cached = ext_count > CACHED_THRESHOLD
 
         return {
             'cached': is_cached,
@@ -81,7 +88,7 @@ def get_cache_status() -> dict:
             'size_bytes': total_size,
             'count': ext_count,
             'path': str(cache_path),
-            'threshold': 50  # Minimum extensions to consider "cached"
+            'threshold': CACHED_THRESHOLD  # Minimum extensions to consider "cached"
         }
     except Exception as e:
         logger.error(f"Error checking cache status: {e}")
@@ -139,10 +146,10 @@ def create_dependencies_routes(socketio: SocketIO):
             JSON with size and time estimates
         """
         try:
-            bandwidth_mbps = float(request.args.get('bandwidth', 50))
+            bandwidth_mbps = float(request.args.get('bandwidth', DEFAULT_BANDWIDTH_MBPS))
 
             # Approximate values based on typical Kit SDK extension cache
-            estimated_size_bytes = 12 * 1024 * 1024 * 1024  # ~12 GB
+            estimated_size_bytes = ESTIMATED_SIZE_BYTES
             estimated_extension_count = 130  # Typical count
 
             # Calculate time based on bandwidth (Mbps to bytes/sec)
@@ -208,7 +215,14 @@ def create_dependencies_routes(socketio: SocketIO):
                 logger.info(f"Starting dependency preparation (config={config})")
 
                 # Send initial status
-                yield f"data: {json.dumps({'type': 'start', 'message': 'Starting dependency preparation...'})}\n\n"
+                seq = 1
+                start_event = {
+                    'type': 'start',
+                    'message': 'Starting dependency preparation...',
+                    'seq': seq,
+                    'ts': time.time(),
+                }
+                yield f"data: {json.dumps(start_event)}\n\n"
 
                 # Start pre-fetch process
                 cmd = [
@@ -241,26 +255,41 @@ def create_dependencies_routes(socketio: SocketIO):
                     elapsed = time.time() - start_time
 
                     # Parse different types of output
+                    seq += 1
+                    base = {'seq': seq, 'ts': time.time(), 'elapsed': elapsed}
                     if 'installed' in line.lower():
                         # Extension installed
-                        yield f"data: {json.dumps({'type': 'extension_installed', 'message': line, 'elapsed': elapsed})}\n\n"
+                        evt = {**base, 'type': 'extension_installed', 'message': line}
+                        yield f"data: {json.dumps(evt)}\n\n"
                     elif 'pulling' in line.lower():
                         # Extension downloading
-                        yield f"data: {json.dumps({'type': 'extension_download', 'message': line, 'elapsed': elapsed})}\n\n"
+                        evt = {**base, 'type': 'extension_download', 'message': line}
+                        yield f"data: {json.dumps(evt)}\n\n"
                     elif 'error' in line.lower() or 'failed' in line.lower():
                         # Error occurred
-                        yield f"data: {json.dumps({'type': 'error', 'message': line, 'elapsed': elapsed})}\n\n"
+                        evt = {**base, 'type': 'error', 'message': line}
+                        yield f"data: {json.dumps(evt)}\n\n"
                     elif 'success' in line.lower() or 'complete' in line.lower():
                         # Success message
-                        yield f"data: {json.dumps({'type': 'success', 'message': line, 'elapsed': elapsed})}\n\n"
+                        evt = {**base, 'type': 'success', 'message': line}
+                        yield f"data: {json.dumps(evt)}\n\n"
                     else:
                         # General progress
-                        yield f"data: {json.dumps({'type': 'progress', 'message': line, 'elapsed': elapsed})}\n\n"
+                        evt = {**base, 'type': 'progress', 'message': line}
+                        yield f"data: {json.dumps(evt)}\n\n"
 
                     # Periodic progress update
-                    if line_count % 10 == 0:
+                    if line_count % PREPARE_STATUS_UPDATE_EVERY == 0:
                         status = get_cache_status()
-                        yield f"data: {json.dumps({'type': 'status_update', 'status': status, 'elapsed': elapsed})}\n\n"
+                        seq += 1
+                        evt = {
+                            'type': 'status_update',
+                            'status': status,
+                            'elapsed': elapsed,
+                            'seq': seq,
+                            'ts': time.time(),
+                        }
+                        yield f"data: {json.dumps(evt)}\n\n"
 
                 # Wait for process to complete
                 returncode = process.wait()
@@ -276,7 +305,9 @@ def create_dependencies_routes(socketio: SocketIO):
                         'success': True,
                         'message': 'All dependencies prepared successfully!',
                         'status': final_status,
-                        'elapsed': elapsed
+                        'elapsed': elapsed,
+                        'seq': seq + 1,
+                        'ts': time.time(),
                     }
                     yield f"data: {json.dumps(result)}\n\n"
                 else:
@@ -286,13 +317,16 @@ def create_dependencies_routes(socketio: SocketIO):
                         'success': False,
                         'message': f'Preparation failed with exit code {returncode}',
                         'status': final_status,
-                        'elapsed': elapsed
+                        'elapsed': elapsed,
+                        'seq': seq + 1,
+                        'ts': time.time(),
                     }
                     yield f"data: {json.dumps(result)}\n\n"
 
             except Exception as e:
                 logger.error(f"Error during dependency preparation: {e}", exc_info=True)
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                err_evt = {'type': 'error', 'message': str(e), 'ts': time.time()}
+                yield f"data: {json.dumps(err_evt)}\n\n"
 
         return Response(
             stream_with_context(generate()),
