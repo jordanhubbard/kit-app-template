@@ -25,12 +25,14 @@ USD_ASSETS_DIR = Path.home() / "OmniverseAssets" / "USD"
 USD_LIBRARY_FILE = Path(__file__).parent.parent / "data" / "usd_library.json"
 
 # Default well-known USD samples
+BUILTIN_DIR = Path(__file__).parent.parent / "static" / "usd"
+
 DEFAULT_USD_SAMPLES = [
     {
         "id": "nvidia_stage",
         "name": "NVIDIA Stage",
         "description": "Basic NVIDIA demo stage with lighting",
-        "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/ArchVis/Commercial/NVStage/NVStage_v1.0.usd",
+        "url": "builtin:nvidia_stage.usda",
         "category": "scenes",
         "size_mb": 0.5,
         "tags": ["demo", "stage", "lighting"]
@@ -39,7 +41,7 @@ DEFAULT_USD_SAMPLES = [
         "id": "mars_rover",
         "name": "Mars Rover",
         "description": "NASA Mars Perseverance Rover model",
-        "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/NASA/Mars2020/GLTF/mars2020_v2.usd",
+        "url": "builtin:mars_rover.usda",
         "category": "vehicles",
         "size_mb": 45.0,
         "tags": ["nasa", "rover", "vehicle"]
@@ -48,7 +50,7 @@ DEFAULT_USD_SAMPLES = [
         "id": "warehouse",
         "name": "Warehouse",
         "description": "Industrial warehouse environment",
-        "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/DigitalTwin/Warehouse/full_warehouse.usd",
+        "url": "builtin:warehouse.usda",
         "category": "scenes",
         "size_mb": 120.0,
         "tags": ["warehouse", "industrial", "environment"]
@@ -57,7 +59,7 @@ DEFAULT_USD_SAMPLES = [
         "id": "simple_room",
         "name": "Simple Room",
         "description": "Basic architectural interior",
-        "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/ArchVis/Residential/InteriorInteractive/InteriorInteractive.usd",
+        "url": "builtin:simple_room.usda",
         "category": "interiors",
         "size_mb": 85.0,
         "tags": ["interior", "room", "architecture"]
@@ -66,7 +68,7 @@ DEFAULT_USD_SAMPLES = [
         "id": "kitchen",
         "name": "Modern Kitchen",
         "description": "Contemporary kitchen design",
-        "url": "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/ArchVis/Residential/ModernKitchen/Kitchen.usd",
+        "url": "builtin:kitchen.usda",
         "category": "interiors",
         "size_mb": 250.0,
         "tags": ["kitchen", "interior", "modern"]
@@ -217,15 +219,26 @@ def create_usd_media_routes():
             filename = secure_filename(asset['name'] + '.usd')
             local_path = assets_dir / filename
 
-            # Download the file
-            logger.info(f"Downloading {asset['name']} from {asset['url']}")
-            response = requests.get(asset['url'], stream=True, timeout=60)
-            response.raise_for_status()
+            url = asset['url']
+            if url.startswith('builtin:'):
+                # Copy embedded sample
+                src = BUILTIN_DIR / url.split(':', 1)[1]
+                if not src.exists():
+                    return jsonify({'error': f'Built-in asset not found: {src.name}'}), 404
+                logger.info(f"Copying built-in USD sample {src} -> {local_path}")
+                data = src.read_bytes()
+                with open(local_path, 'wb') as f:
+                    f.write(data)
+            else:
+                # Download the file
+                logger.info(f"Downloading {asset['name']} from {url}")
+                response = requests.get(url, stream=True, timeout=60)
+                response.raise_for_status()
 
-            # Save to file
-            with open(local_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                # Save to file
+                with open(local_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
 
             logger.info(f"Downloaded to {local_path}")
 

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "nvidia_stage",
+    "name": "NVIDIA Stage",
+    "description": "Basic NVIDIA demo stage with lighting",
+    "url": "builtin:nvidia_stage.usda",
+    "category": "scenes",
+    "size_mb": 0.5,
+    "tags": [
+      "demo",
+      "stage",
+      "lighting"
+    ]
+  },
+  {
+    "id": "mars_rover",
+    "name": "Mars Rover",
+    "description": "NASA Mars Perseverance Rover model",
+    "url": "builtin:mars_rover.usda",
+    "category": "vehicles",
+    "size_mb": 45.0,
+    "tags": [
+      "nasa",
+      "rover",
+      "vehicle"
+    ]
+  },
+  {
+    "id": "warehouse",
+    "name": "Warehouse",
+    "description": "Industrial warehouse environment",
+    "url": "builtin:warehouse.usda",
+    "category": "scenes",
+    "size_mb": 120.0,
+    "tags": [
+      "warehouse",
+      "industrial",
+      "environment"
+    ]
+  },
+  {
+    "id": "simple_room",
+    "name": "Simple Room",
+    "description": "Basic architectural interior",
+    "url": "builtin:simple_room.usda",
+    "category": "interiors",
+    "size_mb": 85.0,
+    "tags": [
+      "interior",
+      "room",
+      "architecture"
+    ]
+  },
+  {
+    "id": "kitchen",
+    "name": "Modern Kitchen",
+    "description": "Contemporary kitchen design",
+    "url": "builtin:kitchen.usda",
+    "category": "interiors",
+    "size_mb": 250.0,
+    "tags": [
+      "kitchen",
+      "interior",
+      "modern"
+    ]
+  }
+]
