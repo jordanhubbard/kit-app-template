@@ -417,12 +417,15 @@ def handle_template_command(args: List[str]) -> int:
                     # Note: Standalone projects with --output-dir need additional work
                     # to properly relocate files post-replay (future enhancement)
                     # In JSON mode, capture replay output to avoid mixed output
+                    env = dict(os.environ)
+                    shim_path = str(repo_root / 'tools' / 'pm_shims')
+                    env['PYTHONPATH'] = f"{shim_path}:{env.get('PYTHONPATH','')}"
                     result = subprocess.run([
                         python_cmd, str(repo_root / "tools" / "repoman" / "repoman.py"),
                         "template", "replay", playback_file
                     ], cwd=str(repo_root),
                     capture_output=json_mode,  # Silence replay in JSON mode
-                    text=True)
+                    text=True, env=env)
 
                     # Post-process: Fix directory structure for applications
                     # The replay creates _build/apps/{name}.kit as a FILE
@@ -556,9 +559,12 @@ def handle_template_command(args: List[str]) -> int:
                 # Add remaining arguments
                 docs_args.extend(args[2:])
 
+            env = dict(os.environ)
+            shim_path = str(repo_root / 'tools' / 'pm_shims')
+            env['PYTHONPATH'] = f"{shim_path}:{env.get('PYTHONPATH','')}"
             return subprocess.run([
                 python_cmd, str(template_engine)
-            ] + docs_args, cwd=str(repo_root)).returncode
+            ] + docs_args, cwd=str(repo_root), env=env).returncode
         else:
             return call_repoman(args)
 
@@ -572,9 +578,12 @@ def handle_template_command(args: List[str]) -> int:
             list_args = ["list"]
             list_args.extend(args[2:])  # Add any additional arguments
 
+            env = dict(os.environ)
+            shim_path = str(repo_root / 'tools' / 'pm_shims')
+            env['PYTHONPATH'] = f"{shim_path}:{env.get('PYTHONPATH','')}"
             return subprocess.run([
                 python_cmd, str(template_engine)
-            ] + list_args, cwd=str(repo_root)).returncode
+            ] + list_args, cwd=str(repo_root), env=env).returncode
         else:
             return call_repoman(args)
 
@@ -606,9 +615,12 @@ def call_repoman(args: List[str]) -> int:
     import subprocess
     python_cmd = get_python_command(repo_root)
 
+    env = dict(os.environ)
+    shim_path = str(repo_root / 'tools' / 'pm_shims')
+    env['PYTHONPATH'] = f"{shim_path}:{env.get('PYTHONPATH','')}"
     return subprocess.run([
         python_cmd, str(repoman_py)
-    ] + args, cwd=str(repo_root)).returncode
+    ] + args, cwd=str(repo_root), env=env).returncode
 
 def main() -> int:
     """Main entry point."""
