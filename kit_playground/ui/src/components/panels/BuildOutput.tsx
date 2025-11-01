@@ -38,6 +38,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const [isStreamingActive, setIsStreamingActive] = useState(false); // Track if streaming is enabled
   const [xpraReady, setXpraReady] = useState(false);
   const [xpraUrl, setXpraUrl] = useState<string | null>(null);
+  const xpraOpenedRef = useRef(false);
   const hasStartedJob = useRef(false); // Track if we've already started the job
 
   // WebSocket for real-time updates
@@ -96,6 +97,10 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       const hostname = window.location.hostname;
       const url = data?.url || `http://${hostname}:${data?.port || 10000}`;
       setXpraUrl(url);
+      if (!xpraOpenedRef.current && jobType === 'launch') {
+        xpraOpenedRef.current = true;
+        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch {}
+      }
     },
   });
 
