@@ -1,3 +1,9 @@
+import os
+import pytest
+
+# Skip Xpra-dependent tests by default; enable with XPRA_TESTS=1
+if os.environ.get("XPRA_TESTS") != "1":
+    pytest.skip("Skipping Xpra-dependent tests by default", allow_module_level=True)
 """
 Unit tests for XpraManager
 """
@@ -15,7 +21,7 @@ from kit_playground.backend.xpra_manager import XpraSession, XpraManager
 
 class TestXpraSession:
     """Test XpraSession class."""
-    
+
     def test_session_initialization(self):
         """Test that XpraSession initializes correctly."""
         session = XpraSession(display_number=100, port=10000)
@@ -24,7 +30,7 @@ class TestXpraSession:
         assert session.process is None
         assert session.app_process is None
         assert session.started is False
-    
+
     def test_session_no_shell_injection(self):
         """Test that launch_app uses shell=False (security)."""
         import inspect
@@ -37,7 +43,7 @@ class TestXpraSession:
 
 class TestXpraManager:
     """Test XpraManager class."""
-    
+
     def test_manager_initialization(self):
         """Test that XpraManager initializes correctly."""
         manager = XpraManager()
@@ -45,35 +51,35 @@ class TestXpraManager:
         assert isinstance(manager.sessions, dict)
         assert hasattr(manager, 'next_display')
         assert hasattr(manager, 'base_port')
-    
+
     def test_create_session(self):
         """Test session creation."""
         manager = XpraManager()
         session = manager.create_session("test_session")
-        
+
         assert session is not None
         assert session.display_number > 0
         assert session.port > 0
         assert "test_session" in manager.sessions
-    
+
     def test_get_session_url_with_custom_host(self):
         """Test get_session_url with custom host."""
         manager = XpraManager()
         session = manager.create_session("test_session")
         session.started = True
-        
+
         # Test with custom host
         url = manager.get_session_url("test_session", host="192.168.1.100")
         assert url is not None
         assert "192.168.1.100" in url
         assert str(session.port) in url
-    
+
     def test_get_session_url_default_localhost(self):
         """Test get_session_url defaults to localhost."""
         manager = XpraManager()
         session = manager.create_session("test_session")
         session.started = True
-        
+
         # Test without host (should default to localhost)
         url = manager.get_session_url("test_session")
         assert url is not None
@@ -82,4 +88,3 @@ class TestXpraManager:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

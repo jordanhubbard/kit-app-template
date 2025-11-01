@@ -491,7 +491,34 @@ template-new: check-deps
 # Run tests
 .PHONY: test
 test: check-deps
-	@echo "$(BLUE)Running test suite with SDK environment...$(NC)"
+	@echo "$(BLUE)Running unit tests with SDK environment (no external deps)...$(NC)"
+	@# Ensure pytest is available in Packman Python
+	@if [ -f $(KIT_PLAYGROUND_DIR)/requirements-test.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/requirements-test.txt || true; \
+	else \
+		./tools/packman/python.sh -m pip install -q pytest pytest-asyncio pytest-cov || true; \
+	fi
+	@# Ensure backend runtime deps for tests (flask, socketio)
+	@if [ -f $(KIT_PLAYGROUND_DIR)/backend/requirements.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/backend/requirements.txt || true; \
+	fi
+	@# Workaround for packman vendor sentry_sdk parse_version usage
+	@./tools/packman/python.sh -m pip install -q packaging || true
+	@./tools/packman/python.sh -m pytest -q -m "not integration and not compatibility and not streaming and not standalone and not cli" $(PYTEST_ARGS)
+
+.PHONY: test-all
+test-all: check-deps
+	@echo "$(BLUE)Running full test suite with SDK environment...$(NC)"
+	@# Ensure pytest is available in Packman Python
+	@if [ -f $(KIT_PLAYGROUND_DIR)/requirements-test.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/requirements-test.txt || true; \
+	else \
+		./tools/packman/python.sh -m pip install -q pytest pytest-asyncio pytest-cov || true; \
+	fi
+	@# Ensure backend runtime deps for tests (flask, socketio)
+	@if [ -f $(KIT_PLAYGROUND_DIR)/backend/requirements.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/backend/requirements.txt || true; \
+	fi
 	@./tools/packman/python.sh -m pytest -q $(PYTEST_ARGS)
 
 # Run tests with SDK environment (Packman Python)

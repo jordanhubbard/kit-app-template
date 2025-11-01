@@ -1,3 +1,9 @@
+import os
+import pytest
+
+if os.environ.get("PACKMAN_TESTS") != "1":
+    pytest.skip("Skipping CLI/Packman-dependent tests by default", allow_module_level=True)
+
 """
 Shared pytest fixtures for CLI enhancement tests.
 """
