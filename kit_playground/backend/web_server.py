@@ -92,6 +92,13 @@ class PlaygroundWebServer:
         self._setup_routes()
         self._setup_websocket()
 
+        # Ensure Packman runtime has required vendor deps
+        # Fixes: NameError: parse_version in packman vendored sentry_sdk
+        try:
+            self._ensure_packman_runtime_ready()
+        except Exception as e:
+            logger.warning("Packman runtime preflight failed: %s", e)
+
     def _is_safe_project_name(self, name: str) -> bool:
         """Validate project name with basic safety checks.
 
@@ -113,6 +120,31 @@ class PlaygroundWebServer:
                 return False
 
         return True
+
+    def _ensure_packman_runtime_ready(self) -> None:
+        """Install missing Python packages into Packman runtime if needed.
+
+        Some Packman vendor modules (sentry_sdk) expect 'packaging' to be importable.
+        When missing, repo.sh/repoman invocations may crash, causing 500s on project creation.
+        """
+        repo_root = Path(__file__).parent.parent.parent
+        packman_python = repo_root / 'tools' / 'packman' / 'python.sh'
+        if not packman_python.exists():
+            return
+
+        def run_packman_py(args: list[str]) -> int:
+            try:
+                return subprocess.call([str(packman_python)] + args, cwd=repo_root)
+            except Exception:
+                return 1
+
+        # Check for 'packaging'
+        rc = run_packman_py(['-c', 'import packaging'])
+        if rc != 0:
+            logger.info("Installing missing 'packaging' into Packman runtime...")
+            _ = run_packman_py(['-m', 'pip', 'install', '-q', 'packaging'])
+        else:
+            logger.debug("Packman runtime has 'packaging'")
 
     def _validate_project_path(self, repo_root: Path, project_path: str) -> Optional[Path]:
         """Validate and normalize project path to prevent path traversal.
