@@ -1163,6 +1163,20 @@ Here's a brief overview of some key tools:
 
 - **Help (`./repo.sh -h` or `.\repo.bat -h`):** Provides a list of available tools and their descriptions.
 
+### Dependency Utilities (New)
+
+- Quick Make targets
+  - `make deps-estimate BANDWIDTH=100` — estimate first-time download size/time
+  - `make deps-validate VERBOSE=1` — validate `.kit` dependencies (local-only default)
+  - `make deps-prefetch CONFIG=release` — pre-fetch all extensions using Kit SDK
+
+- CLI (no install required)
+  - `python tools/kit_deps/cli.py estimate --bandwidth 100 --json`
+  - `python tools/kit_deps/cli.py validate [-v] [--check-registry]`
+  - `python tools/kit_deps/cli.py prefetch [--config release] [-v]`
+
+See `docs/DEPENDENCY_VALIDATION.md` for details.
+
 ### Template System
 
 - **Cross-Platform Template Creation (`./repo.sh` or `.\repo.bat template new <name>`):** Generate new projects from templates with data-driven configuration, inheritance support, and variable interpolation. Uses OS-independent Python dispatcher for consistent behavior across Linux and Windows.

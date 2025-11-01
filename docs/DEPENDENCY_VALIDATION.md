@@ -69,6 +69,20 @@ Validation Summary:
 python tools/repoman/validate_kit_deps.py --prefetch
 ```
 
+### Quick Commands (Make + CLI)
+
+```bash
+# Make targets
+make deps-estimate BANDWIDTH=100     # estimate size/time
+make deps-validate VERBOSE=1         # validate .kit deps (local-only)
+make deps-prefetch CONFIG=release    # pre-fetch via Kit SDK
+
+# CLI equivalents
+python tools/kit_deps/cli.py estimate --bandwidth 100 --json
+python tools/kit_deps/cli.py validate [-v] [--check-registry]
+python tools/kit_deps/cli.py prefetch [--config release] [-v]
+```
+
 **Benefits**:
 - Fast first launch (~15 seconds instead of 5-10 minutes)
 - Offline-capable

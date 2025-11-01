@@ -88,6 +88,9 @@ all: check-deps
 	@echo "  make install-deps                    - Install missing dependencies"
 	@echo "  make install-python-deps             - Install Python packages"
 	@echo "  make install-npm                     - Install Node.js and npm"
+	@echo "  make deps-estimate [BANDWIDTH=100]   - Estimate size/time for first-time deps"
+	@echo "  make deps-validate [VERBOSE=1]       - Validate .kit deps (local-only by default)"
+	@echo "  make deps-prefetch [CONFIG=release]  - Pre-fetch extensions using SDK"
 	@echo ""
 	@echo "$(YELLOW)Quick Start:$(NC)"
 	@echo "  1. make playground                   - Start the UI (http://localhost:3000)"
@@ -235,6 +238,28 @@ ifeq ($(OS),windows)
 	@exit 1
 endif
 	@echo "$(GREEN)Node.js and npm installed successfully!$(NC)"
+
+# Dependency utilities
+.PHONY: deps-estimate
+deps-estimate:
+	@BW=$${BANDWIDTH:-50}; \
+	 echo "$(BLUE)Estimating dependency download time (bandwidth=$$BW Mbps)...$(NC)"; \
+	 $(PYTHON) tools/kit_deps/cli.py estimate --bandwidth $$BW
+
+.PHONY: deps-validate
+deps-validate:
+	@ARGS=""; \
+	 if [ "$(VERBOSE)" = "1" ]; then ARGS="$$ARGS -v"; fi; \
+	 if [ "$(CHECK_REGISTRY)" = "1" ]; then ARGS="$$ARGS --check-registry"; fi; \
+	 echo "$(BLUE)Validating .kit dependencies...$(NC)"; \
+	 $(PYTHON) tools/kit_deps/cli.py validate $$ARGS
+
+.PHONY: deps-prefetch
+deps-prefetch:
+	@CONF=$${CONFIG:-release}; ARGS=""; \
+	 if [ "$(VERBOSE)" = "1" ]; then ARGS="$$ARGS -v"; fi; \
+	 echo "$(BLUE)Pre-fetching extensions (config=$$CONF)...$(NC)"; \
+	 $(PYTHON) tools/kit_deps/cli.py prefetch --config $$CONF $$ARGS
 
 # Install Python
 .PHONY: install-python
