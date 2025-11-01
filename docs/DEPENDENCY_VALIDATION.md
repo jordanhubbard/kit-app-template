@@ -31,8 +31,8 @@ python tools/repoman/validate_kit_deps.py --kit-file source/apps/my.app/my.app.k
 python tools/repoman/validate_kit_deps.py --check-registry
 ```
 
-**Default Behavior**: Local validation only (checks syntax and local extensions)  
-**Why**: Online registry queries require template variable resolution and are slow  
+**Default Behavior**: Local validation only (checks syntax and local extensions)
+**Why**: Online registry queries require template variable resolution and are slow
 **Recommendation**: Use `--prefetch` for proper validation via Kit SDK
 
 **Output**:
@@ -349,8 +349,8 @@ To enable proper registry validation would require:
 4. Learn registry API structure
 5. Handle authentication
 
-**Effort**: ~4 hours  
-**Value**: Low (Kit SDK already does this properly)  
+**Effort**: ~4 hours
+**Value**: Low (Kit SDK already does this properly)
 **Decision**: Keep it simple, use `--prefetch` for real validation
 
 ## Troubleshooting

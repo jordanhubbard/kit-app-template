@@ -397,20 +397,20 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     # Setup logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
         format='%(levelname)s: %(message)s'
     )
-    
+
     # Note about registry checks
     if args.verbose and not args.check_registry:
         logger.info("Registry checks disabled (use --check-registry to enable)")
         logger.info("Note: Registry checks are experimental and slow")
         logger.info("Recommendation: Use --prefetch for proper validation via Kit SDK")
-    
+
     # Prefetch mode
     if args.prefetch:
         if args.kit_file:
@@ -426,7 +426,7 @@ def main():
 
     # Validation mode
     check_registry = args.check_registry
-    
+
     if args.kit_file:
         valid, errors = validate_kit_file(
             args.kit_file,

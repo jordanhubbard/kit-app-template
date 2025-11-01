@@ -43,6 +43,7 @@ from kit_playground.backend.routes.port_routes import port_bp
 from kit_playground.backend.routes.job_routes import create_job_routes
 from kit_playground.backend.routes.websocket_routes import register_websocket_handlers
 from kit_playground.backend.routes.docs_routes import create_docs_routes
+from kit_playground.backend.routes.dependencies_routes import create_dependencies_routes
 
 # Import PortRegistry for centralized port management
 from kit_playground.backend.source.port_registry import PortRegistry
@@ -259,6 +260,10 @@ class PlaygroundWebServer:
         # Register API documentation routes
         docs_bp = create_docs_routes()
         self.app.register_blueprint(docs_bp)
+
+        # Register dependencies routes
+        deps_bp = create_dependencies_routes(self.socketio)
+        self.app.register_blueprint(deps_bp)
 
         # Register debug routes (for development/debugging only)
         from kit_playground.backend.routes.debug_routes import create_debug_routes

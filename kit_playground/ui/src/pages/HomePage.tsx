@@ -1,13 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '../components/common';
+import { Card, Button } from '../components/common';
 import { websocketService } from '../services/websocket';
+import { DependencyPreparer } from '../components/dependencies';
+import { useDependencies } from '../hooks/useDependencies';
 
 export const HomePage: React.FC = () => {
   const [streamingNotification, setStreamingNotification] = useState<{
     project: string;
     url: string;
   } | null>(null);
+
+  // Dependency preparation
+  const { status, isFirstLaunch } = useDependencies();
+  const [showPreparer, setShowPreparer] = useState(false);
+  const [showFirstLaunchPrompt, setShowFirstLaunchPrompt] = useState(false);
+
+  // Check for first launch
+  useEffect(() => {
+    // Wait for status to load
+    if (status !== null) {
+      const isFirst = isFirstLaunch();
+      const hasSeenPrompt = localStorage.getItem('kit_deps_prompt_seen');
+
+      if (isFirst && !hasSeenPrompt && !status.cached) {
+        // Show prompt after 2 seconds
+        const timer = setTimeout(() => {
+          setShowFirstLaunchPrompt(true);
+          localStorage.setItem('kit_deps_prompt_seen', 'true');
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [status, isFirstLaunch]);
 
   useEffect(() => {
     // Connect to WebSocket
@@ -149,6 +174,83 @@ export const HomePage: React.FC = () => {
           </Card>
         </Link>
       </div>
+
+      {/* Dependency Preparation Card */}
+      {status && !status.cached && (
+        <Card className="max-w-3xl mx-auto bg-blue-900 bg-opacity-20 border-blue-600">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white mb-2">📦 Prepare Dependencies</h3>
+              <p className="text-gray-300 mb-3">
+                Pre-download Kit extensions (~12 GB, ~150 extensions) to speed up first launch.
+                Without preparation, applications may take 5-10 minutes to start while downloading dependencies.
+              </p>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="primary"
+                  onClick={() => setShowPreparer(true)}
+                >
+                  Prepare Now
+                </Button>
+                <span className="text-sm text-gray-400">
+                  Current cache: {status.count} extensions ({status.size})
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* First Launch Prompt */}
+      {showFirstLaunchPrompt && !status?.cached && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg p-4">
+          <Card className="bg-blue-900 bg-opacity-95 border-blue-600 shadow-2xl">
+            <div className="mb-4">
+              <h3 className="text-2xl font-bold text-white mb-2">👋 First Time Setup</h3>
+              <p className="text-gray-300 mb-4">
+                It looks like this is your first time using Kit App Template. Would you like to prepare dependencies now?
+              </p>
+              <div className="p-3 bg-blue-800 bg-opacity-50 rounded mb-4">
+                <p className="text-sm text-gray-300 mb-2">
+                  <strong className="text-white">Without preparation:</strong> Applications will download extensions on first launch (5-10 minutes, may appear frozen)
+                </p>
+                <p className="text-sm text-gray-300">
+                  <strong className="text-white">With preparation:</strong> Download once (~12 GB), then all apps launch fast (&lt;30 seconds)
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="secondary"
+                onClick={() => setShowFirstLaunchPrompt(false)}
+              >
+                Skip for Now
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowFirstLaunchPrompt(false);
+                  setShowPreparer(true);
+                }}
+              >
+                Prepare Dependencies
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Dependency Preparer Modal */}
+      <DependencyPreparer
+        isOpen={showPreparer}
+        onClose={() => setShowPreparer(false)}
+        config="release"
+      />
 
       {/* Quick Start Guide */}
       <Card className="max-w-3xl mx-auto">

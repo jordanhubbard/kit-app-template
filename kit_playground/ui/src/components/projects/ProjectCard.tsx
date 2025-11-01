@@ -1,6 +1,7 @@
 import React from 'react';
-import { Play, Hammer, Trash2, FileText, Clock, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Play, Hammer, Trash2, FileText, Clock, CheckCircle, XCircle, Loader, Download } from 'lucide-react';
 import type { Project } from '../../hooks/useProjects';
+import { useDependencies } from '../../hooks/useDependencies';
 
 interface ProjectCardProps {
   project: Project;
@@ -8,6 +9,7 @@ interface ProjectCardProps {
   onLaunch?: (project: Project) => void;
   onEdit?: (project: Project) => void;
   onDelete?: (project: Project) => void;
+  onPrepare?: () => void;
 }
 
 /**
@@ -48,7 +50,7 @@ const getStatusConfig = (status: Project['status']) => {
 
 /**
  * ProjectCard
- * 
+ *
  * Card component for displaying user-created projects.
  * Shows project info and quick actions.
  */
@@ -58,14 +60,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onLaunch,
   onEdit,
   onDelete,
+  onPrepare,
 }) => {
+  const { status: depStatus } = useDependencies();
   const statusConfig = getStatusConfig(project.status);
-  
+
   const typeColor = {
     application: 'text-nvidia-green',
     extension: 'text-blue-400',
     microservice: 'text-purple-400',
   }[project.type];
+
+  // Check if this is a streaming app and dependencies aren't cached
+  const isStreamingApp = project.name.includes('streaming') || project.template?.includes('streaming');
+  const showDepWarning = isStreamingApp && depStatus && !depStatus.cached;
 
   return (
     <div className="
@@ -85,7 +93,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             {project.name}
           </p>
         </div>
-        
+
         {/* Status Badge */}
         <div className={`
           flex items-center gap-1.5 px-2 py-1 rounded
@@ -113,6 +121,30 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         <div className="truncate">Path: {project.path}</div>
       </div>
 
+      {/* Dependency Warning */}
+      {showDepWarning && (
+        <div className="mb-3 p-2 bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded text-xs">
+          <div className="flex items-center gap-2 text-yellow-400 mb-1">
+            <Download className="w-3 h-3" />
+            <span className="font-medium">Dependencies Not Cached</span>
+          </div>
+          <p className="text-yellow-300 text-xs mb-2">
+            First launch may take 5-10 minutes while downloading extensions.
+          </p>
+          {onPrepare && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPrepare();
+              }}
+              className="text-yellow-400 hover:text-yellow-300 underline text-xs"
+            >
+              Prepare now →
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex gap-2">
         {onBuild && (
@@ -133,7 +165,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             Build
           </button>
         )}
-        
+
         {onLaunch && (
           <button
             onClick={() => onLaunch(project)}
@@ -152,7 +184,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             Launch
           </button>
         )}
-        
+
         {onEdit && (
           <button
             onClick={() => onEdit(project)}
@@ -168,7 +200,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <FileText className="w-4 h-4" />
           </button>
         )}
-        
+
         {onDelete && (
           <button
             onClick={() => onDelete(project)}
@@ -205,7 +237,6 @@ function formatDate(date: Date): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  
+
   return date.toLocaleDateString();
 }
-
