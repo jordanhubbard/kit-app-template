@@ -12,7 +12,8 @@ export type PanelType =
   | 'project-config'        // Configure/create project
   | 'code-editor'          // Edit .kit files
   | 'build-output'         // Show build logs and progress
-  | 'preview';             // Live preview/streaming
+  | 'preview'              // Live preview/streaming
+  | 'usd-media';           // USD Media Library panel
 
 /**
  * Panel State
@@ -120,6 +121,14 @@ const defaultPanelConfig: Record<PanelType, Partial<PanelState>> = {
     title: 'Preview',
     width: 800,
     minWidth: 600,
+    canClose: true,
+    canResize: true,
+  },
+  'usd-media': {
+    title: 'USD Media Library',
+    width: 500,
+    minWidth: 400,
+    maxWidth: 800,
     canClose: true,
     canResize: true,
   },
