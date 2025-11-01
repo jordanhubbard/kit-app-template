@@ -36,6 +36,8 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const [buildCompleted, setBuildCompleted] = useState(false); // Track build completion locally
   const [buildFailed, setBuildFailed] = useState(false); // Track build failure locally
   const [isStreamingActive, setIsStreamingActive] = useState(false); // Track if streaming is enabled
+  const [xpraReady, setXpraReady] = useState(false);
+  const [xpraUrl, setXpraUrl] = useState<string | null>(null);
   const hasStartedJob = useRef(false); // Track if we've already started the job
 
   // WebSocket for real-time updates
@@ -90,6 +92,10 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       // Note: Do NOT auto-open Xpra in new tab - it causes race conditions
       // The Preview panel will embed Xpra in an iframe instead
       // Only auto-open for Kit App Streaming (WebRTC)
+      setXpraReady(true);
+      const hostname = window.location.hostname;
+      const url = data?.url || `http://${hostname}:${data?.port || 10000}`;
+      setXpraUrl(url);
     },
   });
 
@@ -166,6 +172,14 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     await startJob('launch', projectName);
   };
 
+  const handleOpenPreview = () => {
+    if (!projectName) return;
+    // Prefer Xpra when ready, otherwise open streaming preview panel which will wait for URL
+    const mode = xpraReady ? 'xpra' : 'streaming';
+    const streamingUrl = xpraReady ? xpraUrl || undefined : undefined;
+    openPanel('preview', { projectName, streamingUrl, mode });
+  };
+
   const handleClose = async () => {
     // If there's a running or pending job, cancel it first
     if (job && (job.status === 'running' || job.status === 'pending')) {
@@ -230,6 +244,8 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
   const canRetry = job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'completed' || buildFailed;
   const canLaunch = jobType === 'build' && buildCompleted && projectName;
   const canRelaunch = jobType === 'launch' && projectName && (job?.status === 'running' || job?.status === 'completed');
+  const showPreviewButton = jobType === 'launch' && projectName;
+  const previewReady = xpraReady || isStreamingActive;
 
   return (
     <div className="flex flex-col h-full bg-bg-panel">
@@ -311,6 +327,25 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
             >
               <Play className="w-4 h-4" />
               Start {jobType === 'build' ? 'Build' : jobType === 'launch' ? 'Launch' : 'Job'}
+            </button>
+          )}
+
+          {showPreviewButton && (
+            <button
+              onClick={handleOpenPreview}
+              disabled={!previewReady}
+              className={`
+                px-4 py-2 rounded
+                ${previewReady ? 'bg-nvidia-green hover:bg-nvidia-green-dark text-white' : 'bg-bg-card text-text-secondary'}
+                text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              `}
+              title={previewReady ? 'Open Preview' : 'Waiting for preview to be ready'}
+            >
+              <Play className="w-4 h-4" />
+              Preview
             </button>
           )}
 
