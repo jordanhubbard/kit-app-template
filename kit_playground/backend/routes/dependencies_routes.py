@@ -271,22 +271,24 @@ def create_dependencies_routes(socketio: SocketIO):
 
                 if returncode == 0:
                     logger.info(f"Dependency preparation completed successfully in {elapsed:.1f}s")
-                    yield f"data: {json.dumps({
+                    result = {
                         'type': 'complete',
                         'success': True,
                         'message': 'All dependencies prepared successfully!',
                         'status': final_status,
                         'elapsed': elapsed
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(result)}\n\n"
                 else:
                     logger.error(f"Dependency preparation failed with code {returncode}")
-                    yield f"data: {json.dumps({
+                    result = {
                         'type': 'complete',
                         'success': False,
                         'message': f'Preparation failed with exit code {returncode}',
                         'status': final_status,
                         'elapsed': elapsed
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(result)}\n\n"
 
             except Exception as e:
                 logger.error(f"Error during dependency preparation: {e}", exc_info=True)
