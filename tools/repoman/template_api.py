@@ -359,6 +359,11 @@ class TemplateAPI:
             cmd.append('--no-register')
 
         try:
+            # Execute the replay command with shims to avoid Packman vendored sentry crash
+            env = dict(os.environ)
+            shim_path = str(self.repo_root / 'tools' / 'pm_shims')
+            env['PYTHONPATH'] = f"{shim_path}:{env.get('PYTHONPATH','')}"
+
             # Execute the replay command
             result = subprocess.run(
                 cmd,
@@ -366,7 +371,8 @@ class TemplateAPI:
                 capture_output=True,
                 text=True,
                 timeout=120,  # 2 minute timeout
-                check=False
+                check=False,
+                env=env
             )
 
             if result.returncode == 0:
