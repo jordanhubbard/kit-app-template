@@ -276,7 +276,3 @@ def create_usd_media_routes():
 
     return usd_media_bp
 
-
-# Initialize routes
-usd_media_routes = create_usd_media_routes()
-
