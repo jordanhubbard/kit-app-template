@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Home } from 'lucide-react';
+import { Trash2, Home, FolderOpen } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { usePanelStore } from '../../stores/panelStore';
 
@@ -80,6 +80,24 @@ export const Header: React.FC = () => {
           >
             <Home className="w-4 h-4" />
             Home
+          </button>
+
+          {/* USD Media Library Button */}
+          <button
+            onClick={() => openPanel('usd-media', {})}
+            className="
+              px-4 py-2 rounded
+              bg-blue-500/10 hover:bg-blue-500/20
+              text-blue-400
+              border border-blue-500/30
+              transition-colors
+              flex items-center gap-2
+              text-sm font-medium
+            "
+            title="Browse and download USD sample files"
+          >
+            <FolderOpen className="w-4 h-4" />
+            USD Media
           </button>
 
           {/* Clean Projects Button */}

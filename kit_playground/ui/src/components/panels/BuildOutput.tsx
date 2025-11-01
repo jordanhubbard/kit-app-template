@@ -87,11 +87,9 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     },
     onXpraReady: (data) => {
       console.log('[BuildOutput] Xpra ready:', data);
-      if (data.url && jobType === 'launch') {
-        // Auto-open Xpra URL in new tab
-        console.log('[BuildOutput] Auto-opening Xpra URL:', data.url);
-        window.open(data.url, '_blank');
-      }
+      // Note: Do NOT auto-open Xpra in new tab - it causes race conditions
+      // The Preview panel will embed Xpra in an iframe instead
+      // Only auto-open for Kit App Streaming (WebRTC)
     },
   });
 
