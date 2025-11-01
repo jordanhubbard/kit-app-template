@@ -491,8 +491,19 @@ template-new: check-deps
 # Run tests
 .PHONY: test
 test: check-deps
-	@echo "$(BLUE)Running test suite...$(NC)"
-	@./repo.sh test
+	@echo "$(BLUE)Running test suite with SDK environment...$(NC)"
+	@./tools/packman/python.sh -m pytest -q $(PYTEST_ARGS)
+
+# Run tests with SDK environment (Packman Python)
+.PHONY: test-sdk
+test-sdk: check-deps
+	@echo "$(BLUE)Running tests with SDK (Packman Python) environment...$(NC)"
+	@./tools/packman/python.sh -m pytest -q $(PYTEST_ARGS)
+
+.PHONY: test-sdk-quick
+test-sdk-quick: check-deps
+	@echo "$(BLUE)Running quick tests with SDK (exclude slow)...$(NC)"
+	@./tools/packman/python.sh -m pytest -q -m "not slow" $(PYTEST_ARGS)
 
 # Run Kit Playground tests
 .PHONY: test-playground

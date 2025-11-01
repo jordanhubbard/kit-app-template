@@ -138,7 +138,7 @@ Clears extension cache (for testing/troubleshooting).
 **File:** `kit_playground/ui/src/hooks/useDependencies.ts`
 
 ```typescript
-const { 
+const {
   status,           // Current cache status
   loading,          // Loading state
   error,            // Error message
@@ -531,4 +531,3 @@ const FIRST_LAUNCH_AGE_HOURS = 24; // hours
 **Status:** ✅ **Fully Implemented & Production Ready**
 
 All 3 phases (12 features) completed and tested.
-

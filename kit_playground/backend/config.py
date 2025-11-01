@@ -17,5 +17,3 @@ DEFAULT_BANDWIDTH_MBPS: float = 50.0
 
 # Emit periodic status update every N lines of subprocess output
 PREPARE_STATUS_UPDATE_EVERY: int = 10
-
-

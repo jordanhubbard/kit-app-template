@@ -1,6 +1,6 @@
 /**
  * useDependencyStatus Hook
- * 
+ *
  * Custom hook for managing Kit extension dependency status.
  * Handles API calls, localStorage caching, and automatic refresh.
  */
@@ -33,20 +33,20 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
   const [status, setStatus] = useState<DependencyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const loadFromCache = (): DependencyStatus | null => {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       if (!cached) return null;
-      
+
       const { data, timestamp } = JSON.parse(cached);
       const age = Date.now() - timestamp;
-      
+
       // Return cached data if less than CACHE_DURATION old
       if (age < CACHE_DURATION) {
         return data;
       }
-      
+
       // Clear stale cache
       localStorage.removeItem(CACHE_KEY);
       return null;
@@ -55,7 +55,7 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
       return null;
     }
   };
-  
+
   const saveToCache = (data: DependencyStatus) => {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -66,18 +66,18 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
       console.error('Error saving cache:', e);
     }
   };
-  
+
   const fetchStatus = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch('http://localhost:5000/api/dependencies/status');
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`);
       }
-      
+
       const data: DependencyStatus = await response.json();
       setStatus(data);
       saveToCache(data);
@@ -85,7 +85,7 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch dependency status';
       console.error('Error fetching dependency status:', err);
       setError(errorMessage);
-      
+
       // Try to use cached data on error
       const cached = loadFromCache();
       if (cached) {
@@ -95,11 +95,11 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
       setLoading(false);
     }
   }, []);
-  
+
   const refresh = useCallback(async () => {
     await fetchStatus();
   }, [fetchStatus]);
-  
+
   useEffect(() => {
     // Try to load from cache first for instant UI
     const cached = loadFromCache();
@@ -107,21 +107,21 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
       setStatus(cached);
       setLoading(false);
     }
-    
+
     // Then fetch fresh data
     fetchStatus();
-    
+
     // Set up periodic refresh (every 30 seconds while component mounted)
     const interval = setInterval(() => {
       fetchStatus();
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, [fetchStatus]);
-  
+
   // Determine if preparation is needed
   const needsPrepare = !status?.cached || status?.count < (status?.threshold || 50);
-  
+
   return {
     status,
     loading,
@@ -132,4 +132,3 @@ export const useDependencyStatus = (): UseDependencyStatusReturn => {
 };
 
 export default useDependencyStatus;
-
