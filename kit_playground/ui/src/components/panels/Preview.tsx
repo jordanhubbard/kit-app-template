@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, ExternalLink, AlertTriangle, RefreshCw, Monitor } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -36,6 +36,7 @@ export const Preview: React.FC<PreviewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showCertWarning, setShowCertWarning] = useState(true);
   const [key, setKey] = useState(0); // For iframe refresh
+  const autoOpenedRef = useRef(false);
 
   // Listen for streaming_ready event
   useWebSocket({
@@ -67,6 +68,14 @@ export const Preview: React.FC<PreviewProps> = ({
     } else if (mode === 'direct') {
       // Direct mode: no preview available
       setIsLoading(false);
+    }
+  }, [mode, streamingUrl]);
+
+  // Auto-open streaming/xpra targets in a new tab when URL is available.
+  useEffect(() => {
+    if ((mode === 'streaming' || mode === 'xpra') && streamingUrl && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      try { window.open(streamingUrl, '_blank', 'noopener,noreferrer'); } catch {}
     }
   }, [mode, streamingUrl]);
 
@@ -259,8 +268,30 @@ export const Preview: React.FC<PreviewProps> = ({
           </div>
         )}
 
-        {/* Iframe Preview */}
-        {streamingUrl && !isLoading && !error && mode !== 'direct' && (
+        {/* For streaming/xpra, avoid embedding self-signed origins in an iframe */}
+        {(mode === 'streaming' || mode === 'xpra') && streamingUrl && !isLoading && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-bg-dark">
+            <div className="text-center px-4 max-w-md">
+              <h3 className="text-lg font-semibold text-text-primary mb-2">
+                Open Preview in New Tab
+              </h3>
+              <p className="text-text-secondary text-sm mb-4">
+                {mode === 'streaming'
+                  ? 'Kit App Streaming uses a self-signed certificate and may be blocked in iframes. Use the button below, then accept the browser warning.'
+                  : 'Xpra preview opens as a full desktop window in a new tab.'}
+              </p>
+              <button
+                onClick={handleOpenExternal}
+                className="px-4 py-2 rounded bg-nvidia-green hover:bg-nvidia-green-dark text-white text-sm font-medium transition-colors"
+              >
+                Open Preview
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Legacy: only embed when explicitly in direct iframe mode (never for streaming/xpra) */}
+        {streamingUrl && !isLoading && !error && mode === 'direct-iframe' && (
           <iframe
             key={key}
             src={streamingUrl}
