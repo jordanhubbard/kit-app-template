@@ -288,4 +288,3 @@ def create_usd_media_routes():
         })
 
     return usd_media_bp
-
