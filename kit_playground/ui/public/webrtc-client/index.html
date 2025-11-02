@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kit App Streaming - Web Client Launcher</title>
+    <style>
+      html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: #0f1114; color: #e6e6e6; }
+      .container { max-width: 840px; margin: 0 auto; padding: 32px 16px; }
+      .card { background: #15181d; border: 1px solid #2a2f37; border-radius: 8px; padding: 20px; }
+      .title { margin: 0 0 8px; font-size: 20px; }
+      .muted { color: #9aa0a6; font-size: 13px; }
+      .row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+      input { flex: 1; padding: 8px 10px; background: #0f1114; color: #e6e6e6; border: 1px solid #2a2f37; border-radius: 6px; }
+      button { padding: 8px 12px; border-radius: 6px; border: 0; cursor: pointer; }
+      .primary { background: #76b900; color: #0b0e11; }
+      .secondary { background: #22262c; color: #e6e6e6; border: 1px solid #2a2f37; }
+      a.link { color: #76b900; text-decoration: none; }
+      a.link:hover { text-decoration: underline; }
+      .warn { background: #3a2e00; border: 1px solid #5a4a00; color: #ffd666; padding: 10px 12px; border-radius: 6px; margin-top: 16px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="title">Kit App Streaming - Web Client Launcher</h1>
+      <p class="muted">This page launches a WebRTC client and points it at your running Kit streaming server.</p>
+
+      <div class="card">
+        <label for="server">Streaming server</label>
+        <div class="row">
+          <input id="server" type="text" placeholder="host:port" />
+          <button class="secondary" id="copy">Copy</button>
+          <button class="primary" id="open">Open Client</button>
+        </div>
+        <div class="warn" id="note" style="display:none"></div>
+        <p class="muted" style="margin-top:12px">
+          Don’t see a client? You can use the official WebRTC client. If you already host it at <code>/ov-web-client/</code> on this server, the button above will open it. Otherwise, clone and run the client locally, then paste the server here.
+        </p>
+        <ul class="muted">
+          <li>Expected format: <code>jordanh-dev.hrd.nvidia.com:47995</code></li>
+          <li>Self-signed certificates are typical in development; accept the browser warning if prompted.</li>
+        </ul>
+      </div>
+
+      <p style="margin-top:16px" class="muted">
+        Tip: This page can be opened automatically from the Playground when streaming is ready.
+      </p>
+    </div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const serverParam = params.get('server') || '';
+        const input = document.getElementById('server');
+        const copy = document.getElementById('copy');
+        const open = document.getElementById('open');
+        const note = document.getElementById('note');
+        input.value = serverParam;
+
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(input.value);
+            copy.textContent = 'Copied';
+            setTimeout(() => (copy.textContent = 'Copy'), 1200);
+          } catch {}
+        });
+
+        function openOvClient() {
+          const server = input.value.trim();
+          if (!server) {
+            input.focus();
+            return;
+          }
+
+          // Prefer a locally hosted ov-web-client if available (static under this UI origin),
+          // falling back to relative path so reverse proxies can host it.
+          const localClient = `/ov-web-client/?server=${encodeURIComponent(server)}`;
+          // Open in a new tab; if the local path 404s, user can still copy the address.
+          window.open(localClient, '_blank', 'noopener,noreferrer');
+          note.style.display = 'block';
+          note.textContent = 'If the client does not load, ensure ov-web-client is hosted at /ov-web-client/ or run it locally and paste the server address there.';
+        }
+
+        open.addEventListener('click', openOvClient);
+
+        // Auto-open when server is provided
+        if (serverParam) {
+          setTimeout(openOvClient, 250);
+        }
+      })();
+    </script>
+  </body>
+  </html>
+
+

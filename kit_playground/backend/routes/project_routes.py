@@ -491,8 +491,11 @@ def create_project_routes(
                     original_host = request.headers.get('X-Forwarded-Host', request.host)
                     client_host = registry.extract_client_host(original_host)
 
-                    # Get streaming URL with remote hostname. Default to HTTP unless explicitly configured.
-                    streaming_url = get_streaming_url(port=streaming_port, hostname=client_host, protocol='http')
+                    # Build a UI-local WebRTC client URL that passes the Kit streaming server address.
+                    # The Kit streaming port does not serve static web content; we host a simple launcher page
+                    # under the UI at /webrtc-client which takes ?server=<host:port>.
+                    streaming_server = f"{client_host}:{streaming_port}"
+                    streaming_url = f"/webrtc-client?server={streaming_server}"
 
                     logger.info(f"[STREAMING URL] Request.host: {request.host}")
                     logger.info(f"[STREAMING URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
@@ -525,6 +528,7 @@ def create_project_routes(
                             socketio.emit('streaming_ready', {
                                 'project': project_name,
                                 'url': streaming_url,
+                                'server': streaming_server,
                                 'port': streaming_port
                             })
                         else:
@@ -608,6 +612,7 @@ def create_project_routes(
                         'success': True,
                         'previewUrl': streaming_url,
                         'streamingUrl': streaming_url,
+                        'streamingServer': streaming_server,
                         'streaming': True,
                         'port': streaming_port
                     }
