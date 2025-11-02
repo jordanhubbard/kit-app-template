@@ -1,0 +1,3 @@
+[submodule "kit_playground/ui/public/ov-web-client"]
+	path = kit_playground/ui/public/ov-web-client
+	url = https://github.com/NVIDIA-Omniverse/web-viewer-sample.git
