@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 # Used for workaround of repo_kit_template bug (line 371 in repo.py)
 LAYER_DEPENDENCIES = {
     'omni_default_streaming': [
-        '"omni.kit.livestream.app" = {}  # WebRTC Streaming'
+        '"omni.kit.livestream.app" = {}  # WebRTC Streaming',
+        '"omni.kit.livestream.webrtc" = {}  # WebRTC Core',
+        '"omni.kit.livestream.core" = {}  # Livestream Core',
+        '"omni.services.core" = {}  # Services Core',
+        '"omni.services.transport.server.http" = {}  # HTTP server for client endpoints'
     ],
     'nvcf_streaming': [
         '"omni.services.livestream.session" = {}  # NVCF Streaming'
