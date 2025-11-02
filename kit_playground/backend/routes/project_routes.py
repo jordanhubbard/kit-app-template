@@ -492,10 +492,9 @@ def create_project_routes(
                     client_host = registry.extract_client_host(original_host)
 
                     # Build a UI-local WebRTC client URL that passes the Kit streaming server address.
-                    # The Kit streaming port does not serve static web content; we host a simple launcher page
-                    # under the UI at /webrtc-client which takes ?server=<host:port>.
+                    # The loader page configures and redirects to the NVIDIA ov-web-client.
                     streaming_server = f"{client_host}:{streaming_port}"
-                    streaming_url = f"/webrtc-client?server={streaming_server}"
+                    streaming_url = f"/ov-web-client-loader.html?server={streaming_server}"
 
                     logger.info(f"[STREAMING URL] Request.host: {request.host}")
                     logger.info(f"[STREAMING URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")

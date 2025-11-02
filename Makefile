@@ -458,7 +458,7 @@ playground: playground-stop playground-setup-xpra playground-start
 
 # Build UI (production bundle)
 .PHONY: playground-build
-playground-build:
+playground-build: streaming-client-build
 	@echo "$(BLUE)Building Kit Playground UI (production)...$(NC)"
 	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
 		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
@@ -471,6 +471,30 @@ playground-build:
 	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
 	@echo "$(GREEN)✓ UI built successfully!$(NC)"
 	@echo "$(BLUE)Build output: $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+
+# Build WebRTC streaming client
+.PHONY: streaming-client-build
+streaming-client-build:
+	@echo "$(BLUE)Building WebRTC streaming client (ov-web-client)...$(NC)"
+	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client/package.json" ]; then \
+		echo "$(YELLOW)Initializing WebRTC client submodule...$(NC)"; \
+		git submodule update --init --recursive; \
+	fi
+	@echo "$(YELLOW)Installing client dependencies...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client && npm install
+	@echo "$(YELLOW)Building client...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client && npm run build
+	@echo "$(GREEN)✓ WebRTC client built: $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client/dist$(NC)"
+
+# Dev mode for WebRTC client
+.PHONY: streaming-client-dev
+streaming-client-dev:
+	@echo "$(BLUE)Starting WebRTC streaming client in dev mode...$(NC)"
+	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client/package.json" ]; then \
+		echo "$(YELLOW)Initializing WebRTC client submodule...$(NC)"; \
+		git submodule update --init --recursive; \
+	fi
+	@cd $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client && npm install && npm run dev
 
 # Clean build artifacts
 .PHONY: playground-clean
