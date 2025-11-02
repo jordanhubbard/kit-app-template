@@ -491,8 +491,8 @@ def create_project_routes(
                     original_host = request.headers.get('X-Forwarded-Host', request.host)
                     client_host = registry.extract_client_host(original_host)
 
-                    # Get streaming URL with remote hostname. Kit App Streaming serves HTTPS with a self-signed cert.
-                    streaming_url = get_streaming_url(port=streaming_port, hostname=client_host, protocol='https')
+                    # Get streaming URL with remote hostname. Default to HTTP unless explicitly configured.
+                    streaming_url = get_streaming_url(port=streaming_port, hostname=client_host, protocol='http')
 
                     logger.info(f"[STREAMING URL] Request.host: {request.host}")
                     logger.info(f"[STREAMING URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
@@ -519,15 +519,8 @@ def create_project_routes(
                                 'source': 'runtime',
                                 'message': f'URL: {streaming_url}'
                             })
-                            socketio.emit('log', {
-                                'level': 'info',
-                                'source': 'runtime',
-                                'message': (
-                                    'Note: Self-signed SSL certificate '
-                                    'warning is normal. Accept it in your '
-                                    'browser.'
-                                )
-                            })
+                            # Note: If your deployment serves HTTPS for streaming,
+                            # switch protocol to https in the backend configuration.
                             # Emit streaming ready event
                             socketio.emit('streaming_ready', {
                                 'project': project_name,
