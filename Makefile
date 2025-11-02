@@ -1,0 +1,776 @@
+# Kit App Template - Master Makefile
+# Handles all build operations and dependency management
+
+# Detect OS
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+ifeq ($(UNAME_S),Linux)
+	OS := linux
+	PYTHON := python3
+	PACKAGE_MANAGER := $(shell which apt-get 2>/dev/null || which yum 2>/dev/null || which dnf 2>/dev/null || which pacman 2>/dev/null)
+	NPM_INSTALL_CMD := sudo apt-get install -y nodejs npm || sudo yum install -y nodejs npm || sudo dnf install -y nodejs npm || sudo pacman -S --noconfirm nodejs npm
+endif
+
+ifeq ($(UNAME_S),Darwin)
+	OS := macos
+	PYTHON := python3
+	PACKAGE_MANAGER := $(shell which brew 2>/dev/null)
+	NPM_INSTALL_CMD := brew install node
+endif
+
+ifeq ($(OS),Windows_NT)
+	OS := windows
+	PYTHON := python
+	PACKAGE_MANAGER := $(shell where choco 2>NUL || where winget 2>NUL)
+	NPM_INSTALL_CMD := winget install OpenJS.NodeJS || choco install nodejs
+endif
+
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[1;33m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
+
+# Check for required tools
+HAS_PYTHON := $(shell which $(PYTHON) 2>/dev/null)
+HAS_NPM := $(shell which npm 2>/dev/null)
+HAS_NODE := $(shell which node 2>/dev/null)
+HAS_GIT := $(shell which git 2>/dev/null)
+HAS_MAKE := true
+
+# Node/NPM version requirements
+MIN_NODE_VERSION := 16.0.0
+MIN_NPM_VERSION := 7.0.0
+
+# Directories
+ROOT_DIR := $(shell pwd)
+KIT_PLAYGROUND_DIR := $(ROOT_DIR)/kit_playground
+TOOLS_DIR := $(ROOT_DIR)/tools
+
+# Playground configuration
+# REMOTE=1 is the PRIMARY mode (cloud/dev servers)
+# REMOTE=0 for local development only
+REMOTE ?= 1
+PRODUCTION ?= 0
+BUILD_DIR := $(ROOT_DIR)/_build
+
+# Default target
+.PHONY: all
+all: check-deps
+	@echo "$(GREEN)╔════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(GREEN)║  Kit App Template v2.0 - Available Commands               ║$(NC)"
+	@echo "$(GREEN)╚════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
+	@echo "$(BLUE)🎨 Playground (Web UI):$(NC)"
+	@echo "  make playground                      - Dev mode (HMR, no build needed)"
+	@echo "  make playground REMOTE=1             - Dev mode with remote access"
+	@echo "  make playground PRODUCTION=1         - Prod mode (builds to dist/)"
+	@echo "  make playground-stop                 - Stop all playground processes"
+	@echo "  make playground-build                - Build UI to dist/ (for production)"
+	@echo ""
+	@echo "$(BLUE)🔧 Core Commands:$(NC)"
+	@echo "  make build                           - Prepare build environment"
+	@echo "  make build-apps                      - Build Kit applications"
+	@echo "  make template-new                    - Create new template (CLI)"
+	@echo "  make clean                           - Clean build + playground artifacts"
+	@echo "  make clean-all                       - Clean everything (incl. user apps)"
+	@echo ""
+	@echo "$(BLUE)🧪 Testing:$(NC)"
+	@echo "  make test-compatibility              - Fast compatibility tests (~5 min)"
+	@echo "  make test-compatibility-slow         - Full build/launch tests (~1 hour)"
+	@echo "  make test-compatibility-all          - All compatibility tests"
+	@echo "  make test                            - Run main test suite"
+	@echo ""
+	@echo "$(BLUE)📦 Dependencies:$(NC)"
+	@echo "  make deps                            - Check all dependencies"
+	@echo "  make install-deps                    - Install missing dependencies"
+	@echo "  make install-python-deps             - Install Python packages"
+	@echo "  make install-npm                     - Install Node.js and npm"
+	@echo "  make deps-estimate [BANDWIDTH=100]   - Estimate size/time for first-time deps"
+	@echo "  make deps-validate [VERBOSE=1]       - Validate .kit deps (local-only by default)"
+	@echo "  make deps-prefetch [CONFIG=release]  - Pre-fetch extensions using SDK"
+	@echo ""
+	@echo "$(YELLOW)Quick Start:$(NC)"
+	@echo "  1. make playground                   - Start the UI (http://localhost:3000)"
+	@echo "  2. ./repo.sh template list           - List available templates (CLI)"
+	@echo "  3. make test-compatibility           - Run tests"
+	@echo ""
+	@echo "$(BLUE)Documentation:$(NC) docs/README.md, docs/API_USAGE.md, docs/ARCHITECTURE.md"
+
+.PHONY: help
+help: all
+
+# Check dependencies
+.PHONY: check-deps deps
+check-deps deps:
+	@echo "$(BLUE)Checking system dependencies...$(NC)"
+	@echo ""
+	@echo "Operating System: $(OS) ($(UNAME_M))"
+	@echo ""
+
+	@# Check Git
+	@if [ -z "$(HAS_GIT)" ]; then \
+		echo "$(RED)✗ Git is not installed$(NC)"; \
+		echo "  Install: https://git-scm.com/downloads"; \
+		EXIT_CODE=1; \
+	else \
+		echo "$(GREEN)✓ Git is installed$(NC) ($(shell git --version))"; \
+	fi
+
+	@# Check Python
+	@if [ -z "$(HAS_PYTHON)" ]; then \
+		echo "$(RED)✗ Python is not installed$(NC)"; \
+		echo "  Run: make install-python"; \
+		EXIT_CODE=1; \
+	else \
+		PYTHON_VERSION=$$($(PYTHON) --version 2>&1 | cut -d' ' -f2); \
+		echo "$(GREEN)✓ Python is installed$(NC) ($$PYTHON_VERSION)"; \
+		if ./tools/packman/python.sh -c "import toml" 2>/dev/null || ./tools/packman/python.sh -c "import tomllib" 2>/dev/null; then \
+			echo "$(GREEN)✓ Python toml library is available$(NC)"; \
+		else \
+			echo "$(RED)✗ Python toml library is not installed$(NC)"; \
+			echo "  Required for: Template system and configuration files"; \
+			echo "  Run: make install-python-deps"; \
+			EXIT_CODE=1; \
+		fi; \
+	fi
+
+	@# Check Node.js (optional - only needed for native builds or dev mode)
+	@if [ -z "$(HAS_NODE)" ]; then \
+		echo "$(YELLOW)⚠ Node.js is not installed (optional - only needed for native builds/dev mode)$(NC)"; \
+		echo "  Container builds work without Node.js on host"; \
+		echo "  To install: make install-npm"; \
+	else \
+		NODE_VERSION=$$(node --version | cut -d'v' -f2); \
+		NODE_MAJOR=$$(echo $$NODE_VERSION | cut -d'.' -f1); \
+		if [ $$NODE_MAJOR -lt 16 ]; then \
+			echo "$(YELLOW)⚠ Node.js version $$NODE_VERSION is too old (need >= 16.0.0)$(NC)"; \
+			echo "  Run: make install-npm"; \
+		else \
+			echo "$(GREEN)✓ Node.js is installed$(NC) (v$$NODE_VERSION)"; \
+		fi; \
+	fi
+
+	@# Check npm (optional - only needed for native builds or dev mode)
+	@if [ -z "$(HAS_NPM)" ]; then \
+		echo "$(YELLOW)⚠ npm is not installed (optional - only needed for native builds/dev mode)$(NC)"; \
+		echo "  Container builds work without npm on host"; \
+	else \
+		NPM_VERSION=$$(npm --version); \
+		echo "$(GREEN)✓ npm is installed$(NC) (v$$NPM_VERSION)"; \
+	fi
+
+	@# Check for Xpra (optional - needed for web-based X11 display)
+	@if command -v xpra >/dev/null 2>&1; then \
+		XPRA_VERSION=$$(xpra --version 2>&1 | head -1 | cut -d' ' -f2 || echo "unknown"); \
+		echo "$(GREEN)✓ Xpra is installed$(NC) (v$$XPRA_VERSION)"; \
+	else \
+		echo "$(YELLOW)⚠ Xpra is not installed (optional - for browser-based app display)$(NC)"; \
+		echo "  Enables running Kit apps and viewing them in your browser"; \
+		echo "  To install: make install-xpra"; \
+	fi
+
+	@# Check for NVIDIA GPU (optional but recommended)
+	@if command -v nvidia-smi >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ NVIDIA GPU detected$(NC)"; \
+		nvidia-smi --query-gpu=name --format=csv,noheader | head -1; \
+	else \
+		echo "$(YELLOW)⚠ No NVIDIA GPU detected$(NC) (optional but recommended)"; \
+	fi
+
+	@echo ""
+	@if [ -n "$$EXIT_CODE" ]; then \
+		echo "$(RED)Some required dependencies are missing. Run 'make install-deps' to install them.$(NC)"; \
+		exit 1; \
+	else \
+		echo "$(GREEN)All core dependencies are available!$(NC)"; \
+		echo "$(BLUE)Note: Node.js is optional - only needed for Kit Playground$(NC)"; \
+	fi
+
+# Install all missing dependencies
+.PHONY: install-deps
+install-deps:
+	@echo "$(BLUE)Installing missing dependencies...$(NC)"
+	@if [ -z "$(HAS_PYTHON)" ]; then \
+		$(MAKE) install-python; \
+	fi
+	@if [ -z "$(HAS_NPM)" ] || [ -z "$(HAS_NODE)" ]; then \
+		$(MAKE) install-npm; \
+	fi
+	@$(MAKE) install-python-deps
+	@echo "$(GREEN)Dependencies installation complete!$(NC)"
+
+# Install Node.js and npm
+.PHONY: install-npm
+install-npm:
+	@echo "$(BLUE)Installing Node.js and npm...$(NC)"
+ifeq ($(OS),linux)
+	@if [ -z "$(PACKAGE_MANAGER)" ]; then \
+		echo "$(RED)No package manager found. Please install Node.js manually:$(NC)"; \
+		echo "  https://nodejs.org/en/download/"; \
+		exit 1; \
+	fi
+	@echo "Using package manager: $(PACKAGE_MANAGER)"
+	@$(NPM_INSTALL_CMD) || { \
+		echo "$(RED)Failed to install Node.js. Trying alternative method...$(NC)"; \
+		curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -; \
+		sudo apt-get install -y nodejs; \
+	}
+endif
+ifeq ($(OS),macos)
+	@if [ -z "$(PACKAGE_MANAGER)" ]; then \
+		echo "$(YELLOW)Homebrew not found. Installing Homebrew first...$(NC)"; \
+		/bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; \
+	fi
+	@brew install node || { \
+		echo "$(RED)Failed to install Node.js via Homebrew$(NC)"; \
+		echo "Please install manually from: https://nodejs.org/en/download/"; \
+		exit 1; \
+	}
+endif
+ifeq ($(OS),windows)
+	@echo "$(YELLOW)Please install Node.js using one of these methods:$(NC)"
+	@echo "1. Download installer from: https://nodejs.org/en/download/"
+	@echo "2. Using winget: winget install OpenJS.NodeJS"
+	@echo "3. Using chocolatey: choco install nodejs"
+	@exit 1
+endif
+	@echo "$(GREEN)Node.js and npm installed successfully!$(NC)"
+
+# Dependency utilities
+.PHONY: deps-estimate
+deps-estimate:
+	@BW=$${BANDWIDTH:-50}; \
+	 echo "$(BLUE)Estimating dependency download time (bandwidth=$$BW Mbps)...$(NC)"; \
+	 $(PYTHON) tools/kit_deps/cli.py estimate --bandwidth $$BW
+
+.PHONY: deps-validate
+deps-validate:
+	@ARGS=""; \
+	 if [ "$(VERBOSE)" = "1" ]; then ARGS="$$ARGS -v"; fi; \
+	 if [ "$(CHECK_REGISTRY)" = "1" ]; then ARGS="$$ARGS --check-registry"; fi; \
+	 echo "$(BLUE)Validating .kit dependencies...$(NC)"; \
+	 $(PYTHON) tools/kit_deps/cli.py validate $$ARGS
+
+.PHONY: deps-prefetch
+deps-prefetch:
+	@CONF=$${CONFIG:-release}; ARGS=""; \
+	 if [ "$(VERBOSE)" = "1" ]; then ARGS="$$ARGS -v"; fi; \
+	 echo "$(BLUE)Pre-fetching extensions (config=$$CONF)...$(NC)"; \
+	 $(PYTHON) tools/kit_deps/cli.py prefetch --config $$CONF $$ARGS
+
+# Install Python
+.PHONY: install-python
+install-python:
+	@echo "$(BLUE)Installing Python...$(NC)"
+ifeq ($(OS),linux)
+	@sudo apt-get update && sudo apt-get install -y python3 python3-pip || \
+	 sudo yum install -y python3 python3-pip || \
+	 sudo dnf install -y python3 python3-pip || \
+	 sudo pacman -S --noconfirm python python-pip
+endif
+ifeq ($(OS),macos)
+	@brew install python3 || { \
+		echo "$(RED)Failed to install Python via Homebrew$(NC)"; \
+		echo "Please install manually from: https://www.python.org/downloads/"; \
+		exit 1; \
+	}
+endif
+ifeq ($(OS),windows)
+	@echo "$(YELLOW)Please install Python from:$(NC)"
+	@echo "https://www.python.org/downloads/"
+	@echo "Make sure to check 'Add Python to PATH' during installation"
+	@exit 1
+endif
+	@echo "$(GREEN)Python installed successfully!$(NC)"
+
+# Install Python dependencies
+.PHONY: install-python-deps
+install-python-deps:
+	@echo "$(BLUE)Installing Python dependencies...$(NC)"
+	@if [ -f requirements.txt ]; then \
+		echo "Installing core dependencies from requirements.txt..."; \
+		./tools/packman/python.sh -m pip install -q -r requirements.txt || { \
+			echo "$(YELLOW)Warning: Failed to install with packman Python, trying system Python...$(NC)"; \
+			$(PYTHON) -m pip install --user -q -r requirements.txt || { \
+				echo "$(RED)Failed to install Python dependencies$(NC)"; \
+				echo "Please install manually: pip install -r requirements.txt"; \
+				exit 1; \
+			}; \
+		}; \
+		echo "$(GREEN)✓ Python dependencies installed$(NC)"; \
+	else \
+		echo "$(YELLOW)Warning: requirements.txt not found$(NC)"; \
+	fi
+
+# Install Xpra for web-based X11 display
+.PHONY: install-xpra
+install-xpra:
+	@echo "$(BLUE)Installing Xpra...$(NC)"
+ifeq ($(OS),linux)
+	@echo "Detecting Linux distribution..."
+	@if [ -f /etc/os-release ]; then \
+		. /etc/os-release; \
+		echo "Distribution: $$NAME $$VERSION_ID"; \
+		case "$$ID" in \
+		ubuntu|debian) \
+			echo "$(BLUE)Installing Xpra on Ubuntu/Debian...$(NC)"; \
+			echo "Adding Xpra repository GPG key..."; \
+			wget -q https://xpra.org/gpg.asc -O- | sudo apt-key add - || { \
+				echo "$(RED)Failed to add Xpra GPG key$(NC)"; \
+				exit 1; \
+			}; \
+			echo "Adding Xpra repository to sources..."; \
+			echo "deb https://xpra.org/ $$VERSION_CODENAME main" | sudo tee /etc/apt/sources.list.d/xpra.list || { \
+				echo "$(RED)Failed to add Xpra repository$(NC)"; \
+				exit 1; \
+			}; \
+			echo "Updating package list..."; \
+			sudo apt-get update -qq; \
+			echo "Installing xpra and xpra-html5..."; \
+			sudo apt-get install -y xpra xpra-html5 || { \
+				echo "$(RED)Failed to install Xpra$(NC)"; \
+				exit 1; \
+			}; \
+			;; \
+			fedora|rhel|centos) \
+				echo "$(BLUE)Installing Xpra on Fedora/RHEL/CentOS...$(NC)"; \
+				sudo dnf install -y xpra xpra-html5 || { \
+					echo "$(YELLOW)Failed with dnf, trying yum...$(NC)"; \
+					sudo yum install -y xpra xpra-html5 || { \
+						echo "$(RED)Failed to install Xpra$(NC)"; \
+						exit 1; \
+					}; \
+				}; \
+				;; \
+			arch) \
+				echo "$(BLUE)Installing Xpra on Arch Linux...$(NC)"; \
+				sudo pacman -S --noconfirm xpra || { \
+					echo "$(RED)Failed to install Xpra$(NC)"; \
+					exit 1; \
+				}; \
+				;; \
+			*) \
+				echo "$(YELLOW)Unknown distribution: $$ID$(NC)"; \
+				echo "Please install Xpra manually from: https://xpra.org/"; \
+				exit 1; \
+				;; \
+		esac; \
+	else \
+		echo "$(RED)Cannot detect Linux distribution$(NC)"; \
+		echo "Please install Xpra manually from: https://xpra.org/"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)✓ Xpra installed successfully!$(NC)"
+	@xpra --version
+endif
+ifeq ($(OS),macos)
+	@echo "$(YELLOW)Xpra installation on macOS:$(NC)"
+	@echo "1. Install via Homebrew: brew install xpra"
+	@echo "2. Or download from: https://xpra.org/dists/MacOS/"
+	@exit 1
+endif
+ifeq ($(OS),windows)
+	@echo "$(YELLOW)Xpra installation on Windows:$(NC)"
+	@echo "1. Download installer from: https://xpra.org/dists/windows/"
+	@echo "2. Or use winget: winget install Xpra"
+	@exit 1
+endif
+
+
+# Prepare environment (install dependencies and handle licensing)
+.PHONY: build
+build: check-deps
+	@echo "$(BLUE)Preparing build environment...$(NC)"
+	@./repo.sh build --fetch-only --licensing
+	@echo "$(GREEN)✓ Build environment ready$(NC)"
+
+# Build Kit applications (full build)
+.PHONY: build-apps
+build-apps: check-deps
+	@echo "$(BLUE)Building Kit applications...$(NC)"
+	@./repo.sh build
+
+# Stop playground processes
+.PHONY: playground-stop
+playground-stop:
+	@echo "$(BLUE)Stopping all playground and application processes...$(NC)"
+	@# Kill web_server.py backend processes
+	@-pgrep -f "python.*web_server\.py" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "python.*web_server\.py" | xargs -r kill -9 2>/dev/null || true
+	@# Kill processes on playground ports (3000 for UI, 5000 for backend)
+	@-lsof -ti:3000,5000 2>/dev/null | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-lsof -ti:3000,5000 2>/dev/null | xargs -r kill -9 2>/dev/null || true
+	@# Kill Vite dev server processes
+	@-pgrep -f "vite.*kit_playground" | xargs -r kill -9 2>/dev/null || true
+	@-pgrep -f "npm.*kit_playground.*dev" | xargs -r kill -9 2>/dev/null || true
+	@-pgrep -f "node.*kit_playground" | xargs -r kill -9 2>/dev/null || true
+	@# Kill Xpra processes (if used for remote display)
+	@-pkill -f "xpra.*start" 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pkill -9 -f "xpra.*start" 2>/dev/null || true
+	@# Kill running Kit applications (*.kit files)
+	@-pgrep -f "kit.*\.kit" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "kit.*\.kit" | xargs -r kill -9 2>/dev/null || true
+	@# Also kill by kit executable pattern
+	@-pgrep -f "_build.*kit/kit" | xargs -r kill 2>/dev/null || true
+	@sleep 0.5 2>/dev/null || true
+	@-pgrep -f "_build.*kit/kit" | xargs -r kill -9 2>/dev/null || true
+	@echo "$(GREEN)✓ All playground and application processes stopped$(NC)"
+
+# Start playground processes
+.PHONY: playground-start
+playground-start:
+	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Starting Kit Playground...$(NC)"
+	@REMOTE=$(REMOTE) PRODUCTION=$(PRODUCTION) $(KIT_PLAYGROUND_DIR)/dev.sh
+
+# Setup Xpra OpenGL (whitelists llvmpipe software renderer)
+# This runs automatically before playground-start
+.PHONY: playground-setup-xpra
+playground-setup-xpra:
+	@if command -v xpra >/dev/null 2>&1; then \
+		if [ -w /usr/lib/python3/dist-packages/xpra/opengl/drivers.py ] 2>/dev/null; then \
+			./tools/setup_xpra_opengl.sh; \
+		elif sudo -n true 2>/dev/null; then \
+			sudo ./tools/setup_xpra_opengl.sh; \
+		else \
+			echo "$(YELLOW)[Xpra OpenGL] Skipping setup - requires sudo or file permissions$(NC)"; \
+		fi \
+	fi
+
+# Main playground target: Stop any existing instances, then start fresh
+# Usage: make playground                       - Development mode (localhost)
+#        make playground REMOTE=1              - Development mode with remote access
+#        make playground PRODUCTION=1          - Production mode (optimized)
+#        make playground REMOTE=1 PRODUCTION=1 - Production mode with remote access
+.PHONY: playground
+playground: playground-stop playground-setup-xpra playground-start
+
+# Build UI (production bundle)
+.PHONY: playground-build
+playground-build: streaming-client-build
+	@echo "$(BLUE)Building Kit Playground UI (production)...$(NC)"
+	@if [ -z "$(HAS_NODE)" ] || [ -z "$(HAS_NPM)" ]; then \
+		echo "$(RED)✗ Node.js and npm are required$(NC)"; \
+		echo "  Run: make install-npm"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)Installing dependencies...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm install
+	@echo "$(YELLOW)Building production bundle...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui && npm run build
+	@echo "$(GREEN)✓ UI built successfully!$(NC)"
+	@echo "$(BLUE)Build output: $(KIT_PLAYGROUND_DIR)/ui/dist/$(NC)"
+
+# Build WebRTC streaming client
+.PHONY: streaming-client-build
+streaming-client-build:
+	@echo "$(BLUE)Building WebRTC streaming client (ov-web-client)...$(NC)"
+	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client/package.json" ]; then \
+		echo "$(YELLOW)Initializing WebRTC client submodule...$(NC)"; \
+		git submodule update --init --recursive; \
+	fi
+	@echo "$(YELLOW)Installing client dependencies...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client && npm install
+	@echo "$(YELLOW)Building client...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client && npm run build
+	@echo "$(GREEN)✓ WebRTC client built: $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client/dist$(NC)"
+
+# Dev mode for WebRTC client
+.PHONY: streaming-client-dev
+streaming-client-dev:
+	@echo "$(BLUE)Starting WebRTC streaming client in dev mode...$(NC)"
+	@if [ ! -f "$(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client/package.json" ]; then \
+		echo "$(YELLOW)Initializing WebRTC client submodule...$(NC)"; \
+		git submodule update --init --recursive; \
+	fi
+	@cd $(KIT_PLAYGROUND_DIR)/ui/public/ov-web-client && npm install && npm run dev
+
+# Clean build artifacts
+.PHONY: playground-clean
+playground-clean:
+	@echo "$(BLUE)Cleaning Kit Playground artifacts...$(NC)"
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/dist
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules/.vite
+	@rm -rf $(KIT_PLAYGROUND_DIR)/ui/node_modules
+	@rm -f $(KIT_PLAYGROUND_DIR)/ui/.env
+	@echo "$(GREEN)✓ Playground cleanup complete$(NC)"
+
+# Create new template (CLI)
+.PHONY: template-new
+template-new: check-deps
+	@echo "$(BLUE)Creating new template...$(NC)"
+	@./repo.sh template new
+
+# Run tests
+.PHONY: test
+test: check-deps
+	@echo "$(BLUE)Running unit tests with SDK environment (no external deps)...$(NC)"
+	@# Ensure pytest is available in Packman Python
+	@if [ -f $(KIT_PLAYGROUND_DIR)/requirements-test.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/requirements-test.txt || true; \
+	else \
+		./tools/packman/python.sh -m pip install -q pytest pytest-asyncio pytest-cov || true; \
+	fi
+	@# Ensure backend runtime deps for tests (flask, socketio)
+	@if [ -f $(KIT_PLAYGROUND_DIR)/backend/requirements.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/backend/requirements.txt || true; \
+	fi
+	@# Workaround for packman vendor sentry_sdk parse_version usage
+	@./tools/packman/python.sh -m pip install -q packaging || true
+	@./tools/packman/python.sh -m pytest -q -m "not integration and not compatibility and not streaming and not standalone and not cli" $(PYTEST_ARGS)
+
+.PHONY: test-all
+test-all: check-deps
+	@echo "$(BLUE)Running full test suite with SDK environment...$(NC)"
+	@# Ensure pytest is available in Packman Python
+	@if [ -f $(KIT_PLAYGROUND_DIR)/requirements-test.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/requirements-test.txt || true; \
+	else \
+		./tools/packman/python.sh -m pip install -q pytest pytest-asyncio pytest-cov || true; \
+	fi
+	@# Ensure backend runtime deps for tests (flask, socketio)
+	@if [ -f $(KIT_PLAYGROUND_DIR)/backend/requirements.txt ]; then \
+		./tools/packman/python.sh -m pip install -q -r $(KIT_PLAYGROUND_DIR)/backend/requirements.txt || true; \
+	fi
+	@./tools/packman/python.sh -m pytest -q $(PYTEST_ARGS)
+
+# Run tests with SDK environment (Packman Python)
+.PHONY: test-sdk
+test-sdk: check-deps
+	@echo "$(BLUE)Running tests with SDK (Packman Python) environment...$(NC)"
+	@./tools/packman/python.sh -m pytest -q $(PYTEST_ARGS)
+
+.PHONY: test-sdk-quick
+test-sdk-quick: check-deps
+	@echo "$(BLUE)Running quick tests with SDK (exclude slow)...$(NC)"
+	@./tools/packman/python.sh -m pytest -q -m "not slow" $(PYTEST_ARGS)
+
+# Run Kit Playground tests
+.PHONY: test-playground
+test-playground:
+	@echo "$(BLUE)Running Kit Playground test suite...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && ./tests/run_tests.sh
+
+# Run quick tests (excluding slow integration tests)
+.PHONY: test-quick
+test-quick:
+	@echo "$(BLUE)Running quick tests...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && ./tests/run_tests.sh --quick
+
+# Run tests with coverage
+.PHONY: test-coverage
+test-coverage:
+	@echo "$(BLUE)Running tests with coverage analysis...$(NC)"
+	@cd $(KIT_PLAYGROUND_DIR) && ./tests/run_tests.sh --coverage
+
+# Run all tests (repo + playground)
+.PHONY: test-all
+test-all: test test-playground
+
+# Compatibility tests (Phase 1 baseline)
+.PHONY: test-compatibility
+test-compatibility:
+	@echo "$(BLUE)Running compatibility baseline tests (fast)...$(NC)"
+	@echo "$(YELLOW)Testing CLI workflows and template creation$(NC)"
+	@python3 -m pytest tests/compatibility/ -v -m "not slow"
+	@echo "$(GREEN)✓ Compatibility tests complete$(NC)"
+
+.PHONY: test-compatibility-slow
+test-compatibility-slow:
+	@echo "$(BLUE)Running compatibility tests with builds and launches (SLOW - 1+ hour)...$(NC)"
+	@echo "$(YELLOW)⚠  This will build and launch ALL templates with --no-window$(NC)"
+	@echo "$(YELLOW)⚠  Estimated time: 1-2 hours$(NC)"
+	@python3 -m pytest tests/compatibility/ -v -m "slow"
+	@echo "$(GREEN)✓ Slow compatibility tests complete$(NC)"
+
+.PHONY: test-compatibility-all
+test-compatibility-all:
+	@echo "$(BLUE)Running ALL compatibility tests (fast + slow)...$(NC)"
+	@python3 -m pytest tests/compatibility/ -v
+	@echo "$(GREEN)✓ All compatibility tests complete$(NC)"
+
+.PHONY: test-compatibility-report
+test-compatibility-report:
+	@echo "$(BLUE)Running compatibility tests with detailed report...$(NC)"
+	@python3 -m pytest tests/compatibility/ -v -m "not slow" --tb=short | tee tests/compatibility/test_report_$$(date +%Y%m%d_%H%M%S).txt
+	@echo "$(GREEN)✓ Report saved to tests/compatibility/$(NC)"
+
+
+# Clean build artifacts (includes playground cleanup)
+.PHONY: clean
+clean: playground-clean
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
+	@rm -rf $(BUILD_DIR)
+	@rm -rf $(ROOT_DIR)/_compiler
+	@rm -rf $(ROOT_DIR)/_repo
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "$(GREEN)✓ Clean complete!$(NC)"
+
+# Clean all user-created applications and extensions (for testing iteration)
+.PHONY: clean-apps
+clean-apps:
+	@echo "$(BLUE)Removing all user-created applications and extensions...$(NC)"
+	@echo "$(YELLOW)⚠  This will delete ALL applications in source/apps/$(NC)"
+	@echo "$(YELLOW)⚠  This will delete template-generated extensions$(NC)"
+	@echo "$(YELLOW)⚠  System directories (exts, extscache) will be preserved$(NC)"
+	@echo ""
+	@# Count apps to be deleted (excluding system dirs)
+	@APP_COUNT=$$(find $(ROOT_DIR)/source/apps -maxdepth 1 -type d ! -name apps ! -name exts ! -name extscache ! -name '.*' | wc -l); \
+	if [ $$APP_COUNT -gt 0 ]; then \
+		echo "$(YELLOW)Found $$APP_COUNT application(s) to remove:$(NC)"; \
+		find $(ROOT_DIR)/source/apps -maxdepth 1 -type d ! -name apps ! -name exts ! -name extscache ! -name '.*' -exec basename {} \; | sed 's/^/  - /'; \
+		echo ""; \
+		echo "Removing applications..."; \
+		find $(ROOT_DIR)/source/apps -maxdepth 1 -type d ! -name apps ! -name exts ! -name extscache ! -name '.*' -exec rm -rf {} + 2>/dev/null || true; \
+		echo "$(GREEN)✓ Removed $$APP_COUNT application(s)$(NC)"; \
+	else \
+		echo "$(GREEN)No user applications found to remove$(NC)"; \
+	fi
+	@# Also remove any stray .kit files in the root of source/apps (flat structure)
+	@if ls $(ROOT_DIR)/source/apps/*.kit 1> /dev/null 2>&1; then \
+		echo "$(YELLOW)Found stray .kit files (flat structure), removing...$(NC)"; \
+		rm -f $(ROOT_DIR)/source/apps/*.kit; \
+		echo "$(GREEN)✓ Cleaned up stray .kit files$(NC)"; \
+	fi
+	@# Remove template-generated extensions (viewer_messaging, viewer_setup, editor_setup, etc.)
+	@echo "$(BLUE)Removing template-generated extensions...$(NC)"
+	@EXT_COUNT=$$(find $(ROOT_DIR)/source/extensions -maxdepth 1 -type d \( -name "*.viewer_messaging" -o -name "*.viewer_setup" -o -name "*.editor_setup" -o -name "*.composer_setup" -o -name "*.explorer_setup" \) | wc -l); \
+	if [ $$EXT_COUNT -gt 0 ]; then \
+		echo "$(YELLOW)Found $$EXT_COUNT extension(s) to remove:$(NC)"; \
+		find $(ROOT_DIR)/source/extensions -maxdepth 1 -type d \( -name "*.viewer_messaging" -o -name "*.viewer_setup" -o -name "*.editor_setup" -o -name "*.composer_setup" -o -name "*.explorer_setup" \) -exec basename {} \; | sed 's/^/  - /'; \
+		echo ""; \
+		find $(ROOT_DIR)/source/extensions -maxdepth 1 -type d \( -name "*.viewer_messaging" -o -name "*.viewer_setup" -o -name "*.editor_setup" -o -name "*.composer_setup" -o -name "*.explorer_setup" \) -exec rm -rf {} + 2>/dev/null || true; \
+		echo "$(GREEN)✓ Removed $$EXT_COUNT extension(s)$(NC)"; \
+	else \
+		echo "$(GREEN)No template extensions found to remove$(NC)"; \
+	fi
+	@# Clean repo.toml apps list
+	@echo "$(BLUE)Cleaning repo.toml apps list...$(NC)"
+	@if grep -q "^apps = \[" $(ROOT_DIR)/repo.toml 2>/dev/null; then \
+		if grep -q "^apps = \[\]" $(ROOT_DIR)/repo.toml 2>/dev/null; then \
+			echo "$(GREEN)✓ repo.toml apps list already empty$(NC)"; \
+		else \
+			sed -i.bak 's/^apps = \[.*\]/apps = []/' $(ROOT_DIR)/repo.toml && rm -f $(ROOT_DIR)/repo.toml.bak; \
+			echo "$(GREEN)✓ Cleared repo.toml apps list$(NC)"; \
+		fi; \
+	fi
+	@# Stage any git deletions
+	@echo "$(BLUE)Staging git deletions...$(NC)"
+	@git add -u source/apps/ source/extensions/ 2>/dev/null || true
+	@DELETED=$$(git status --short source/apps/ source/extensions/ 2>/dev/null | grep "^D" | wc -l); \
+	if [ $$DELETED -gt 0 ]; then \
+		echo "$(GREEN)✓ Staged $$DELETED deleted file(s)$(NC)"; \
+	else \
+		echo "$(GREEN)✓ No deletions to stage$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(GREEN)Application and extension cleanup complete!$(NC)"
+	@echo "$(BLUE)Note: Build system uses dynamic discovery, so new apps will be auto-detected$(NC)"
+
+# Deep clean including dependencies and applications
+.PHONY: clean-all
+clean-all: clean playground-clean clean-apps
+	@echo "$(GREEN)Deep clean complete - all build artifacts and applications removed!$(NC)"
+
+# Clean a specific project
+# Usage: make clean-project PROJECT=my_company.explorer
+.PHONY: clean-project
+clean-project:
+ifndef PROJECT
+	@echo "$(RED)Error: PROJECT variable required$(NC)"
+	@echo ""
+	@echo "Usage: make clean-project PROJECT=<project_name>"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make clean-project PROJECT=my_company.explorer"
+	@echo "  make clean-project PROJECT=my_app"
+	@echo ""
+	@echo "This removes all traces of the project from source/ and _build/"
+	@exit 1
+endif
+	@echo "$(BLUE)Cleaning project: $(PROJECT)$(NC)"
+	@./cleanup-project.sh $(PROJECT)
+
+# Clean all user-created projects via API
+# Usage: make clean-projects                - Clean all user projects (excludes test projects)
+#        make clean-projects INCLUDE_TEST=1 - Clean all projects including tests
+.PHONY: clean-projects
+clean-projects:
+	@echo "$(BLUE)Cleaning all user-created projects via Kit Playground API...$(NC)"
+	@if [ "$(INCLUDE_TEST)" = "1" ]; then \
+		echo "$(YELLOW)Including test projects in cleanup$(NC)"; \
+		curl -X POST "http://localhost:5000/api/projects/clean?include_test=true" \
+			-H "Content-Type: application/json" \
+			-s | python3 -m json.tool || echo "$(RED)Failed to clean projects. Is the playground running?$(NC)"; \
+	else \
+		echo "$(YELLOW)Excluding test projects (use INCLUDE_TEST=1 to include)$(NC)"; \
+		curl -X POST "http://localhost:5000/api/projects/clean?include_test=false" \
+			-H "Content-Type: application/json" \
+			-s | python3 -m json.tool || echo "$(RED)Failed to clean projects. Is the playground running?$(NC)"; \
+	fi
+	@echo "$(GREEN)✓ Project cleanup complete!$(NC)"
+
+# Platform-specific repo commands
+.PHONY: repo-build
+repo-build: check-deps
+	@./repo.sh build
+
+.PHONY: repo-launch
+repo-launch: check-deps
+	@./repo.sh launch
+
+.PHONY: repo-package
+repo-package: check-deps
+	@./repo.sh package
+
+# Windows-specific targets (when running on Windows via Git Bash or WSL)
+ifeq ($(OS),windows)
+.PHONY: win-build
+win-build:
+	@cmd.exe /c "repo.bat build"
+
+.PHONY: win-launch
+win-launch:
+	@cmd.exe /c "repo.bat launch"
+endif
+
+# Help for Windows users
+.PHONY: windows-help
+windows-help:
+	@echo "$(BLUE)Windows Users:$(NC)"
+	@echo ""
+	@echo "Option 1: Use Git Bash (Recommended)"
+	@echo "  - Install Git for Windows: https://git-scm.com/download/win"
+	@echo "  - Open Git Bash and run: make playground"
+	@echo ""
+	@echo "Option 2: Use WSL2"
+	@echo "  - Install WSL2: wsl --install"
+	@echo "  - Open WSL terminal and run: make playground"
+	@echo ""
+	@echo "Option 3: Use native Windows commands"
+	@echo "  - Run repo.bat instead of make"
+	@echo "  - Use 'npm' commands directly in kit_playground/"
+
+# Version check
+.PHONY: version
+version:
+	@echo "Kit App Template Build System"
+	@echo "OS: $(OS) ($(UNAME_M))"
+	@if [ -n "$(HAS_PYTHON)" ]; then $(PYTHON) --version; fi
+	@if [ -n "$(HAS_NODE)" ]; then echo "Node.js: $$(node --version)"; fi
+	@if [ -n "$(HAS_NPM)" ]; then echo "npm: v$$(npm --version)"; fi
+	@if [ -n "$(HAS_GIT)" ]; then git --version; fi
+
+.DEFAULT_GOAL := all
