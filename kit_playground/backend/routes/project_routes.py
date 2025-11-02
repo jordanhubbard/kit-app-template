@@ -491,8 +491,8 @@ def create_project_routes(
                     original_host = request.headers.get('X-Forwarded-Host', request.host)
                     client_host = registry.extract_client_host(original_host)
 
-                    # Get streaming URL with remote hostname
-                    streaming_url = get_streaming_url(port=streaming_port, hostname=client_host)
+                    # Get streaming URL with remote hostname. Kit App Streaming serves HTTPS with a self-signed cert.
+                    streaming_url = get_streaming_url(port=streaming_port, hostname=client_host, protocol='https')
 
                     logger.info(f"[STREAMING URL] Request.host: {request.host}")
                     logger.info(f"[STREAMING URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
