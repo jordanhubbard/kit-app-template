@@ -133,10 +133,18 @@ The fastest way to get started with a visual, browser-based interface:
 
 **1. Clone and Setup:**
 ```bash
-git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
+# Clone with submodules (includes WebRTC streaming client)
+git clone --recurse-submodules https://github.com/NVIDIA-Omniverse/kit-app-template.git
 cd kit-app-template
 make install-deps  # Installs Python packages + Node.js for GUI
 ```
+
+**1b. (Optional) Build Streaming Client:**
+If you plan to use Kit App Streaming (WebRTC), build the streaming client:
+```bash
+make streaming-client-build
+```
+This builds the NVIDIA WebRTC client for browser-based streaming. Skip this if you only need local display or Xpra.
 
 **2. Launch Kit Playground:**
 ```bash
@@ -180,8 +188,12 @@ For developers who prefer terminal workflows:
 
 **1. Clone and Setup:**
 ```bash
-git clone https://github.com/NVIDIA-Omniverse/kit-app-template.git
+# Clone with submodules (includes WebRTC streaming client)
+git clone --recurse-submodules https://github.com/NVIDIA-Omniverse/kit-app-template.git
 cd kit-app-template
+
+# (Optional) Build streaming client if you need WebRTC streaming
+make streaming-client-build
 ```
 
 **2. Create an Application:**
@@ -918,6 +930,60 @@ On first launch, Kit Playground will:
   - Test on multiple device sizes
   - Save projects regularly
   - Use version control for team projects
+
+### Kit App Streaming (WebRTC)
+
+Kit Playground supports three display modes for running applications:
+
+1. **Direct Display** - Native window on your local machine (requires DISPLAY)
+2. **Xpra** - Remote X11 desktop in browser (fallback when no DISPLAY)
+3. **Kit App Streaming (WebRTC)** - High-performance browser streaming
+
+#### Setting Up Streaming
+
+**1. Build the WebRTC Client (one-time setup):**
+```bash
+make streaming-client-build
+```
+
+This builds NVIDIA's official WebRTC streaming client from the `ov-web-client` submodule.
+
+**2. Create a Streaming-Enabled App:**
+
+In Kit Playground:
+- Create a new project from any template
+- In the configuration step, select **"Omniverse Kit App Streaming (Default)"** layer
+- Complete project creation
+
+From CLI:
+```bash
+./repo.sh template new omni_usd_viewer \
+  --name my_company.streaming_viewer \
+  --display-name "Streaming Viewer"
+# Then add streaming layer manually to the .kit file
+```
+
+**3. Launch with Streaming:**
+
+Kit Playground automatically detects streaming-enabled apps. When you launch:
+- The app starts with `--no-window` (headless mode)
+- WebRTC server opens on port 47995
+- A new browser tab auto-opens with the streaming client
+- You see the rendered application in your browser
+
+**Architecture:**
+```
+┌─────────────────┐         WebRTC          ┌──────────────────┐
+│  Kit App        │ ◄───────(47995)────────►│  Browser Client  │
+│  (Headless)     │   Video/Audio/Input     │  (ov-web-client) │
+└─────────────────┘                         └──────────────────┘
+```
+
+**Troubleshooting:**
+- If the client doesn't open, ensure you ran `make streaming-client-build`
+- Check that port 47995 is not blocked by firewall
+- For self-signed certificates, accept the browser security warning
+- View logs in Kit Playground's Output panel
 
 ## Working with Multiple Applications and Standalone Projects
 

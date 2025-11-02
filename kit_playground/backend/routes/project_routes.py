@@ -496,10 +496,23 @@ def create_project_routes(
                     streaming_server = f"{client_host}:{streaming_port}"
                     streaming_url = f"/ov-web-client-loader.html?server={streaming_server}"
 
-                    logger.info(f"[STREAMING URL] Request.host: {request.host}")
-                    logger.info(f"[STREAMING URL] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
-                    logger.info(f"[STREAMING URL] Client host: {client_host}")
-                    logger.info(f"[STREAMING URL] Constructed URL: {streaming_url}")
+                    # Check if streaming client is built
+                    from pathlib import Path
+                    client_dist = Path(__file__).parent.parent.parent / 'ui' / 'public' / 'ov-web-client' / 'dist'
+                    if not client_dist.exists():
+                        logger.warning("WebRTC streaming client not built! Run: make streaming-client-build")
+                        socketio.emit('log', {
+                            'level': 'warning',
+                            'source': 'runtime',
+                            'message': '⚠️  WebRTC client not built. Run: make streaming-client-build'
+                        })
+
+                    logger.info(f"[STREAMING] Mode: Kit App Streaming (WebRTC)")
+                    logger.info(f"[STREAMING] Request.host: {request.host}")
+                    logger.info(f"[STREAMING] X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'not set')}")
+                    logger.info(f"[STREAMING] Client host: {client_host}")
+                    logger.info(f"[STREAMING] Server address: {streaming_server}")
+                    logger.info(f"[STREAMING] Loader URL: {streaming_url}")
 
                     socketio.emit('log', {
                         'level': 'info',
