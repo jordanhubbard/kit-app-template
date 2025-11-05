@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Square, RotateCcw, CheckCircle, XCircle, Loader, Terminal, Play, Zap } from 'lucide-react';
+import { X, Square, RotateCcw, CheckCircle, XCircle, Loader, Terminal, Play, Zap, Package } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { useJob, type Job } from '../../hooks/useJob';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -250,11 +250,28 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     });
   };
 
+  const handlePackage = async () => {
+    if (!projectName) {
+      alert('No project name available for packaging');
+      return;
+    }
+
+    console.log('[BuildOutput] Packaging application:', projectName);
+
+    // Open a new panel for package output
+    openPanel('build-output', {
+      projectName,
+      jobType: 'package',
+      autoStart: true,  // This will trigger startJob in the new panel's useEffect
+    });
+  };
+
   const statusConfig = getStatusConfig();
   const canStart = !job || (!initialJobId && !job.id);
   const canCancel = job?.status === 'pending' || job?.status === 'running';
   const canRetry = job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'completed' || buildFailed;
   const canLaunch = jobType === 'build' && buildCompleted && projectName;
+  const canPackage = jobType === 'build' && buildCompleted && projectName;
   const canRelaunch = jobType === 'launch' && projectName && (job?.status === 'running' || job?.status === 'completed');
   const showPreviewButton = jobType === 'launch' && projectName;
   const previewReady = xpraReady || isStreamingActive;
@@ -281,6 +298,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               {job?.type === 'build' && 'Build Output'}
               {job?.type === 'launch' && 'Launch Output'}
               {job?.type === 'create' && 'Create Output'}
+              {job?.type === 'package' && 'Package Output'}
               {!job && 'Output'}
             </h3>
             <div className="flex items-center gap-2 text-xs">
@@ -321,6 +339,25 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               Launch
             </button>
           )}
+
+          {/* Package button next to title */}
+          {canPackage && (
+            <button
+              onClick={handlePackage}
+              className="
+                ml-2 px-4 py-2 rounded
+                bg-purple-600 hover:bg-purple-700
+                text-white text-sm font-semibold
+                transition-colors
+                flex items-center gap-2
+                shadow-sm
+              "
+              title="Package as container"
+            >
+              <Package className="w-4 h-4" />
+              Package
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -338,7 +375,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               title="Start build"
             >
               <Play className="w-4 h-4" />
-              Start {jobType === 'build' ? 'Build' : jobType === 'launch' ? 'Launch' : 'Job'}
+              Start {jobType === 'build' ? 'Build' : jobType === 'launch' ? 'Launch' : jobType === 'package' ? 'Package' : 'Job'}
             </button>
           )}
 
@@ -454,7 +491,7 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
               </h3>
               {projectName && (
                 <p className="text-text-secondary">
-                  {jobType === 'build' ? 'Building' : 'Launching'}: <span className="text-text-primary font-mono">{projectName}</span>
+                  {jobType === 'build' ? 'Building' : jobType === 'launch' ? 'Launching' : jobType === 'package' ? 'Packaging' : 'Processing'}: <span className="text-text-primary font-mono">{projectName}</span>
                 </p>
               )}
             </div>

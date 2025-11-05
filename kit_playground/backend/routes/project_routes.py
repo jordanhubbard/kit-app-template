@@ -10,7 +10,7 @@ import threading
 import shutil
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from flask import Blueprint, jsonify, request
 from flask_socketio import SocketIO
@@ -24,6 +24,22 @@ logger = logging.getLogger(__name__)
 
 # Create blueprint
 project_bp = Blueprint('projects', __name__, url_prefix='/api/projects')
+
+# Available Kit SDK versions (from NVIDIA Omniverse docs)
+AVAILABLE_KIT_VERSIONS = [
+    {"version": "108.1", "label": "Kit 108.1 (Latest)", "recommended": True},
+    {"version": "108.0", "label": "Kit 108.0", "recommended": False},
+    {"version": "107.3", "label": "Kit 107.3", "recommended": False},
+    {"version": "107.2", "label": "Kit 107.2", "recommended": False},
+    {"version": "107.0", "label": "Kit 107.0", "recommended": False},
+    {"version": "106.5", "label": "Kit 106.5", "recommended": False},
+    {"version": "106.4", "label": "Kit 106.4", "recommended": False},
+    {"version": "106.3", "label": "Kit 106.3", "recommended": False},
+    {"version": "106.2", "label": "Kit 106.2", "recommended": False},
+    {"version": "106.1", "label": "Kit 106.1", "recommended": False},
+    {"version": "106.0", "label": "Kit 106.0", "recommended": False},
+    {"version": "105.0", "label": "Kit 105.0", "recommended": False},
+]
 
 
 def _wait_for_xpra_ready(display: int, port: int, timeout: int = 30) -> bool:
@@ -1768,6 +1784,241 @@ def create_project_routes(
                 'error': str(e),
                 'deleted': {'projects': [], 'extensions': []},
                 'counts': {'projects': 0, 'extensions': 0, 'total': 0}
+            }), 500
+
+    @project_bp.route('/kit-versions', methods=['GET'])
+    def list_kit_versions():
+        """List available Kit SDK versions.
+
+        Returns:
+            JSON response with available Kit SDK versions
+        """
+        try:
+            return jsonify({
+                'success': True,
+                'versions': AVAILABLE_KIT_VERSIONS
+            })
+        except Exception as e:
+            logger.error(f"Failed to list Kit versions: {e}")
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'versions': []
+            }), 500
+
+    @project_bp.route('/package', methods=['POST'])
+    def package_project():
+        """Package a project as a container.
+
+        Request JSON:
+            - projectPath: str - Path to project directory
+            - projectName: str - Name of the project
+            - containerName: str (optional) - Name for the container image
+
+        Returns:
+            JSON response with job_id
+        """
+        try:
+            data = request.json
+            project_path = data.get('projectPath')
+            project_name = data.get('projectName')
+            container_name = data.get('containerName', project_name)
+
+            if not project_path or not project_name:
+                return jsonify({
+                    'error': 'projectPath and projectName are required'
+                }), 400
+
+            # Start package process
+            repo_root = get_repo_root()
+            
+            # Generate a unique job ID
+            import uuid
+            job_id = f"package_{uuid.uuid4().hex[:8]}"
+
+            # Emit job start event
+            if socketio:
+                socketio.emit('job_started', {
+                    'job_id': job_id,
+                    'type': 'package',
+                    'project': project_name,
+                })
+
+            # Start package in background thread
+            def package_worker():
+                try:
+                    # Emit log messages
+                    if socketio:
+                        socketio.emit('log', {
+                            'job_id': job_id,
+                            'level': 'info',
+                            'source': 'package',
+                            'message': f'Starting package process for {project_name}'
+                        })
+                        socketio.emit('log', {
+                            'job_id': job_id,
+                            'level': 'info',
+                            'source': 'package',
+                            'message': f'$ cd {repo_root}'
+                        })
+                        socketio.emit('log', {
+                            'job_id': job_id,
+                            'level': 'info',
+                            'source': 'package',
+                            'message': f'$ ./repo.sh package --container --name {container_name}'
+                        })
+
+                    # Run package command
+                    import subprocess
+                    repo_script = repo_root / 'repo.sh'
+                    
+                    process = subprocess.Popen(
+                        [str(repo_script), 'package', '--container', '--name', container_name],
+                        cwd=str(repo_root),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1
+                    )
+
+                    # Stream output
+                    for line in iter(process.stdout.readline, ''):
+                        if line:
+                            if socketio:
+                                socketio.emit('log', {
+                                    'job_id': job_id,
+                                    'level': 'info',
+                                    'source': 'package',
+                                    'message': line.rstrip()
+                                })
+
+                    process.wait()
+
+                    if process.returncode == 0:
+                        if socketio:
+                            socketio.emit('log', {
+                                'job_id': job_id,
+                                'level': 'success',
+                                'source': 'package',
+                                'message': f'Successfully packaged {project_name} as container: {container_name}'
+                            })
+                            socketio.emit('job_completed', {
+                                'job_id': job_id,
+                                'status': 'completed',
+                                'container_name': container_name
+                            })
+                    else:
+                        if socketio:
+                            socketio.emit('log', {
+                                'job_id': job_id,
+                                'level': 'error',
+                                'source': 'package',
+                                'message': f'Package failed with exit code {process.returncode}'
+                            })
+                            socketio.emit('job_failed', {
+                                'job_id': job_id,
+                                'error': f'Package failed with exit code {process.returncode}'
+                            })
+
+                except Exception as e:
+                    logger.error(f"Package worker error: {e}", exc_info=True)
+                    if socketio:
+                        socketio.emit('log', {
+                            'job_id': job_id,
+                            'level': 'error',
+                            'source': 'package',
+                            'message': f'Package error: {str(e)}'
+                        })
+                        socketio.emit('job_failed', {
+                            'job_id': job_id,
+                            'error': str(e)
+                        })
+
+            # Start worker thread
+            worker_thread = threading.Thread(target=package_worker, daemon=True)
+            worker_thread.start()
+
+            return jsonify({
+                'success': True,
+                'job_id': job_id,
+                'project': project_name,
+                'container_name': container_name
+            })
+
+        except Exception as e:
+            logger.error(f"Failed to start package: {e}", exc_info=True)
+            return jsonify({
+                'error': str(e)
+            }), 500
+
+    @project_bp.route('/containers', methods=['GET'])
+    def list_containers():
+        """List available container images created by repo package --container.
+
+        Returns:
+            JSON response with list of container images
+        """
+        try:
+            # Use docker to list images
+            import subprocess
+            
+            result = subprocess.run(
+                ['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}|{{.Size}}'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode != 0:
+                logger.error(f"Docker command failed: {result.stderr}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to list containers. Is Docker running?',
+                    'containers': []
+                })
+
+            containers = []
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+                parts = line.split('|')
+                if len(parts) >= 4:
+                    repo_tag = parts[0]
+                    # Filter out <none> images and system images
+                    if '<none>' not in repo_tag and not repo_tag.startswith('nvidia/'):
+                        containers.append({
+                            'name': repo_tag,
+                            'id': parts[1],
+                            'created': parts[2],
+                            'size': parts[3]
+                        })
+
+            return jsonify({
+                'success': True,
+                'containers': containers,
+                'count': len(containers)
+            })
+
+        except subprocess.TimeoutExpired:
+            logger.error("Docker command timed out")
+            return jsonify({
+                'success': False,
+                'error': 'Docker command timed out',
+                'containers': []
+            }), 500
+        except FileNotFoundError:
+            logger.error("Docker not found")
+            return jsonify({
+                'success': False,
+                'error': 'Docker not installed or not in PATH',
+                'containers': []
+            }), 500
+        except Exception as e:
+            logger.error(f"Failed to list containers: {e}", exc_info=True)
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'containers': []
             }), 500
 
     return project_bp

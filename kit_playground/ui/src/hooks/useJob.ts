@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 export interface Job {
   id: string;
-  type: 'build' | 'launch' | 'create';
+  type: 'build' | 'launch' | 'create' | 'package';
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   progress?: number;
   projectName?: string;
@@ -105,6 +105,33 @@ export const useJob = (): UseJobResult => {
 
         const data = await response.json();
         console.log('Launch started:', data);
+
+        setJob({
+          ...newJob,
+          status: 'running',
+          id: data.job_id || jobId,
+        });
+
+        return data.job_id || jobId;
+      } else if (type === 'package') {
+        const calculatedProjectPath = projectPath || `source/apps/${projectName}`;
+        console.log(`[useJob] Starting package for project: ${projectName} at ${calculatedProjectPath}`);
+
+        const response = await fetch('/api/projects/package', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectPath: calculatedProjectPath,
+            projectName: projectName,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Package failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Package started:', data);
 
         setJob({
           ...newJob,

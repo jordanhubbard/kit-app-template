@@ -197,6 +197,8 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
             name = data.get('name')
             display_name = data.get('displayName', name)
             version = data.get('version', '0.1.0')
+            kit_version = data.get('kitVersion')  # Optional Kit SDK version
+            use_per_app_deps = data.get('usePerAppDeps', False)  # Enable per-app dependencies
 
             if not template_name or not name:
                 return jsonify({
@@ -215,10 +217,18 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                     'source': 'build',
                     'message': f'Template: {template_name}'
                 })
+                if kit_version:
+                    socketio.emit('log', {
+                        'level': 'info',
+                        'source': 'build',
+                        'message': f'Kit SDK Version: {kit_version}'
+                    })
 
                 # Show equivalent CLI command for reproducibility
                 repo_root = Path(__file__).parent.parent.parent.parent
                 cli_cmd = f'./repo.sh template new {template_name} --name={name} --display-name="{display_name}" --version={version}'
+                if use_per_app_deps or kit_version:
+                    cli_cmd += ' --per-app-deps'
                 socketio.emit('log', {
                     'level': 'info',
                     'source': 'build',
@@ -230,6 +240,11 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                     'message': f'$ {cli_cmd}'
                 })
 
+            # Prepare options for template creation
+            options = data.get('options', {})
+            if use_per_app_deps or kit_version:
+                options['per_app_deps'] = True
+
             # Use new high-level API - handles everything cleanly
             result = template_api.create_application(
                 template_name=template_name,
@@ -238,8 +253,37 @@ def create_v2_template_routes(playground_app, template_api: TemplateAPI, socketi
                 version=version,
                 accept_license=True,  # Auto-accept for GUI
                 no_register=False,  # Use default registration
-                **data.get('options', {})
+                **options
             )
+
+            # If a custom Kit version was specified, update the per-app dependencies config
+            if kit_version and result.get('success', False):
+                try:
+                    app_dir = Path(result.get('app_dir', ''))
+                    deps_config = app_dir / 'dependencies' / 'kit-deps.toml'
+                    if deps_config.exists():
+                        import toml
+                        config = toml.load(deps_config)
+                        if 'kit_sdk' not in config:
+                            config['kit_sdk'] = {}
+                        config['kit_sdk']['version'] = kit_version
+                        with open(deps_config, 'w') as f:
+                            toml.dump(config, f)
+                        if socketio:
+                            socketio.emit('log', {
+                                'level': 'info',
+                                'source': 'build',
+                                'message': f'Set Kit SDK version to {kit_version}'
+                            })
+                        logger.info(f"Updated Kit SDK version to {kit_version} in {deps_config}")
+                except Exception as e:
+                    logger.error(f"Failed to set Kit version: {e}")
+                    if socketio:
+                        socketio.emit('log', {
+                            'level': 'warning',
+                            'source': 'build',
+                            'message': f'Warning: Could not set Kit SDK version: {e}'
+                        })
 
             if result.get('success', False):
                 # Success! Emit detailed info to UI

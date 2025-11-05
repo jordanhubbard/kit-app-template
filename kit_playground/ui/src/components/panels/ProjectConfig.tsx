@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, Folder, ChevronDown, ChevronUp, AlertCircle, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Sparkles, Folder, ChevronDown, ChevronUp, AlertCircle, Layers, Package } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { apiService } from '../../services/api';
 import type { TemplateModel } from '../../hooks/useTemplates';
 import { useLayers } from '../../hooks/useLayers';
+
+interface KitVersion {
+  version: string;
+  label: string;
+  recommended: boolean;
+}
 
 interface ProjectConfigProps {
   template: TemplateModel;
@@ -78,6 +84,11 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const [displayName, setDisplayName] = useState(defaultDisplayName);
   const [outputDir, setOutputDir] = useState('source/apps');
 
+  // Kit SDK version selection
+  const [kitVersions, setKitVersions] = useState<KitVersion[]>([]);
+  const [selectedKitVersion, setSelectedKitVersion] = useState<string>('');
+  const [isLoadingVersions, setIsLoadingVersions] = useState(true);
+
   // Layer selection
   const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
 
@@ -85,6 +96,33 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Fetch available Kit SDK versions
+  useEffect(() => {
+    const fetchKitVersions = async () => {
+      try {
+        setIsLoadingVersions(true);
+        const response = await fetch('/api/projects/kit-versions');
+        const data = await response.json();
+        if (data.success && data.versions) {
+          setKitVersions(data.versions);
+          // Set default to the recommended version
+          const recommended = data.versions.find((v: KitVersion) => v.recommended);
+          if (recommended) {
+            setSelectedKitVersion(recommended.version);
+          } else if (data.versions.length > 0) {
+            setSelectedKitVersion(data.versions[0].version);
+          }
+        }
+      } catch (err) {
+        console.error('[ProjectConfig] Failed to fetch Kit versions:', err);
+      } finally {
+        setIsLoadingVersions(false);
+      }
+    };
+
+    fetchKitVersions();
+  }, []);
 
   // Detect if template is a streaming template (matches logic from TemplateCard)
   const isStreamingTemplate = React.useMemo(() => {
@@ -159,6 +197,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
         projectName,
         displayName,
         selectedLayers,
+        kitVersion: selectedKitVersion,
       });
 
       const response = await apiService.createProject({
@@ -166,6 +205,7 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
         name: projectName,
         displayName: displayName || projectName,
         layers: selectedLayers.length > 0 ? selectedLayers : undefined,
+        kitVersion: selectedKitVersion || undefined,
       });
 
       console.log('[ProjectConfig] Received response:', response);
@@ -326,6 +366,49 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
             />
             <p className="mt-2 text-xs text-text-muted">
               Human-readable name for your project (auto-updated from project name)
+            </p>
+          </div>
+
+          {/* Kit SDK Version */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-text-primary mb-2">
+              <Package className="w-4 h-4" />
+              Kit SDK Version *
+            </label>
+            {isLoadingVersions ? (
+              <div className="
+                w-full px-4 py-3 rounded-lg
+                bg-bg-card border border-border-subtle
+                text-text-muted
+                flex items-center gap-2
+              ">
+                <Sparkles className="w-4 h-4 animate-spin" />
+                Loading Kit SDK versions...
+              </div>
+            ) : (
+              <select
+                value={selectedKitVersion}
+                onChange={(e) => setSelectedKitVersion(e.target.value)}
+                disabled={isCreating}
+                className="
+                  w-full px-4 py-3 rounded-lg
+                  bg-bg-card border border-border-subtle
+                  text-text-primary
+                  focus:outline-none focus:ring-2 focus:ring-nvidia-green focus:border-transparent
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  transition-all
+                  cursor-pointer
+                "
+              >
+                {kitVersions.map((kitVer) => (
+                  <option key={kitVer.version} value={kitVer.version}>
+                    {kitVer.label} {kitVer.recommended ? '(Recommended)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="mt-2 text-xs text-text-muted">
+              Choose the Omniverse Kit SDK version for your project. Each project can use a different Kit version.
             </p>
           </div>
 

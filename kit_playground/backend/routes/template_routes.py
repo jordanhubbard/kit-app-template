@@ -295,6 +295,7 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
             project_name = data.get('name')
             display_name = data.get('displayName', project_name)
             enable_streaming = data.get('enableStreaming', False)
+            kit_version = data.get('kitVersion')  # Optional Kit SDK version
 
             # Get standalone flag - determines if we create a self-contained repo
             standalone = data.get('standalone', False)
@@ -312,8 +313,8 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
 
             # Collect extra params
             extra_params = data.get('options', {}).copy()
-            if 'perAppDeps' in data:
-                extra_params['per_app_deps'] = data['perAppDeps']
+            if 'perAppDeps' in data or kit_version:
+                extra_params['per_app_deps'] = data.get('perAppDeps', True if kit_version else False)
 
             # Handle layers (new feature)
             # WORKAROUND: repo_kit_template has a bug (line 371 in repo.py) that causes
@@ -397,6 +398,25 @@ def create_template_routes(playground_app, template_api: TemplateAPI):
 
                 logger.info(f"Application created at: {app_dir}")
                 logger.info(f".kit file path: {kit_file_abs}")
+
+                # Update Kit SDK version if specified
+                if kit_version:
+                    try:
+                        import toml
+                        app_dir_path = Path(app_dir) if not isinstance(app_dir, Path) else app_dir
+                        deps_config = app_dir_path / 'dependencies' / 'kit-deps.toml'
+                        if deps_config.exists():
+                            config = toml.load(deps_config)
+                            if 'kit_sdk' not in config:
+                                config['kit_sdk'] = {}
+                            config['kit_sdk']['version'] = kit_version
+                            with open(deps_config, 'w') as f:
+                                toml.dump(config, f)
+                            logger.info(f"Set Kit SDK version to {kit_version} in {deps_config}")
+                        else:
+                            logger.warning(f"Kit deps config not found at {deps_config}, skipping Kit version update")
+                    except Exception as e:
+                        logger.error(f"Failed to set Kit version: {e}")
 
                 # WORKAROUND: Apply layers manually to avoid bug
                 logger.info(f"DEBUG: selected_layers = {selected_layers}")

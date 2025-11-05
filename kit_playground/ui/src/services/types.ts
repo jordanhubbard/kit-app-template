@@ -39,6 +39,7 @@ export interface CreateProjectRequest {
   perAppDeps?: boolean;
   enableStreaming?: boolean;
   layers?: string[];  // List of layer template names to apply
+  kitVersion?: string;  // Kit SDK version to use (e.g., "108.1", "107.0")
 }
 
 export interface CreateProjectResponse {
