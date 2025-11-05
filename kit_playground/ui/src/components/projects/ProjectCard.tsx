@@ -1,7 +1,8 @@
 import React from 'react';
-import { Play, Hammer, Trash2, FileText, Clock, CheckCircle, XCircle, Loader, Download } from 'lucide-react';
+import { Play, Hammer, Trash2, FileText, Download } from 'lucide-react';
 import type { Project } from '../../hooks/useProjects';
 import { useDependencies } from '../../hooks/useDependencies';
+import { StatusBadge } from '../common';
 
 interface ProjectCardProps {
   project: Project;
@@ -12,41 +13,6 @@ interface ProjectCardProps {
   onPrepare?: () => void;
 }
 
-/**
- * Get status badge styling and icon
- */
-const getStatusConfig = (status: Project['status']) => {
-  switch (status) {
-    case 'created':
-      return {
-        icon: <Clock className="w-4 h-4" />,
-        color: 'text-text-muted',
-        bg: 'bg-bg-card',
-        label: 'Created',
-      };
-    case 'built':
-      return {
-        icon: <CheckCircle className="w-4 h-4" />,
-        color: 'text-status-success',
-        bg: 'bg-status-success/10',
-        label: 'Built',
-      };
-    case 'running':
-      return {
-        icon: <Loader className="w-4 h-4 animate-spin" />,
-        color: 'text-status-info',
-        bg: 'bg-status-info/10',
-        label: 'Running',
-      };
-    case 'failed':
-      return {
-        icon: <XCircle className="w-4 h-4" />,
-        color: 'text-status-error',
-        bg: 'bg-status-error/10',
-        label: 'Failed',
-      };
-  }
-};
 
 /**
  * ProjectCard
@@ -63,7 +29,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onPrepare,
 }) => {
   const { status: depStatus } = useDependencies();
-  const statusConfig = getStatusConfig(project.status);
 
   const typeColor = {
     application: 'text-nvidia-green',
@@ -95,14 +60,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         </div>
 
         {/* Status Badge */}
-        <div className={`
-          flex items-center gap-1.5 px-2 py-1 rounded
-          ${statusConfig.bg} ${statusConfig.color}
-          text-xs font-medium
-        `}>
-          {statusConfig.icon}
-          <span>{statusConfig.label}</span>
-        </div>
+        <StatusBadge status={project.status} size="sm" />
       </div>
 
       {/* Info */}

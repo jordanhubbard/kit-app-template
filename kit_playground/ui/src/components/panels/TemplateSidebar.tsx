@@ -3,6 +3,7 @@ import { Search, ChevronDown, ChevronRight, Sparkles, Package, Box, FolderOpen }
 import { usePanelStore } from '../../stores/panelStore';
 import { useTemplates, type TemplateModel } from '../../hooks/useTemplates';
 import { useProjects } from '../../hooks/useProjects';
+import { StatusBadge, EmptyState } from '../common';
 
 /**
  * TemplateSidebar
@@ -398,21 +399,15 @@ export const TemplateSidebar: React.FC = () => {
                     </div>
                   )}
                   {!loadingProjects && projects.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-text-muted">No projects yet</div>
+                    <div className="px-3 py-2">
+                      <div className="text-xs text-text-muted text-center py-4">
+                        <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <div>No projects yet</div>
+                        <div className="text-text-muted/70 mt-1">Create one from a template</div>
+                      </div>
+                    </div>
                   )}
                   {!loadingProjects && projects.length > 0 && projects.slice(0, 10).map((project) => {
-                    // Determine action based on project status
-                    const getStatusBadge = () => {
-                      const status = project.status || 'created';
-                      switch (status) {
-                        case 'running':
-                          return <span className="px-1.5 py-0.5 text-xs bg-nvidia-green/20 text-nvidia-green rounded">Running</span>;
-                        case 'built':
-                          return <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">Built</span>;
-                        default:
-                          return <span className="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">New</span>;
-                      }
-                    };
 
                     const handleProjectClick = () => {
                       const status = project.status || 'created';
@@ -452,7 +447,7 @@ export const TemplateSidebar: React.FC = () => {
                         title={`${project.status === 'running' ? 'View' : project.status === 'built' ? 'Launch' : 'Build'} ${project.name}`}
                       >
                         <span className="text-text-secondary truncate flex-1">{project.displayName || project.name}</span>
-                        {getStatusBadge()}
+                        <StatusBadge status={project.status || 'created'} size="sm" showLabel={false} />
                       </button>
                     );
                   })}

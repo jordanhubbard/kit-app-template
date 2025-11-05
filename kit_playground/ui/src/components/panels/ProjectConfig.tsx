@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Sparkles, Folder, ChevronDown, ChevronUp, AlertCircle, Layers, Package } from 'lucide-react';
 import { usePanelStore } from '../../stores/panelStore';
 import { apiService } from '../../services/api';
 import type { TemplateModel } from '../../hooks/useTemplates';
 import { useLayers } from '../../hooks/useLayers';
+import { Select } from '../common';
+import type { SelectOption } from '../common/Select';
 
 interface KitVersion {
   version: string;
@@ -88,6 +90,15 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
   const [kitVersions, setKitVersions] = useState<KitVersion[]>([]);
   const [selectedKitVersion, setSelectedKitVersion] = useState<string>('');
   const [isLoadingVersions, setIsLoadingVersions] = useState(true);
+
+  // Transform Kit versions into Select options
+  const kitVersionOptions: SelectOption[] = useMemo(() => {
+    return kitVersions.map((kitVer) => ({
+      value: kitVer.version,
+      label: kitVer.label,
+      badge: kitVer.recommended ? 'Recommended' : undefined,
+    }));
+  }, [kitVersions]);
 
   // Layer selection
   const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
@@ -386,26 +397,12 @@ export const ProjectConfig: React.FC<ProjectConfigProps> = ({ template }) => {
                 Loading Kit SDK versions...
               </div>
             ) : (
-              <select
+              <Select
                 value={selectedKitVersion}
-                onChange={(e) => setSelectedKitVersion(e.target.value)}
+                onChange={setSelectedKitVersion}
+                options={kitVersionOptions}
                 disabled={isCreating}
-                className="
-                  w-full px-4 py-3 rounded-lg
-                  bg-bg-card border border-border-subtle
-                  text-text-primary
-                  focus:outline-none focus:ring-2 focus:ring-nvidia-green focus:border-transparent
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  transition-all
-                  cursor-pointer
-                "
-              >
-                {kitVersions.map((kitVer) => (
-                  <option key={kitVer.version} value={kitVer.version}>
-                    {kitVer.label} {kitVer.recommended ? '(Recommended)' : ''}
-                  </option>
-                ))}
-              </select>
+              />
             )}
             <p className="mt-2 text-xs text-text-muted">
               Choose the Omniverse Kit SDK version for your project. Each project can use a different Kit version.
