@@ -400,27 +400,62 @@ export const TemplateSidebar: React.FC = () => {
                   {!loadingProjects && projects.length === 0 && (
                     <div className="px-3 py-2 text-xs text-text-muted">No projects yet</div>
                   )}
-                  {!loadingProjects && projects.length > 0 && projects.slice(0, 10).map((project) => (
-                    <button
-                      key={project.id}
-                      onClick={() => {
-                        // Open the code editor for this project
-                        openPanel('code-editor', {
-                          filePath: project.kitFile,
-                          fileName: `${project.name}.kit`,
+                  {!loadingProjects && projects.length > 0 && projects.slice(0, 10).map((project) => {
+                    // Determine action based on project status
+                    const getStatusBadge = () => {
+                      const status = project.status || 'created';
+                      switch (status) {
+                        case 'running':
+                          return <span className="px-1.5 py-0.5 text-xs bg-nvidia-green/20 text-nvidia-green rounded">Running</span>;
+                        case 'built':
+                          return <span className="px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">Built</span>;
+                        default:
+                          return <span className="px-1.5 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">New</span>;
+                      }
+                    };
+
+                    const handleProjectClick = () => {
+                      const status = project.status || 'created';
+                      
+                      if (status === 'running') {
+                        // Project is running - open preview panel
+                        openPanel('preview', { 
                           projectName: project.name,
+                          mode: 'xpra'  // Default to xpra for running projects
                         });
-                      }}
-                      className="
-                        w-full flex items-center gap-2 px-3 py-1
-                        hover:bg-bg-card-hover
-                        transition-colors text-left
-                      "
-                      title={`Open ${project.name} in editor`}
-                    >
-                      <span className="text-text-secondary truncate">{project.displayName || project.name}</span>
-                    </button>
-                  ))}
+                      } else if (status === 'built') {
+                        // Project is built - open build output with launch ready
+                        openPanel('build-output', {
+                          projectName: project.name,
+                          jobType: 'launch',
+                          autoStart: false  // Don't auto-launch, just show the launch button
+                        });
+                      } else {
+                        // Project is new - open build panel
+                        openPanel('build-output', {
+                          projectName: project.name,
+                          jobType: 'build',
+                          autoStart: false  // Let user initiate build
+                        });
+                      }
+                    };
+
+                    return (
+                      <button
+                        key={project.id}
+                        onClick={handleProjectClick}
+                        className="
+                          w-full flex items-center gap-2 px-3 py-1.5
+                          hover:bg-bg-card-hover
+                          transition-colors text-left
+                        "
+                        title={`${project.status === 'running' ? 'View' : project.status === 'built' ? 'Launch' : 'Build'} ${project.name}`}
+                      >
+                        <span className="text-text-secondary truncate flex-1">{project.displayName || project.name}</span>
+                        {getStatusBadge()}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

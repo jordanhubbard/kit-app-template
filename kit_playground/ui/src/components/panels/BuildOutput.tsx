@@ -91,15 +91,19 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
     onXpraReady: (data) => {
       console.log('[BuildOutput] Xpra ready:', data);
       // Note: Do NOT auto-open Xpra in new tab - it causes race conditions
-      // The Preview panel will embed Xpra in an iframe instead
-      // Only auto-open for Kit App Streaming (WebRTC)
+      // Instead, open the Preview panel with Xpra mode embedded in iframe
       setXpraReady(true);
       const hostname = window.location.hostname;
       const url = data?.url || `http://${hostname}:${data?.port || 10000}`;
       setXpraUrl(url);
       if (!xpraOpenedRef.current && jobType === 'launch') {
         xpraOpenedRef.current = true;
-        try { window.open(url, '_blank', 'noopener,noreferrer'); } catch {}
+        console.log('[BuildOutput] Opening Xpra preview panel');
+        openPanel('preview', { 
+          projectName: data.project || projectName, 
+          streamingUrl: url,
+          mode: 'xpra' 
+        });
       }
     },
   });

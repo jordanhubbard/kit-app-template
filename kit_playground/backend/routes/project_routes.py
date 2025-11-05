@@ -1572,6 +1572,31 @@ def create_project_routes(
                 elif 'service' in item.name.lower():
                     project_type = 'microservice'
 
+                # Detect project status
+                status = 'created'  # default
+                is_running = item.name in processes
+                
+                # Check if project has been built (look for build artifacts)
+                # Build artifacts are in _build/{platform}/{config}/apps/{project_name}/
+                build_dir = repo_root / '_build'
+                if build_dir.exists():
+                    # Check common build locations
+                    for platform_dir in build_dir.iterdir():
+                        if platform_dir.is_dir() and platform_dir.name.startswith('linux'):
+                            for config_dir in platform_dir.iterdir():
+                                if config_dir.is_dir() and config_dir.name in ['release', 'debug']:
+                                    # Check for launcher script (indicates successful build)
+                                    launcher = config_dir / f"{item.name}.kit.sh"
+                                    if launcher.exists():
+                                        status = 'built'
+                                        break
+                            if status == 'built':
+                                break
+                
+                # If running, override status
+                if is_running:
+                    status = 'running'
+
                 project = {
                     'id': item.name,
                     'name': item.name,
@@ -1581,7 +1606,9 @@ def create_project_routes(
                     'kitFile': str(kit_file),
                     'lastModified': modified,
                     'createdAt': created,
-                    'isTest': is_test
+                    'isTest': is_test,
+                    'status': status,
+                    'isRunning': is_running
                 }
 
                 projects.append(project)
