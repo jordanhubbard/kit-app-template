@@ -3,6 +3,7 @@ import { X, Square, RotateCcw, CheckCircle, XCircle, Loader, Terminal, Play, Zap
 import { usePanelStore } from '../../stores/panelStore';
 import { useJob, type Job } from '../../hooks/useJob';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { Button, IconButton } from '../common';
 
 interface BuildOutputProps {
   jobId?: string;
@@ -419,49 +420,31 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
           {((canStart && projectName) || canRelaunch) && <div className="w-px h-6 bg-border-subtle mx-2" />}
 
           {canCancel && (
-            <button
+            <IconButton
+              icon={<Square className="fill-current" />}
               onClick={handleCancel}
-              className="
-                p-2 rounded
-                bg-status-error/10 hover:bg-status-error/20
-                text-status-error
-                transition-colors
-              "
-              title="Cancel job (stop process)"
-            >
-              <Square className="w-4 h-4 fill-current" />
-            </button>
+              variant="danger"
+              tooltip="Cancel job (stop process)"
+            />
           )}
 
           {canRetry && !canRelaunch && (
-            <button
+            <IconButton
+              icon={<RotateCcw />}
               onClick={handleRetry}
-              className="
-                p-2 rounded
-                hover:bg-bg-card
-                text-text-secondary hover:text-nvidia-green
-                transition-colors
-              "
-              title="Retry"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+              variant="ghost"
+              tooltip="Retry"
+            />
           )}
 
           <div className="w-px h-6 bg-border-subtle mx-1" />
 
-          <button
+          <IconButton
+            icon={<X />}
             onClick={handleClose}
-            className="
-              p-2 rounded
-              hover:bg-bg-card
-              text-text-secondary hover:text-text-primary
-              transition-colors
-            "
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            variant="ghost"
+            tooltip="Close"
+          />
         </div>
       </div>
 

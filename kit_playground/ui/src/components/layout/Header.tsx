@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Home, FolderOpen } from 'lucide-react';
+import { Trash2, Home, FolderOpen, Package } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { usePanelStore } from '../../stores/panelStore';
 
@@ -98,6 +98,24 @@ export const Header: React.FC = () => {
           >
             <FolderOpen className="w-4 h-4" />
             USD Media
+          </button>
+
+          {/* Component Showcase Button */}
+          <button
+            onClick={() => openPanel('component-showcase', {})}
+            className="
+              px-4 py-2 rounded
+              bg-purple-500/10 hover:bg-purple-500/20
+              text-purple-400
+              border border-purple-500/30
+              transition-colors
+              flex items-center gap-2
+              text-sm font-medium
+            "
+            title="View UI component showcase and examples"
+          >
+            <Package className="w-4 h-4" />
+            Components
           </button>
 
           {/* Clean Projects Button */}

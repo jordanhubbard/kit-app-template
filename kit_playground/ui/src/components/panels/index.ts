@@ -6,3 +6,4 @@ export { BuildOutput } from './BuildOutput';
 export { CodeEditor } from './CodeEditor';
 export { Preview } from './Preview';
 export { USDMedia } from './USDMedia';
+export { ComponentShowcase } from './ComponentShowcase';

@@ -8,6 +8,7 @@ import { BuildOutput } from './components/panels/BuildOutput';
 import { CodeEditor } from './components/panels/CodeEditor';
 import { Preview } from './components/panels/Preview';
 import { USDMedia } from './components/panels/USDMedia';
+import { ComponentShowcase } from './components/panels/ComponentShowcase';
 import { OutputPanel } from './components/panels/OutputPanel';
 import { useTemplates } from './hooks/useTemplates';
 
@@ -61,6 +62,9 @@ function App() {
 
       case 'usd-media':
         return <USDMedia {...panelData} />;
+
+      case 'component-showcase':
+        return <ComponentShowcase />;
 
       default:
         return <PanelPlaceholder type={panelType} message={`Unknown panel type: ${panelType}`} />;

@@ -1,0 +1,3 @@
+[console_scripts]
+kit-playground = kit_playground.playground:main
+
