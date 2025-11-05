@@ -19,10 +19,9 @@ PlaygroundApp
 Configuration
 -------------
 
-.. autoclass:: kit_playground.core.config.Config
+.. autoclass:: kit_playground.core.config.PlaygroundConfig
    :members:
    :undoc-members:
    :show-inheritance:
 
    .. automethod:: __init__
-

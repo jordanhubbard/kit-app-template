@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  Play, Package, X, Check, AlertCircle, Settings, 
+import {
+  Play, Package, X, Check, AlertCircle, Settings,
   Sparkles, Folder, Download, Trash2, Eye
 } from 'lucide-react';
-import { 
-  Button, Badge, IconButton, StatusBadge, 
-  EmptyState, Select, Modal, Tooltip 
+import {
+  Button, Badge, IconButton, StatusBadge,
+  EmptyState, Select, Modal, Tooltip
 } from '../common';
 import type { SelectOption } from '../common/Select';
 
 /**
  * ComponentShowcase - Demo page for all reusable UI components
- * 
+ *
  * This page demonstrates all the common components available in the kit_playground UI,
  * showing their various props, variants, and use cases.
  */
@@ -387,4 +387,3 @@ export const ComponentShowcase: React.FC = () => {
 };
 
 export default ComponentShowcase;
-
