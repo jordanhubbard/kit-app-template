@@ -99,10 +99,10 @@ export const BuildOutput: React.FC<BuildOutputProps> = ({
       if (!xpraOpenedRef.current && jobType === 'launch') {
         xpraOpenedRef.current = true;
         console.log('[BuildOutput] Opening Xpra preview panel');
-        openPanel('preview', { 
-          projectName: data.project || projectName, 
+        openPanel('preview', {
+          projectName: data.project || projectName,
           streamingUrl: url,
-          mode: 'xpra' 
+          mode: 'xpra'
         });
       }
     },

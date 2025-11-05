@@ -1591,7 +1591,7 @@ def create_project_routes(
                 # Detect project status
                 status = 'created'  # default
                 is_running = item.name in processes
-                
+
                 # Check if project has been built (look for build artifacts)
                 # Build artifacts are in _build/{platform}/{config}/apps/{project_name}/
                 build_dir = repo_root / '_build'
@@ -1608,7 +1608,7 @@ def create_project_routes(
                                         break
                             if status == 'built':
                                 break
-                
+
                 # If running, override status
                 if is_running:
                     status = 'running'
@@ -1831,7 +1831,7 @@ def create_project_routes(
 
             # Start package process
             repo_root = get_repo_root()
-            
+
             # Generate a unique job ID
             import uuid
             job_id = f"package_{uuid.uuid4().hex[:8]}"
@@ -1871,7 +1871,7 @@ def create_project_routes(
                     # Run package command
                     import subprocess
                     repo_script = repo_root / 'repo.sh'
-                    
+
                     process = subprocess.Popen(
                         [str(repo_script), 'package', '--container', '--name', container_name],
                         cwd=str(repo_root),
@@ -1961,7 +1961,7 @@ def create_project_routes(
         try:
             # Use docker to list images
             import subprocess
-            
+
             result = subprocess.run(
                 ['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}|{{.Size}}'],
                 capture_output=True,
