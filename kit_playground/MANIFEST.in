@@ -1,0 +1,32 @@
+# Include documentation
+include README.md
+include LICENSE
+
+# Include requirements
+include backend/requirements.txt
+include requirements-test.txt
+
+# Include static assets
+recursive-include backend/static *
+recursive-include backend/data *
+
+# Include configuration files
+include pyproject.toml
+include setup.py
+
+# Exclude compiled Python files
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude *.so
+global-exclude .DS_Store
+
+# Exclude build artifacts
+prune build
+prune dist
+prune *.egg-info
+prune backend/source/apps/_build
+prune backend/source/apps/_compiler
+
+# Exclude test files from distribution
+prune tests
+

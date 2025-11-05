@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kit-playground"
+version = "1.0.0"
+description = "Interactive development environment for NVIDIA Omniverse Kit applications"
+readme = "README.md"
+authors = [
+    {name = "NVIDIA Corporation"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+keywords = ["nvidia", "omniverse", "kit", "development", "playground", "template"]
+requires-python = ">=3.7"
+dependencies = [
+    "flask>=2.0.0",
+    "flask-cors>=3.0.0",
+    "flask-socketio>=5.0.0",
+    "python-socketio>=5.0.0",
+    "toml>=0.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+]
+
+[project.urls]
+Homepage = "https://github.com/NVIDIA-Omniverse/kit-app-template"
+Documentation = "https://docs.omniverse.nvidia.com/kit/docs/kit-app-template"
+Repository = "https://github.com/NVIDIA-Omniverse/kit-app-template"
+"Bug Tracker" = "https://github.com/NVIDIA-Omniverse/kit-app-template/issues"
+
+[project.scripts]
+kit-playground = "kit_playground.playground:main"
+
+[tool.setuptools]
+packages = ["kit_playground"]
+
+[tool.setuptools.package-data]
+kit_playground = ["backend/static/**/*", "backend/data/**/*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py37', 'py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | node_modules
+  | _build
+  | backend/source/apps
+)/
+'''
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=kit_playground --cov-report=html --cov-report=term"
+
